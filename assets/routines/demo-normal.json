@@ -1,0 +1,20 @@
+{
+  "format_version": 1,
+  "id": "demo-normal",
+  "song_id": "demo",
+  "difficulty": "normal",
+  "phrases": [
+    [
+      "sweep_to_right_4", "sweep_to_left_4",
+      "knock_right", "knock_left", "chop_right", "chop_right",
+      "chop_left", "chop_left", "wrist_roll_4",
+      "sweep_diagonal_down_to_right_4", "flick_clap_to_right"
+    ],
+    [
+      "knock_right", "knock_left", "sweep_down_4",
+      "chop_right", "chop_right", "chop_left", "chop_left",
+      "sweep_to_right_2", "sweep_to_left_2", "wrist_roll_4",
+      "flick_clap_to_right", "flick_clap_to_left"
+    ]
+  ]
+}

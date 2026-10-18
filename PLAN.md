@@ -20,8 +20,8 @@ electronic music (mainly Eurobeat, also Techpara / Trapara).
 
 ### 1.1 Footwork: the two-step (the "engine")
 
-Feet shoulder-width apart, knees loose. Step right, touch left foot to right;
-step left, touch right foot to left — one step per beat. This is the timing
+Feet shoulder-width apart, knees loose. "Step right [1], step together [2],
+step left [3], step together [4], step right [5]" — one step per beat. This is the timing
 reference for all arm moves. **In-game it is shown as a visual guide only and
 is never scored.** Scoring is based purely on the upper body, so the game is
 accessible to players who cannot (or prefer not to) step — including seated
@@ -29,13 +29,20 @@ players — and only the upper body needs to be in camera frame.
 
 ### 1.2 Arm & hand building blocks
 
+Reference: EKS-D "How to Dance", <https://kirakira.org/XD/learn/how-to-dance/>
+(checked 2026-10-18). Moves "with rare exception, begin on the right-hand side".
+
 | Block | Description | Duration | Character | Needs hand landmarks? |
 |---|---|---|---|---|
-| **Sweep** | Both arms move parallel across the chest from one side to the other; soft wrists | 2 or 4 counts | Flowing | No |
-| **Knock** | Closed fists snapped out to sharp right-angle positions (forward / up), in pairs | 2 counts (1 per punch) | Sharp | Yes (fist) |
-| **Chop** | One arm extends outward at 45°, then snaps in to rest near the opposite collarbone | 2 counts per arm (1 out, 1 in) | Sharp | No |
-| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other | 2 or 4 counts | Flowing | Optional |
-| **Flick + Clap** | Three backhanded outward wrist flicks (counts 1–3), sharp clap on count 4 | 4 counts | Phrase finisher | Optional |
+| **Sweep** | Arms sweep from one point to another: horizontal, vertical, or diagonal across the body; one arm or both; soft wrists | 2 or 4 counts | Flowing | No |
+| **Knock** | "Banging on an imaginary door": fist, thumb towards the body; upper arm horizontal, forearm up (right angle). Same hand on beats 1 & 2, then mirrored (right 1–2, left 3–4) | 2 counts per hand | Sharp | Yes (fist) |
+| **Chop** | Arm reaches 45° up and out to the side (beat 1), then folds in front of the chest, flat hand level (not pointing down), like a salute (beat 2). Often right 1–2, 3–4, then left 5–6, 7–8 | 2 counts per chop | Sharp | No |
+| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other (*not in the reference; unverified*) | 2 or 4 counts | Flowing | Optional |
+| **Flick + Clap** | "nami + nami + nami + pon!": one arm crosses the body and does a backhanded wrist flick just above shoulder height (1), again in front (2), again on the opposite side (3), then a clap where the third flick ended (4). **Any clap scores, regardless of side or arm position.** Often paired in opposite directions | 4 counts | Phrase finisher | Optional |
+
+Pairing patterns (knock right then left; chops right-right-left-left;
+flick + clap pairs in opposite directions) are choreography rules for the
+routine generator (Step 7), not part of the individual blocks.
 
 ---
 
@@ -50,8 +57,10 @@ for both arms). Revised structure:
 - Every **phrase** must:
   1. contain at least one of each of the five building blocks;
   2. **end with Flick + Clap** (the clap lands on the last count of the phrase);
-  3. fill exactly 32 counts; blocks must not cross a bar boundary unless the
-     block is 4 counts long and starts on count 1 or 5 of a bar.
+  3. fill exactly 32 counts;
+  4. never let a block cross a bar boundary, and start every block on a
+     multiple of its own length (4-count blocks on count 1 or 5, 2-count
+     blocks on odd counts).
 - Tempo: songs are **140–160 BPM**, 4/4 time.
 
 The vague quality requirements become measurable scoring components:
@@ -68,10 +77,28 @@ The vague quality requirements become measurable scoring components:
 
 Each building block is defined as **timed keyframe poses**: target arm/hand
 configurations at specific counts (e.g. Chop-right = "right arm extended at 45°
-on count 1; right wrist at left collarbone on count 2"). Keyframes are
-expressed in a **normalized, body-relative coordinate system** (origin at
-mid-shoulder, unit = shoulder width), so they are independent of the player's
-size and distance from the camera.
+on count 1; right wrist at left collarbone on count 2").
+
+Arm targets are **unit direction vectors** (decided 2026-10-18), per arm:
+upper arm (shoulder → elbow), forearm (elbow → wrist) and optionally hand
+(wrist → middle knuckle, for flicks), plus a hand shape (open / fist / any).
+Direction vectors ignore limb length, so targets are independent of the
+player's size and distance from the camera.
+
+**Body frame** (dancer's own anatomy, right-handed): origin at mid-shoulder,
+`+x` = towards the dancer's **right** hand, `+y` = up, `+z` = forward (out of
+the chest, towards the camera). "Right arm" always means the dancer's own
+right arm; mirroring (for the player copying an on-screen demo, and for
+generating left/right variants of a block) swaps the arms and negates `x`.
+
+**Player calibration** (before each session): the player holds a neutral pose
+and a T-pose for a few seconds. This measures shoulder width and segment
+lengths (to turn direction targets into positions for collarbone/clap checks
+and for drawing the guide figure) and the camera's tilt (to align the camera
+frame with the body frame).
+
+The five block definitions are **first drafts** written from the textual
+descriptions; they will be refined from recordings of a real dancer.
 
 This single representation drives:
 
@@ -189,6 +216,10 @@ is a possible later improvement once recorded gameplay data exists.
   each model's license conditions).
 - Animation generated **procedurally from routine keyframes** in **Blender**
   (VRM add-on, scripted via `bpy`), rendered offline to video per routine.
+- The demo is shown **mirrored** (like the "REVERSE"/"MIRROR" practice
+  videos in the dance community): when the character moves its right arm, it
+  appears on the right of the screen, so the player copies it like a mirror
+  with their own right arm.
 - Early fallback: a 2D stick figure drawn in pygame-ce directly from keyframes,
   so the game is playable before the 3D pipeline exists.
 - Recording a human dancer / video-to-animation AI is optional, only for

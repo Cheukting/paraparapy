@@ -6,6 +6,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 1 – routine model** (`parapara.routine`).
+  - `geometry`: body-frame vectors (`+x` dancer's right, `+y` up, `+z`
+    forward), `unit`, `mirror_x`, `angle_between_deg`. `normalize` leaves
+    unit vectors bit-for-bit unchanged so that mirroring twice is exact.
+  - `model`: `ArmPose` (upper-arm / forearm / optional hand directions + hand
+    shape), `Keyframe`, `Block`, `Phrase`, `Routine`, `TimedKeyframe`. Every
+    object validates on construction and reports all issues together in a
+    `RoutineError`. Phrase rules: all five kinds, ends with Flick + Clap,
+    32 counts, no block crosses a bar line, blocks start on a multiple of their
+    length. `Routine.timeline()` yields every keyframe with absolute beat,
+    bar and count.
+  - `library`: **draft** definitions of 18 built-in blocks, checked against
+    the EKS-D "How to Dance" guide (kirakira.org): Sweep ×10 (horizontal,
+    vertical, diagonal), Knock ×2 (same hand twice, upper arm slightly
+    forward), Chop ×2 (45° up, then a salute fold in front of the chest with
+    the flat hand level), Wrist Roll ×2 (not in the reference, unverified),
+    Flick + Clap ×2 (one arm travelling across the body; the clap is scored
+    only as a clap, regardless of side). Left variants are generated
+    by mirroring. `geometry.slerp` interpolates sweep directions.
+  - `serialization`: JSON format v1, with routines referencing blocks by id.
+  - `assets/routines/demo-normal.json`: hand-written two-phrase sample routine.
+  - Tests: `test_routine_geometry.py`, `test_routine_model.py`,
+    `test_routine_library.py`, `test_routine_serialization.py`.
+- `PLAN.md` §1: move descriptions, footwork counts and right-hand lead
+  updated from the EKS-D reference; pairing patterns noted for the generator.
+  §7: the demo is shown mirrored.
+- `PLAN.md` §3: arm targets are direction vectors; body frame defined; player
+  calibration step (neutral pose + T-pose) added. §2: fixed the
+  self-contradictory bar-alignment rule.
 - `.gitignore` (Python caches, `.venv`, `.idea`, `.DS_Store`); initialized git repository.
 - **Step 0 – project setup.**
   - `parapara` package skeleton with subpackages `routine`, `generator`,
