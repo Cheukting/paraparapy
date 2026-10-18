@@ -61,6 +61,17 @@ calibration (`calibration.json`).
 uv run parapara-tune-filters             # re-tune the smoothing filters on a session
 ```
 
+## Watch a routine
+
+```sh
+uv run parapara-preview                              # first song, its easy routine
+uv run parapara-preview defrini-lets-go-to-a-rave --routine normal --clicks
+```
+
+The demo dancer performs the routine to the song (mirrored, so you can follow
+along), with the count, the current move and a next-move card. Space pauses,
+Left/Right jump a bar, R switches routine, C toggles metronome clicks.
+
 ## Routines
 
 ```sh

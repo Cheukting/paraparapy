@@ -358,6 +358,32 @@ demo tracks are fetched locally and never committed.
 
 ## 7. Demo animation
 
+**Implemented (Step 5c, 2026-10-18), replacing the plan below for now:** a
+simple stick-figure dancer with **smooth, musical motion**, decided with the
+project owner (graphics simple, motion that feels danceable).
+
+- `parapara.animation.animator` (pure): routine + beat → full pose, driven by
+  the **same keyframes the scoring uses** (exact on every scored beat).
+  Motion styles: snap (hold, then a smoothstep into the target landing on the
+  beat) for knocks/chops/transitions; constant-speed glide through sweeps;
+  hands circling in opposite phase for the wrist roll; knock pulses; flicks
+  that cock and whip; a clap pose with a flash; resting arms relax. Body: a
+  centred two-step (right 1, close 2, left 3, close 4; a guide, never
+  scored) and a knee bounce dipping on each beat; grooving during the intro.
+  It also reports the current block and the next one, one bar ahead.
+- `parapara.game.dancer_view`: thick-limbed stick figure (round joints,
+  knees by two-link IK, depth-sized wrists, back arm drawn first), mirrored
+  (dancer's right on the screen's right), orange right / cyan left.
+- `uv run parapara-preview [song] [--routine R]`: the dancer performs a
+  routine to its song with count, bar, phrase, the current move and a
+  next-move card (with a small pose preview). This panel is the demo half of
+  the Step 6 screen; **layout in Step 6: side by side** with the player's
+  mirrored camera view.
+- A 3-D avatar (below) can replace the renderer later: it would consume the
+  same `DancerPose`.
+
+Original plan (for a later, nicer renderer):
+
 - Avatar: a VRM model made in **VRoid Studio** (or from VRoid Hub, respecting
   each model's license conditions).
 - Animation generated **procedurally from routine keyframes** in **Blender**
@@ -408,6 +434,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
 | **5. Music library & beat maps** | Song format, auto beat map, by-ear check app; song import with suitability check; CC BY demo catalog; generated track for machine tests | `catalog.json`, `parapara-fetch-demo-songs`, `parapara-import-song`, `parapara-beatmap`, `parapara-beatcheck` |
 | **5b. Routines for every song** (Step 7 brought forward) | Choreography-unit generator with easy/normal/hard; routines stored next to their song; players' own routines (template, check, add) | `parapara-routines`, routines generated on fetch/import |
+| **5c. Demo dancer** | Smooth stick-figure dancer driven by the scored keyframes; preview app | `parapara.animation`, `parapara-preview` |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
 | **7. Routine generator** | Done early as 5b; later: tune difficulty with play data | – |
 | **8. Avatar demo** | VRM + Blender procedural animation, rendered demo videos | Demo video per routine |

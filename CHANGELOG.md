@@ -6,6 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 5c – demo dancer.**
+  - `parapara.animation.animator.Animator`: routine + beat → `DancerPose`,
+    exact on every scored keyframe; motion styles snap / glide / roll /
+    knock pulse / flick whip / clap / rest; centred two-step and beat bounce;
+    current and next block (one bar ahead).
+  - `parapara.game.dancer_view`: smooth stick-figure renderer (mirrored,
+    knees by IK, depth-sized wrists), `static_pose` for previews.
+  - `uv run parapara-preview [song] [--routine R] [--clicks]`: watch the
+    dancer perform a routine to its song, with count/bar/phrase, current move
+    and a next-move card; pause, seek by bar, switch routine, clicks, mirror.
+  - Tests: `test_animation.py` (exact on scored beats, smoothness at
+    160 BPM / 120 fps, snap holds, glides, roll, knocks, clap, rest arms,
+    two-step, preview; headless rendering and app).
 - `PLAN.md` future work: an interface to record a routine with the camera;
   a demo song with vocals (none of the demo tracks has vocals; "Lets Go To A
   Rave" confirmed instrumental).
