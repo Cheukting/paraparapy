@@ -1,0 +1,26 @@
+[project]
+name = "parapara"
+version = "0.1.0"
+description = "Desktop Para Para dance game: webcam pose tracking and rhythm scoring"
+readme = "README.md"
+authors = [
+    { name = "Cheukting", email = "cheukting.ho@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "mediapipe>=1.1.1",
+    "numpy>=2.5.4",
+    "pygame-ce>=2.5.8",
+]
+
+[project.scripts]
+parapara = "parapara:main"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

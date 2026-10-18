@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environment (recreate with `uv sync`)
+.venv/
+
+# PyCharm / JetBrains (machine-specific settings)
+.idea/
+
+# macOS
+.DS_Store
