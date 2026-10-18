@@ -70,7 +70,12 @@ class Difficulty(StrEnum):
 
 
 class HandShape(StrEnum):
-    """Required hand shape. ``ANY`` means the hand is not checked."""
+    """Hand shape of the choreography (fists for Knocks, open for Chops).
+
+    **Descriptive only, never scored**: hand tracking was removed (too slow and
+    unreliable at dancing distance, 2026-10-18 benchmark). It is still used to
+    animate the demo avatar correctly. ``ANY`` means unspecified.
+    """
 
     ANY = "any"
     OPEN = "open"
@@ -101,9 +106,11 @@ class ArmPose:
     Attributes:
         upper: shoulder → elbow direction.
         fore: elbow → wrist direction.
-        hand_shape: required hand shape (fists for Knocks, open for Chops).
-        hand: optional wrist → middle-knuckle direction; only set where the
-            wrist angle *is* the move (Flicks). Needs hand landmarks to score.
+        hand_shape: hand shape for the demo animation (not scored, see
+            :class:`HandShape`).
+        hand: optional wrist → knuckles direction; only set where the wrist
+            angle *is* the move (Flicks). Scored from the pose model's coarse
+            index/pinky points at the wrist (no separate hand tracking).
 
     Directions are normalized on construction, so authors may pass any
     non-zero vector, e.g. ``(1, 1, 0)`` for 45° up-and-out.
@@ -137,7 +144,8 @@ class Keyframe:
 
     ``beat`` may be fractional (e.g. ``0.5``) for moves on the off-beat such
     as the Wrist Roll. ``left``/``right`` are the dancer's own arms; ``None``
-    means "not scored". ``clap`` requires the palms to meet. ``tolerance_deg``
+    means "not scored". ``clap`` requires a clap, detected by sound and
+    confirmed by the wrists meeting (PLAN.md §5.1). ``tolerance_deg``
     overrides the block's default angular tolerance.
     """
 

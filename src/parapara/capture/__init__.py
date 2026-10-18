@@ -1,4 +1,4 @@
-"""Webcam capture and MediaPipe pose/hand landmark detection.
+"""Webcam capture and MediaPipe pose landmark detection.
 
 Runs in a dedicated OS process. This is the ONLY subpackage allowed to import
 ``cv2`` and ``mediapipe``, and it must never import ``pygame`` (duplicate

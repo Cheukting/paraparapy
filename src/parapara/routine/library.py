@@ -30,10 +30,13 @@ Interpretation choices (reviewed with the project owner 2026-10-18):
   flat hand continuing the forearm line (not pointing down), leading into the
   salute shape.
 - **Flick + Clap**: the right arm travels left → right; the mirrored block
-  travels right → left. **The clap is scored only as a clap** (palms meeting),
-  wherever it happens -- arm positions and side are ignored. Hand direction
+  travels right → left. **The clap is scored only as a clap** (heard by the
+  microphone, confirmed by the wrists meeting), wherever it happens -- arm
+  positions and side are ignored. Hand direction
   during the backhanded flick is approximated as up and towards the direction
   of travel.
+- **Hand shapes** (fist for Knocks, open for Chops) are recorded for the demo
+  animation only; they are not scored because hands are not tracked.
 - **Sweep**: both arms parallel; the upper arm follows the forearm (see
   :func:`_sweep_upper`). One-armed sweeps are not drafted yet.
 """

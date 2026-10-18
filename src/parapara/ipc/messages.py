@@ -31,7 +31,6 @@ class CaptureConfig:
         fps: frame rate requested from the camera (the camera may ignore it).
         pose_model: Pose Landmarker bundle. ``"full"`` is more accurate,
             ``"lite"`` is faster. See ``parapara.capture.models``.
-        detect_hands: also run the Hand Landmarker (fists, flicks).
         model_dir: where to cache downloaded models; ``None`` uses the
             platform default (see ``parapara.capture.models.default_model_dir``).
     """
@@ -41,7 +40,6 @@ class CaptureConfig:
     height: int = 480
     fps: int = 30
     pose_model: PoseModel = "full"
-    detect_hands: bool = True
     model_dir: str | None = None
 
     @property

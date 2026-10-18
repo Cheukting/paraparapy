@@ -33,7 +33,7 @@ from parapara.capture.detector import Detection, LandmarkDetector
 from parapara.capture.models import MODELS, ModelSpec, ensure_model
 from parapara.ipc.frame_buffer import SharedFrameBuffer
 from parapara.ipc.messages import CaptureConfig, CaptureStatus, StatusKind
-from parapara.pose.landmarks import PoseSample, assign_hands_to_wrists
+from parapara.pose.landmarks import PoseSample
 
 type RGBFrame = npt.NDArray[np.uint8]
 
@@ -103,7 +103,6 @@ def capture_loop(
         last_index = frame.index
         rgb = convert(frame.image)
         detection = detector.detect(rgb, frame.captured_ns)
-        left, right = assign_hands_to_wrists(detection.hands, detection.pose_image, frame_size)
         frames.write(rgb, frame.index, frame.captured_ns)
         emit(
             PoseSample(
@@ -113,10 +112,7 @@ def capture_loop(
                 frame_size=frame_size,
                 pose_image=detection.pose_image,
                 pose_world=detection.pose_world,
-                left_hand=left,
-                right_hand=right,
                 pose_ms=detection.pose_ms,
-                hands_ms=detection.hands_ms,
                 dropped_samples=dropped(),
             )
         )
@@ -146,11 +142,10 @@ def run(
             emit(CaptureStatus(StatusKind.STARTING, f"downloading {spec.filename}"))
 
         pose_path = ensure_model(MODELS[f"pose_{config.pose_model}"], model_dir, downloading)
-        hand_path = ensure_model(MODELS["hand"], model_dir, downloading) if config.detect_hands else None
 
         emit(CaptureStatus(StatusKind.STARTING, "opening camera"))
         frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
-        detector = LandmarkDetector(pose_path, hand_path)
+        detector = LandmarkDetector(pose_path)
         grabber = LatestFrameGrabber(config.camera_index, config.width, config.height, config.fps)
         grabber.start()
 

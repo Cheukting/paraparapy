@@ -6,6 +6,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `parapara.diagnostics` (pure; no cv2/mediapipe/pygame):
+  - `live_stats`: HUD statistics, moved from `game.overlay`, plus the new
+    `CameraRateMeter` (camera delivery rate and share of skipped frames, to
+    tell a camera-limited frame rate from an inference-limited one).
+  - `recorder`: `RunRecorder` whole-run summaries (rates, mean/p50/p95
+    timings, detection rates, warm-up excluded) and `write_log` to
+    `logs/*.json` with machine and library versions.
+  - `bench`: headless benchmark (`python -m parapara.diagnostics.bench`) that
+    runs several capture configurations back to back (default `full+hands`,
+    `full`, `lite+hands`) and logs a comparison.
+- `parapara.game.capture_bench`: `uv run parapara-capture-bench` runs the same
+  benchmark **with the live camera view** (skeleton, HUD, step and countdown)
+  so the dancer gets feedback; `Esc` stops early and still logs.
+- `debug_view.run_session`: the live-view loop, factored out so the debug view
+  and the windowed benchmark share it.
+- Debug view writes a session summary to `logs/capture-debug-*.json` on exit
+  (`--no-log`, `--log-dir`).
+- `logs/` added to `.gitignore`. Tests: `test_diagnostics.py`.
+- `PLAN.md`: first human test results: left/right labels confirmed, tracking
+  at 16–18 fps (target ~30).
 - **Step 2 – pose capture prototype.**
   - `parapara.capture` (capture process only): `models` (pinned SHA-256
     MediaPipe bundles, verified download to `~/Library/Caches/parapara/models`),
@@ -70,7 +90,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     and pygame-ce.
 - `CHANGELOG.md`.
 
+### Removed
+- **Hand tracking** (MediaPipe Hand Landmarker), decided after the first
+  capture benchmark (2026-10-18): it cost ~55 ms per frame (tracking fell from
+  23 to 12 fps, camera→screen latency from 41 to 114 ms) and found each hand
+  only ~20% of the time. Removed the hand model download, `HandObservation`,
+  `assign_hands_to_wrists`, `CaptureConfig.detect_hands`, the `--no-hands`
+  option, hand drawing and the `+hands` benchmark configurations. The debug
+  view now draws the pose model's own hand points (index/pinky/thumb).
+
 ### Changed
+- Claps will be detected **by sound**, confirmed by the wrists meeting
+  (`PLAN.md` §5.1). `HandShape` is now descriptive only (demo animation), and
+  `ArmPose.hand` is scored from the pose model's hand points.
+- Capture benchmark defaults to the `full` and `lite` pose models.
+- `PLAN.md`: benchmark results recorded, hand-landmark column removed from the
+  block table, tech stack updated, open items re-sorted.
 - `tests/test_import_boundary.py` runtime check now imports every module of
   each subpackage, not just its `__init__`.
 - Renamed the package `pythonproject31` → `parapara` (entry point `parapara`);

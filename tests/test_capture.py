@@ -20,8 +20,6 @@ from parapara.capture.camera import CameraFrame
 from parapara.capture.detector import (
     Detection,
     LandmarkDetector,
-    hand_landmarks_to_array,
-    hands_from_result,
     pose_landmarks_to_array,
 )
 from parapara.capture.models import (
@@ -32,7 +30,7 @@ from parapara.capture.models import (
     ensure_model,
 )
 from parapara.capture.worker import QueueEmitter, capture_loop, to_rgb
-from parapara.pose.landmarks import NUM_POSE_LANDMARKS, HandObservation, PoseLandmark
+from parapara.pose.landmarks import NUM_POSE_LANDMARKS
 
 # --- models -----------------------------------------------------------------
 
@@ -49,7 +47,7 @@ def _local_spec(tmp_path: Path, content: bytes, sha: str | None = None) -> Model
 
 
 def test_pinned_model_specs_look_valid() -> None:
-    assert {"pose_lite", "pose_full", "hand"} <= MODELS.keys()
+    assert set(MODELS) == {"pose_lite", "pose_full"}  # no hand model (removed)
     for spec in MODELS.values():
         assert spec.url.startswith("https://storage.googleapis.com/mediapipe-models/")
         assert spec.url.endswith(spec.filename)
@@ -113,21 +111,6 @@ def test_pose_landmarks_to_array() -> None:
 def test_landmark_count_checked() -> None:
     with pytest.raises(ValueError):
         pose_landmarks_to_array([_lm(0)] * 5)
-    with pytest.raises(ValueError):
-        hand_landmarks_to_array([_lm(0)] * 5)
-
-
-def test_hands_from_result() -> None:
-    hand = [_lm(i / 100) for i in range(21)]
-    result = SimpleNamespace(
-        hand_landmarks=[hand, hand],
-        hand_world_landmarks=[hand, hand],
-        handedness=[[SimpleNamespace(score=0.97, category_name="Left")], []],
-    )
-    first, second = hands_from_result(result)
-    assert first.image.shape == (21, 3) and first.label == "Left"
-    assert first.score == pytest.approx(0.97)
-    assert second.label == "" and second.score == 0.0
 
 
 # --- real MediaPipe integration (skipped until models are cached) --------------
@@ -139,19 +122,18 @@ def _cached(name: str) -> Path | None:
 
 
 @pytest.mark.skipif(
-    _cached("pose_lite") is None or _cached("hand") is None,
+    _cached("pose_lite") is None,
     reason="MediaPipe models not cached; run `uv run parapara-capture-debug` once",
 )
 def test_detector_on_empty_frame_finds_no_one_and_tolerates_equal_timestamps() -> None:
     pose_path = ensure_model(MODELS["pose_lite"])  # verifies the cached hash
-    hand_path = ensure_model(MODELS["hand"])
-    detector = LandmarkDetector(pose_path, hand_path)
+    detector = LandmarkDetector(pose_path)
     try:
         frame = np.zeros((240, 320, 3), np.uint8)
         # Same capture time twice: VIDEO mode would raise without the guard.
         for _ in range(2):
             detection = detector.detect(frame, captured_ns=5_000_000)
-            assert detection.pose_image is None and detection.hands == []
+            assert detection.pose_image is None and detection.pose_world is None
             assert detection.pose_ms > 0
     finally:
         detector.close()
@@ -181,12 +163,7 @@ class FakeDetector:
     def detect(self, rgb, captured_ns):
         self.timestamps.append(captured_ns)
         pose = np.zeros((NUM_POSE_LANDMARKS, 5), np.float32)
-        pose[PoseLandmark.RIGHT_WRIST, :2] = (0.3, 0.5)
-        pose[PoseLandmark.LEFT_WRIST, :2] = (0.7, 0.5)
-        hand_img = np.zeros((21, 3), np.float32)
-        hand_img[:, :2] = (0.31, 0.5)
-        hand = HandObservation(hand_img, hand_img, 0.9, "Left")
-        return Detection(pose, pose, [hand], pose_ms=5.0, hands_ms=3.0)
+        return Detection(pose, pose, pose_ms=5.0)
 
 
 class FakeSink:
@@ -197,7 +174,7 @@ class FakeSink:
         self.written.append(frame_index)
 
 
-def test_capture_loop_processes_newest_frames_and_assigns_hands() -> None:
+def test_capture_loop_processes_newest_frames() -> None:
     source, detector, sink, emitted = FakeSource(3), FakeDetector(), FakeSink(), []
     processed = capture_loop(
         source=source,
@@ -213,8 +190,8 @@ def test_capture_loop_processes_newest_frames_and_assigns_hands() -> None:
     assert [s.frame_index for s in emitted] == sink.written == [0, 2, 4]
     assert detector.timestamps == [0, 1_000_000, 2_000_000]
     sample = emitted[0]
-    assert sample.right_hand is not None and sample.left_hand is None  # by geometry
-    assert (sample.pose_ms, sample.hands_ms, sample.dropped_samples) == (5.0, 3.0, 7)
+    assert sample.has_pose
+    assert (sample.pose_ms, sample.dropped_samples) == (5.0, 7)
     assert sample.processed_ns >= sample.captured_ns
 
 

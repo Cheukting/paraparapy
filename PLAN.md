@@ -1,7 +1,7 @@
 # Plan: Para Para Dance Game (Desktop)
 
 A desktop rhythm game. The player dances Para Para in front of a webcam, the game
-tracks their body and hands in real time, and scores each move against a
+tracks their upper body in real time, and scores each move against a
 choreographed routine synced to Eurobeat music.
 
 ---
@@ -32,13 +32,13 @@ players — and only the upper body needs to be in camera frame.
 Reference: EKS-D "How to Dance", <https://kirakira.org/XD/learn/how-to-dance/>
 (checked 2026-10-18). Moves "with rare exception, begin on the right-hand side".
 
-| Block | Description | Duration | Character | Needs hand landmarks? |
-|---|---|---|---|---|
-| **Sweep** | Arms sweep from one point to another: horizontal, vertical, or diagonal across the body; one arm or both; soft wrists | 2 or 4 counts | Flowing | No |
-| **Knock** | "Banging on an imaginary door": fist, thumb towards the body; upper arm horizontal, forearm up (right angle). Same hand on beats 1 & 2, then mirrored (right 1–2, left 3–4) | 2 counts per hand | Sharp | Yes (fist) |
-| **Chop** | Arm reaches 45° up and out to the side (beat 1), then folds in front of the chest, flat hand level (not pointing down), like a salute (beat 2). Often right 1–2, 3–4, then left 5–6, 7–8 | 2 counts per chop | Sharp | No |
-| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other (*not in the reference; unverified*) | 2 or 4 counts | Flowing | Optional |
-| **Flick + Clap** | "nami + nami + nami + pon!": one arm crosses the body and does a backhanded wrist flick just above shoulder height (1), again in front (2), again on the opposite side (3), then a clap where the third flick ended (4). **Any clap scores, regardless of side or arm position.** Often paired in opposite directions | 4 counts | Phrase finisher | Optional |
+| Block | Description | Duration | Character |
+|---|---|---|---|
+| **Sweep** | Arms sweep from one point to another: horizontal, vertical, or diagonal across the body; one arm or both; soft wrists | 2 or 4 counts | Flowing |
+| **Knock** | "Banging on an imaginary door": fist, thumb towards the body; upper arm horizontal, forearm up (right angle). Same hand on beats 1 & 2, then mirrored (right 1–2, left 3–4) | 2 counts per hand | Sharp |
+| **Chop** | Arm reaches 45° up and out to the side (beat 1), then folds in front of the chest, flat hand level (not pointing down), like a salute (beat 2). Often right 1–2, 3–4, then left 5–6, 7–8 | 2 counts per chop | Sharp |
+| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other (*not in the reference; unverified*) | 2 or 4 counts | Flowing |
+| **Flick + Clap** | "nami + nami + nami + pon!": one arm crosses the body and does a backhanded wrist flick just above shoulder height (1), again in front (2), again on the opposite side (3), then a clap where the third flick ended (4). **Any clap scores, regardless of side or arm position.** Often paired in opposite directions | 4 counts | Phrase finisher |
 
 Pairing patterns (knock right then left; chops right-right-left-left;
 flick + clap pairs in opposite directions) are choreography rules for the
@@ -69,7 +69,7 @@ The vague quality requirements become measurable scoring components:
 |---|---|
 | "Smooth, flowing motion" | Low normalized **jerk** of wrist trajectories during Sweep / Wrist Roll |
 | "Strong, confident posture" | Torso near vertical, shoulders level, head up (angles from pose landmarks) |
-| "Clear, audible clap" | **Visual clap**: wrists/palms meet within the timing window on the phrase's final count (microphone detection is unreliable while music plays) |
+| "Clear, audible clap" | **Audible clap**: a sharp sound burst from the microphone in the timing window on the phrase's final count, confirmed by the wrists meeting (§5.1) |
 
 ---
 
@@ -81,7 +81,9 @@ on count 1; right wrist at left collarbone on count 2").
 
 Arm targets are **unit direction vectors** (decided 2026-10-18), per arm:
 upper arm (shoulder → elbow), forearm (elbow → wrist) and optionally hand
-(wrist → middle knuckle, for flicks), plus a hand shape (open / fist / any).
+(wrist → knuckles, for flicks, measured with the pose model's coarse
+index/pinky points), plus a hand shape (open / fist / any) that is used only
+for the demo animation and **never scored** (hands are not tracked).
 Direction vectors ignore limb length, so targets are independent of the
 player's size and distance from the camera.
 
@@ -117,7 +119,7 @@ Routines are stored as data files (JSON/TOML) and validated on load.
 
 ```
             ┌────────────── capture process/thread ─────────────┐
- webcam ──► │ OpenCV frame grab → MediaPipe Pose + Hand → filter │──► landmark queue
+ webcam ──► │ OpenCV frame grab → MediaPipe Pose → filter        │──► landmark queue
             └────────────────────────────────────────────────────┘          │
                                                                             ▼
  song + beat map ──► audio clock ──► game loop (pygame-ce) ◄── scoring engine
@@ -163,14 +165,14 @@ assets/        # music, beat maps, routines, avatar renders
 - **Camera**: OpenCV `VideoCapture` (AVFoundation on macOS) read on a
   background thread that keeps only the **newest** frame, so slow inference
   skips frames instead of falling behind real time.
-- **Detection**: MediaPipe Tasks `PoseLandmarker` (one person) + optional
-  `HandLandmarker` (two hands) in `VIDEO` running mode (synchronous, so every
-  result belongs to a known frame). Timestamps are forced to be strictly
-  increasing, as `VIDEO` mode requires.
-- **Left/right hands** are assigned by matching each hand's wrist to the
-  nearest pose wrist, not by MediaPipe's handedness label (which depends on
-  whether the image is mirrored).
-- **Models** (`pose_landmarker_full`/`_lite`, `hand_landmarker`) are
+- **Detection**: MediaPipe Tasks `PoseLandmarker` (one person) in `VIDEO`
+  running mode (synchronous, so every result belongs to a known frame).
+  Timestamps are forced to be strictly increasing, as `VIDEO` mode requires.
+- **No hand tracking** (decided 2026-10-18 after the capture benchmark): the
+  `HandLandmarker` took ~55 ms per frame, halving tracking to ~12 fps and
+  quadrupling latency, and found each hand only ~20% of the time at dancing
+  distance. The pose model's index/pinky/thumb points give hand direction.
+- **Models** (`pose_landmarker_full`/`_lite`) are
   downloaded on first use to `~/Library/Caches/parapara/models` and pinned by
   SHA-256, because the official URLs point at a moving `latest` path.
 - **IPC**: samples (`PoseSample`) and status messages go through a bounded
@@ -194,7 +196,8 @@ Pipeline for every landmark sample:
 3. **Mirror** horizontally (player faces the screen and copies the demo like a
    mirror).
 4. **Extract features**: elbow and shoulder angles, upper/lower-arm direction
-   vectors, wrist positions, fist/open-hand state, wrist distance (for claps).
+   vectors, wrist positions, hand direction (from the pose index/pinky
+   points), wrist distance (for claps).
 
 Per keyframe (a target pose on a given count):
 
@@ -214,9 +217,36 @@ Per keyframe (a target pose on a given count):
   (jerk) score.
 
 Final score = sum of keyframe scores × combo multiplier + posture bonus.
-Only upper-body landmarks (shoulders, elbows, wrists, hands, head, and hips
-for torso angle when visible) are used; **footwork is never scored**. No model training is required initially; a learned classifier
-is a possible later improvement once recorded gameplay data exists.
+Only upper-body landmarks (shoulders, elbows, wrists, the pose model's hand
+points, head, and hips for torso angle when visible) are used; **footwork and
+hand shape are never scored**. No model training is required initially; a
+learned classifier is a possible later improvement once recorded gameplay data
+exists.
+
+### 5.1 Clap detection (sound + vision)
+
+Decided 2026-10-18: the clap that ends each phrase is detected **by sound**.
+
+- **Microphone onset detection**: a clap is a short, broadband burst, so the
+  microphone stream (via `sounddevice`) is watched for sharp energy onsets
+  (spectral flux in the high band). Audio gives far better timing than the
+  ~23 fps camera (a few ms instead of ±20 ms), so the clap's *timing grade*
+  comes from the sound.
+- **Problem: the music claps too.** Eurobeat typically has a clap/snare on the
+  beat, played through the speakers into the microphone at exactly the moment
+  the player should clap; sound alone would score the song's own clap as a
+  perfect hit. Mitigations, in order:
+  1. **Vision gate**: an onset only counts if the pose wrists are close
+     together (relative to shoulder width) at that moment; no hand model needed.
+  2. **Reference rejection**: the game knows exactly what it is playing. During
+     calibration it measures the speaker→microphone delay and gain; onsets
+     explained by the played signal (same time, similar strength) are
+     discarded, and only *excess* onset energy counts.
+  3. **Headphones**: recommended in the settings; they remove the problem.
+- **Calibration** reuses the "clap to the beat" screen (§4): it measures the
+  audio input latency as well as the camera latency.
+- Implemented with the audio module (roadmap Steps 5–6); latest
+  `sounddevice` version and docs to be checked then.
 
 ---
 
@@ -258,12 +288,12 @@ is a possible later improvement once recorded gameplay data exists.
 | Purpose | Library / tool | Notes |
 |---|---|---|
 | Python | **3.13** | torch / onnxruntime have no 3.15 wheels yet |
-| Pose + hand tracking | `mediapipe` 1.1.1 (Tasks API: PoseLandmarker, HandLandmarker) | macOS wheel is arm64-only; verify 1.x API against current docs |
+| Pose tracking | `mediapipe` 1.1.1 (Tasks API: PoseLandmarker) | macOS wheel is arm64-only; no hand tracking (§4.2) |
 | Camera / image ops | `opencv-contrib-python` (pulled in by mediapipe) | don't also install `opencv-python` |
 | Numerics | `numpy` 2.x | |
 | Beat detection | `librosa` 1.0.0 | offline tool only, not needed at runtime |
 | Game window, rendering, audio | `pygame-ce` 2.5.8 | original `pygame` has no wheels for Python ≥ 3.13 |
-| Precise audio timing (if needed) | `sounddevice` | already a mediapipe dependency |
+| Microphone (clap detection), precise audio timing | `sounddevice` | already a mediapipe dependency; declare explicitly when used |
 | Avatar animation | VRoid Studio, Blender + VRM add-on | offline pipeline |
 | Testing | `pytest` | scoring tested on recorded landmark fixtures |
 | Avoid | `ultralytics` (YOLO pose) | AGPL-3.0 licence |
@@ -281,7 +311,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 |---|---|---|
 | **0. Project setup** | Python 3.13, package layout, dependencies, pytest | `uv sync` + `pytest` pass |
 | **1. Routine model** | Blocks as keyframes, bar/phrase structure, validation rules from §2, JSON load/save | Validated hand-written sample routine |
-| **2. Pose capture prototype** | Webcam + MediaPipe Pose/Hand, skeleton overlay, FPS + latency readout | Live debug window |
+| **2. Pose capture prototype** | Webcam + MediaPipe Pose, skeleton overlay, FPS + latency readout, capture benchmark | Live debug window, `parapara-capture-bench` |
 | **3. Pose features** | One Euro filter, normalization, mirroring, feature extraction | Unit-tested feature functions |
 | **4. Scoring engine** | Keyframe matching, timing grades, DTW, posture/smoothness | Scores computed on recorded fixtures |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
@@ -305,12 +335,27 @@ Decided (2026-10-18):
 - Single player only for now.
 
 Open items (to resolve before the step named):
-- Real-dancer test run (4b): confirm MediaPipe's left/right pose labels are
-  the dancer's anatomical sides on an unmirrored webcam image; verify the
-  draft poses (wrist roll, one-armed sweeps, chop salute, clap).
+- Real-dancer test run (4b): verify the draft poses (wrist roll, one-armed
+  sweeps, chop salute, clap).
+- Camera rate: the webcam delivers ~23 fps although 30 is requested
+  (typical auto-exposure behaviour in dim light). Retest in brighter light;
+  target ~30 fps (≈ 13 frames per beat at 155 BPM).
+- Clap detection (5–6): implement §5.1 and test with speakers *and*
+  headphones on Eurobeat tracks that contain claps/snares.
 - Distribution (9): check the MediaPipe model card licences, and tell
   players that the MediaPipe Tasks API sends usage metrics to Google
   (images are processed on-device).
+
+Resolved:
+- Left/right (2026-10-18, human test): MediaPipe pose labels are the
+  dancer's anatomical sides on an unmirrored webcam image (left = cyan in the
+  debug view). Tracking visibly keeps up with the movements.
+- Tracking rate (2026-10-18, `parapara-capture-bench`, MacBook webcam,
+  640×480): full pose model + hand model **12.4 fps** (hands 53 ms/frame,
+  47% of frames skipped, 114 ms camera→screen); full pose model alone
+  **23.1 fps = camera rate**, 0% skipped, pose 25 ms, **41 ms camera→screen**;
+  the lite model brings no benefit. Decision: full pose model, **no hand
+  tracking**; claps by sound (§5.1).
 
 Future (out of scope for the current roadmap):
 - Leaderboard (local first, online later).

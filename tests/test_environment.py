@@ -30,14 +30,13 @@ def test_entry_point_exists() -> None:
 
 
 def test_mediapipe_tasks_api_available() -> None:
-    """The capture layer uses the Tasks API (PoseLandmarker / HandLandmarker)
-    in VIDEO or LIVE_STREAM mode; legacy ``mp.solutions`` is not used."""
+    """The capture layer uses the Tasks API (PoseLandmarker) in VIDEO mode;
+    legacy ``mp.solutions`` is not used."""
     out = _run(
         "from mediapipe.tasks.python import vision; "
-        "print(vision.PoseLandmarker.__name__, vision.HandLandmarker.__name__, "
-        "vision.RunningMode.LIVE_STREAM.name)"
+        "print(vision.PoseLandmarker.__name__, vision.RunningMode.VIDEO.name)"
     )
-    assert out == "PoseLandmarker HandLandmarker LIVE_STREAM"
+    assert out == "PoseLandmarker VIDEO"
 
 
 def test_pygame_is_community_edition() -> None:

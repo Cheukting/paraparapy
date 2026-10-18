@@ -3,7 +3,6 @@
 Sources (MediaPipe docs, "Models" sections, checked 2026-10-18):
 
 - https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker/index#models
-- https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/index#models
 
 The official URLs point at a ``latest`` path, so the content could change
 without notice. Each bundle is therefore **pinned by SHA-256** (computed from
@@ -53,12 +52,6 @@ MODELS: dict[str, ModelSpec] = {
         "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
         9_398_198,
     ),
-    "hand": ModelSpec(
-        "hand_landmarker.task",
-        f"{_BASE}/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task",
-        "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
-        7_819_105,
-    ),
 }
 
 
@@ -71,7 +64,7 @@ def default_model_dir() -> Path:
 
     ``$PARAPARA_MODEL_DIR`` if set; otherwise ``~/Library/Caches/parapara/models``
     on macOS and ``$XDG_CACHE_HOME/parapara/models`` (default ``~/.cache``)
-    elsewhere. Models are kept out of the git repository (~23 MB).
+    elsewhere. Models are kept out of the git repository (~15 MB).
     """
     if env := os.environ.get("PARAPARA_MODEL_DIR"):
         return Path(env)
