@@ -17,7 +17,7 @@ from parapara.audio.beatmap import (
     fold_tempo,
     update_song,
 )
-from parapara.audio.demo_song import make_demo_song
+from parapara.audio.demo_song import DEMO_ID, demo_song_metadata, make_demo_song
 from parapara.audio.song import Song, SongError, load_library
 from parapara.audio.synth import read_wav, render_demo_song, write_wav
 from parapara.routine.serialization import load_routine
@@ -69,14 +69,16 @@ def test_wav_round_trip(tmp_path) -> None:
 # --- song library ----------------------------------------------------------------
 
 
-def test_committed_demo_song_json_matches_the_generator(demo_library) -> None:
-    committed = json.loads((ROOT / "assets/songs/demo/song.json").read_text())
-    generated = json.loads((demo_library / "demo" / "song.json").read_text())
-    assert committed == generated  # regenerating changes nothing
+def test_generated_track_is_not_in_the_game_library() -> None:
+    """Machine testing only: the generated track is never offered for dancing."""
+    library = ROOT / "assets" / "songs"
+    for song_json in library.glob("*/song.json"):
+        assert json.loads(song_json.read_text())["beat_map"]["method"] != "generated", song_json
+    assert not (library / DEMO_ID).exists() and not (library / "demo").exists()
 
 
 def test_demo_song_loads_and_maps_beats(demo_library) -> None:
-    song = load_library(demo_library)["demo"]
+    song = load_library(demo_library)[DEMO_ID]
     assert song.warnings == () and song.beat_map.verified
     assert song.beat_time_s(8) == pytest.approx(0.5 + 8 * 0.4)
     assert song.beat_at(song.beat_time_s(13.5)) == pytest.approx(13.5)
@@ -84,23 +86,24 @@ def test_demo_song_loads_and_maps_beats(demo_library) -> None:
     assert clock.time_of(0) == 10**9 + int(3.7e9) + 50_000_000  # routine starts after the intro
 
 
-def test_demo_routine_fits_in_the_main_section(demo_library) -> None:
-    song = load_library(demo_library)["demo"]
+def test_demo_routine_targets_a_catalog_track_and_fits_the_test_track(demo_library) -> None:
     routine = load_routine(ROOT / "assets/routines/demo-normal.json")
-    assert routine.song_id == song.id
-    assert song.routine_start_beat + routine.total_counts <= song.duration_beats
+    catalog = {e["id"]: e for e in json.loads((ROOT / "assets/songs/catalog.json").read_text())["candidates"]}
+    assert routine.song_id in catalog  # danced to a real (CC BY) track
+    m = catalog[routine.song_id]["measured"]
+    assert 8 + routine.total_counts <= m["duration_s"] * m["bpm"] / 60
+    test_track = load_library(demo_library)[DEMO_ID]  # and machine-testable on the generated one
+    assert test_track.routine_start_beat + routine.total_counts <= test_track.duration_beats
 
 
 def _song_dict(**changes) -> dict:
-    data = json.loads((ROOT / "assets/songs/demo/song.json").read_text())
-    return data | changes
+    return demo_song_metadata(render_demo_song()).to_dict() | changes
 
 
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"license": {"name": ""}}, "license.name is required"),
-        ({"source": " "}, "source is required"),
+        ({"license": "CC-BY"}, "license must be an object"),
         ({"bpm": 20}, "not a plausible tempo"),
         ({"audio": "song.txt"}, "audio must be one of"),
         ({"routine_start_beat": 90}, "routine_start_beat"),
@@ -114,13 +117,22 @@ def test_song_validation(changes, message, tmp_path) -> None:
         Song.from_dict(_song_dict(**changes), tmp_path)
 
 
+def test_licence_and_source_are_optional(tmp_path) -> None:
+    """User songs are for personal local use: no licence or source needed."""
+    data = _song_dict()
+    for key in ("license", "source", "artist", "attribution"):
+        del data[key]
+    song = Song.from_dict(data, tmp_path)
+    assert song.license.name == "unspecified (personal use)" and song.source == "" and song.artist == ""
+
+
 def test_missing_fields_and_audio(tmp_path) -> None:
     data = _song_dict()
-    del data["license"]
+    del data["bpm"]
     with pytest.raises(SongError, match="missing field"):
         Song.from_dict(data, tmp_path)
     (tmp_path / "song.json").write_text(json.dumps(_song_dict()))
-    with pytest.raises(SongError, match="parapara-make-demo-song"):
+    with pytest.raises(SongError, match="audio file missing"):
         Song.load(tmp_path)
 
 
@@ -130,8 +142,16 @@ def test_song_warnings(tmp_path) -> None:
     assert any("not verified" in w for w in song.warnings)
 
 
+def test_library_can_skip_songs_without_audio(demo_library, tmp_path) -> None:
+    (tmp_path / DEMO_ID).mkdir()
+    (tmp_path / DEMO_ID / "song.json").write_bytes((demo_library / DEMO_ID / "song.json").read_bytes())
+    with pytest.raises(SongError, match="audio file missing"):
+        load_library(tmp_path)
+    assert load_library(tmp_path, skip_missing_audio=True) == {}
+
+
 def test_save_round_trip(demo_library, tmp_path) -> None:
-    song = load_library(demo_library)["demo"]
+    song = load_library(demo_library)[DEMO_ID]
     song.save(tmp_path)
     assert Song.load(tmp_path, require_audio=False) == song
 
@@ -165,23 +185,22 @@ def test_grid_fit_needs_beats() -> None:
 def test_estimate_beat_map_on_the_demo_track(demo_library) -> None:
     """The generated track's beats are known exactly: detection must recover
     them (this test caught the off-beat lock-on and the median-gap bias)."""
-    fit = estimate_beat_map(demo_library / "demo" / "demo.wav")
+    fit = estimate_beat_map(demo_library / DEMO_ID / "demo.wav")
     assert fit.bpm == pytest.approx(150.0, abs=0.05)
     assert fit.first_beat_s == pytest.approx(0.5, abs=0.005)
     assert fit.drift_ms < 8 and fit.beats_used >= 76
     assert 0 < DETECTION_LAG_S < 0.05
 
 
-def test_update_song_creates_a_skeleton_that_needs_a_licence(demo_library, tmp_path) -> None:
+def test_update_song_creates_a_loadable_skeleton(demo_library, tmp_path) -> None:
     song_dir = tmp_path / "new_track"
     song_dir.mkdir()
-    (song_dir / "track.wav").write_bytes((demo_library / "demo" / "demo.wav").read_bytes())
+    (song_dir / "track.wav").write_bytes((demo_library / DEMO_ID / "demo.wav").read_bytes())
     fit = update_song(song_dir, "track.wav")
     data = json.loads((song_dir / "song.json").read_text())
     assert data["bpm"] == pytest.approx(150, abs=0.05) and data["beat_map"]["verified"] is False
     assert data["duration_beats"] == pytest.approx(80, abs=1)
-    with pytest.raises(SongError, match="license"):
-        Song.load(song_dir)
+    assert Song.load(song_dir).title == "new_track"  # loads without a licence
     # Updating an existing song keeps the human-entered fields.
     data |= {"license": {"name": "CC-BY-4.0", "url": "https://example.org"}, "source": "test"}
     (song_dir / "song.json").write_text(json.dumps(data))
@@ -221,10 +240,10 @@ def test_low_band_envelope_peaks_on_the_kicks() -> None:
 
 
 def test_beatcheck_app_saves_a_verified_beat_map_headless(demo_library, tmp_path) -> None:
-    song_dir = tmp_path / "demo"
+    song_dir = tmp_path / DEMO_ID
     song_dir.mkdir()
     for f in ("song.json", "demo.wav"):
-        (song_dir / f).write_bytes((demo_library / "demo" / f).read_bytes())
+        (song_dir / f).write_bytes((demo_library / DEMO_ID / f).read_bytes())
     env = os.environ | {"SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
     script = "import sys; from parapara.game import beatcheck; beatcheck.run([sys.argv[1], '--auto'])"
     result = subprocess.run([sys.executable, "-c", script, str(song_dir)], capture_output=True,

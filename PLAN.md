@@ -274,21 +274,53 @@ Decided 2026-10-18: the clap that ends each phrase is detected **by sound**.
 
 ## 6. Music
 
-- **Sources**: royalty-free tracks from Free Music Archive / Jamendo (search
-  "90s High-Energy Synth", "Fast J-Pop Dance", "Upbeat Synthwave", 140–160 BPM),
-  or AI-generated tracks (prompt: "155 BPM, 1990s Japanese Arcade Eurobeat, fast
-  synth brass melody, high-energy driving bassline, instrumental, aggressive
-  electronic dance music").
-- **Licensing**: record the license of every track in the library metadata.
-  CC-BY-NC forbids commercial use; CC-BY-ND may forbid edits. AI-generated
-  music rights depend on the generator's terms and subscription tier.
+Design principle (2026-10-18): **the project does not distribute music.**
+Users bring their own tracks for personal, local play, so **no licence is
+required** for them (licence and source are optional metadata). Vetted CC BY
+demo tracks are fetched locally and never committed.
+
+- **Built-in library** (`assets/songs/`): only `catalog.json` is in git.
+  Local, git-ignored: the four CC BY demo tracks (`parapara-fetch-demo-songs`,
+  which downloads them from the catalog, or copies them from a shared drive
+  with `--from-dir`, and imports them with their licence and attribution).
+  Songs whose audio is missing are skipped. The demo routine is danced to
+  "Lets Go To A Rave" (`defrini-lets-go-to-a-rave`).
+- **Generated test track** (`audio.synth`, `audio.demo_song`): **machine
+  testing only, not for dancing**. Its beat map is exact, so automated tests
+  render it into temporary folders as ground truth; it is not in any song
+  library.
+- **User library** (outside the repository): `~/Library/Application
+  Support/parapara/songs` on macOS, or `$PARAPARA_SONGS_DIR`. The game loads
+  both (`importer.load_all_songs`).
+- **Importing a song** (`parapara-import-song <file>`; title defaults to the
+  file name, `--artist/--license/--source` optional; `--catalog <id>` for a
+  catalog track):
+  1. the **suitability check** (`audio.suitability`) rejects tracks unsuitable
+     for Para Para, with reasons: tempo outside 135–165 BPM (warning outside
+     140–160), unsteady tempo (> 15 ms drift from a constant grid, < 80 % of
+     beats on it), no clear beat (kick on-beat vs. off-beat clarity < 1.3),
+     or shorter than 40 beats. Licences are not checked;
+  2. the audio is copied into the user library with a `song.json` holding the
+     automatic beat map (unverified) and any metadata given;
+  3. the user verifies the beat map by ear (`parapara-beatcheck`).
+- **Demo candidates** (`assets/songs/catalog.json`): four plain **CC BY 4.0**
+  tracks from Free Music Archive that pass the check (2026-10-18):
+  "broke" (141 BPM), "80s Motivational Chiptune" (155 BPM, weak kick warning)
+  and "Onion March" (140 BPM) by Shane Ivers, and "Lets Go To A Rave" by
+  Defrini (140 BPM), with attribution text for the credits. Findings: FMA has
+  no CC BY Eurobeat / Eurodance / Hi-NRG; most CC BY dance tracks there are
+  115–130 BPM, and several near 150 BPM failed on tempo steadiness. Jamendo was
+  not searched: its API needs a developer client id;
+  `JAMENDO_CLIENT_ID=... parapara-find-songs` searches it (dance tags, high
+  speed, plain CC BY, downloadable) and runs the suitability check.
+- **Other sources** for later: AI-generated tracks (prompt: "155 BPM, 1990s
+  Japanese Arcade Eurobeat, fast synth brass melody, high-energy driving
+  bassline, instrumental, aggressive electronic dance music"); rights depend
+  on the generator's terms and subscription tier.
 - **Beat map** per song (`song.json`): BPM, first-beat offset, the beat on
   which the routine starts. Detected with `parapara-beatmap` (librosa on the
-  kick band + constant-tempo fit), then **verified by ear** with
-  `parapara-beatcheck`. A generated demo track (`parapara-make-demo-song`)
-  has an exact beat map and is used for development until real tracks are
-  chosen. Detected with `librosa`, then **manually verified** (a 30 ms drift
-  breaks scoring). Stored next to the audio file.
+  kick band + constant-tempo fit) and **verified by ear** with
+  `parapara-beatcheck` (a 30 ms error breaks scoring).
 
 ---
 
@@ -342,7 +374,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **3. Pose features** | One Euro filter, body frame, calibration, feature extraction; axes verified on the 3a recordings | Unit-tested feature functions |
 | **4. Scoring engine** | Keyframe matching, timing grades, holds, claps, flow, posture, combo | `parapara.scoring`, `parapara-score` on recordings |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
-| **5. Music library & beat maps** | Song format with licence metadata, auto beat map, by-ear check app; generated demo track | `assets/songs/demo` (verified), `parapara-beatmap`, `parapara-beatcheck` |
+| **5. Music library & beat maps** | Song format, auto beat map, by-ear check app; song import with suitability check; CC BY demo catalog; generated track for machine tests | `catalog.json`, `parapara-fetch-demo-songs`, `parapara-import-song`, `parapara-beatmap`, `parapara-beatcheck` |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
 | **7. Routine generator** | Grammar-based generator, Easy / Normal / Hard | 3 routines per song |
 | **8. Avatar demo** | VRM + Blender procedural animation, rendered demo videos | Demo video per routine |

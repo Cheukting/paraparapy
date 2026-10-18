@@ -121,8 +121,8 @@ def update_song(directory: Path, audio_name: str | None = None, start_bpm: float
     """Estimate the beat map and write it into ``directory/song.json``.
 
     An existing ``song.json`` keeps all other fields. Without one, a skeleton
-    is written whose licence and source are empty: the song will not load
-    until a person fills them in (licences cannot be detected).
+    is written (title = folder name; licence and source left empty, which is
+    fine for personal use).
     """
     path = directory / "song.json"
     data = json.loads(path.read_text()) if path.exists() else None

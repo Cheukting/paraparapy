@@ -21,9 +21,11 @@ parapara-record = "parapara.game.recorder:main"
 parapara-analyze = "parapara.diagnostics.pose_analysis:main"
 parapara-tune-filters = "parapara.diagnostics.filter_tuning:main"
 parapara-score = "parapara.diagnostics.score_clips:main"
-parapara-make-demo-song = "parapara.audio.demo_song:main"
 parapara-beatmap = "parapara.audio.beatmap:main"
 parapara-beatcheck = "parapara.game.beatcheck:main"
+parapara-import-song = "parapara.audio.importer:main"
+parapara-find-songs = "parapara.audio.find_songs:main"
+parapara-fetch-demo-songs = "parapara.audio.fetch_demo_songs:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

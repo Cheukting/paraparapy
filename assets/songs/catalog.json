@@ -1,0 +1,115 @@
+{
+  "description": "Candidate demo songs for parapara: plain CC BY tracks at ~140-160 BPM that pass the suitability check (parapara.audio.suitability). AUDIO IS NOT IN GIT: download from page_url/audio_url (or the team's shared drive) and import with `uv run parapara-import-song <file> --catalog <id>`. Show the attribution text in the game's credits. Re-check the licence on the page before use: artists can change it.",
+  "searched": {
+    "date": "2026-10-18",
+    "free_music_archive": "CC BY filter; queries trance, techno, dance, edm, hardstyle, hard trance, happy hardcore, chiptune, uptempo, eurobeat, j-pop, rave, speed (no Eurobeat/Eurodance/Hi-NRG results). ~50 plain CC BY tracks measured; most dance tracks were 115-130 BPM.",
+    "jamendo": "not searched: the API needs a developer client_id (free at devportal.jamendo.com); run `JAMENDO_CLIENT_ID=... uv run parapara-find-songs` to search it."
+  },
+  "candidates": [
+    {
+      "id": "shane-ivers-broke",
+      "title": "broke",
+      "artist": "Shane Ivers",
+      "platform": "Free Music Archive",
+      "page_url": "https://freemusicarchive.org/music/shane-ivers/single/broke/",
+      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/xxS0HzSxzMTLEZibgylWyH7HQdtRnZo4TpHRZbHR.mp3",
+      "license": {
+        "name": "CC-BY-4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "attribution": "\"broke\" by Shane Ivers (https://freemusicarchive.org/music/shane-ivers/single/broke/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "measured": {
+        "bpm": 141.01,
+        "drift_ms": 9.1,
+        "on_grid_share": 1.0,
+        "beat_clarity": 1.61,
+        "duration_s": 198,
+        "warnings": []
+      }
+    },
+    {
+      "id": "shane-ivers-80s-motivational-chiptune",
+      "title": "80s Motivational Chiptune",
+      "artist": "Shane Ivers",
+      "platform": "Free Music Archive",
+      "page_url": "https://freemusicarchive.org/music/shane-ivers/single/80s-motivational-chiptune/",
+      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/u0YSinhACYlke7i4OEp51NoxFnl0OpslUHb8284n.mp3",
+      "license": {
+        "name": "CC-BY-4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "attribution": "\"80s Motivational Chiptune\" by Shane Ivers (https://freemusicarchive.org/music/shane-ivers/single/80s-motivational-chiptune/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "measured": {
+        "bpm": 155.0,
+        "drift_ms": 4.9,
+        "on_grid_share": 1.0,
+        "beat_clarity": 1.33,
+        "duration_s": 118,
+        "warnings": [
+          "beat clarity 1.33 is low; the beat may be hard to follow"
+        ]
+      }
+    },
+    {
+      "id": "defrini-lets-go-to-a-rave",
+      "title": "Lets Go To A Rave",
+      "artist": "Defrini",
+      "platform": "Free Music Archive",
+      "page_url": "https://freemusicarchive.org/music/defrini/songtrash-vol3-revenge-of-the-interplanetary-rubbish-bin/lets-go-to-a-rave/",
+      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/cU7PCXj4e7WcScTsuU1Ur5hxFA93YBawRqtAPErV.mp3",
+      "license": {
+        "name": "CC-BY-4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "attribution": "\"Lets Go To A Rave\" by Defrini (https://freemusicarchive.org/music/defrini/songtrash-vol3-revenge-of-the-interplanetary-rubbish-bin/lets-go-to-a-rave/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "measured": {
+        "bpm": 140.0,
+        "drift_ms": 9.0,
+        "on_grid_share": 1.0,
+        "beat_clarity": 1.94,
+        "duration_s": 170,
+        "warnings": []
+      }
+    },
+    {
+      "id": "shane-ivers-onion-march",
+      "title": "Onion March",
+      "artist": "Shane Ivers",
+      "platform": "Free Music Archive",
+      "page_url": "https://freemusicarchive.org/music/shane-ivers/single/onion-march/",
+      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/HnUucqyMOBM58pApgIWV28N33XREyshAUchNpREm.mp3",
+      "license": {
+        "name": "CC-BY-4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "attribution": "\"Onion March\" by Shane Ivers (https://freemusicarchive.org/music/shane-ivers/single/onion-march/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "measured": {
+        "bpm": 139.97,
+        "drift_ms": 7.9,
+        "on_grid_share": 0.89,
+        "beat_clarity": 5.27,
+        "duration_s": 71,
+        "warnings": [
+          "tempo 140.0 BPM is outside the ideal 140-160 BPM"
+        ]
+      }
+    }
+  ],
+  "rejected_examples": [
+    {
+      "title": "Straw Fields",
+      "artist": "Rolemusic",
+      "reason": "steady but 166.7 BPM (above 165)"
+    },
+    {
+      "title": "Feel The Beats",
+      "artist": "Wren West",
+      "reason": "151 BPM but tempo not steady (28 ms drift, 28% on grid)"
+    },
+    {
+      "title": "Factory Madness",
+      "artist": "Shane Ivers",
+      "reason": "150 BPM but unsteady (24 ms drift) and unclear beat"
+    }
+  ]
+}

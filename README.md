@@ -73,9 +73,25 @@ combo, flow, posture) and writes `score.json` into the session folder.
 ## Songs
 
 ```sh
-uv run parapara-make-demo-song           # generate the demo track (assets/songs/demo)
+uv run parapara-fetch-demo-songs         # the 4 CC BY demo tracks -> assets/songs/ (git-ignored)
 uv run parapara-beatmap assets/songs/<id> --audio track.ogg   # detect a new track's beat map
 uv run parapara-beatcheck assets/songs/<id>                   # verify it by ear, then save
 ```
 
 Every song folder has a `song.json` with its licence, source and beat map.
+
+### Adding your own songs
+
+```sh
+uv run parapara-fetch-demo-songs                # the 4 CC BY demo tracks -> assets/songs/ (git-ignored)
+uv run parapara-import-song track.mp3           # your own song; --title/--artist optional
+```
+
+Your own songs are for personal, local play, so no licence information is
+needed. The track is checked first (about 140–160 BPM, steady tempo, clear
+beat, long enough) and rejected with reasons if unsuitable. Accepted
+songs go to your own library (`~/Library/Application Support/parapara/songs`,
+or `$PARAPARA_SONGS_DIR`), never into git. Verify the beat map with
+`parapara-beatcheck` afterwards. To search Jamendo for CC BY candidates, get a
+free developer id at https://devportal.jamendo.com and run
+`JAMENDO_CLIENT_ID=... uv run parapara-find-songs`.

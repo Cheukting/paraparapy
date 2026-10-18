@@ -1,10 +1,11 @@
 """A procedurally generated "Eurobeat-like" demo track for development.
 
-Real songs need licences and verified beat maps (PLAN.md §6); this track is
-generated entirely in code, so it is free of third-party rights and its beat
-times are known *exactly*, which makes it the reference for testing beat
-detection (``parapara-beatmap``), the beat-map check app and, later, the game
-loop. It is not meant to sound like real Eurobeat.
+**For machine testing only, not for dancing** (decided 2026-10-18): the
+track is generated entirely in code, so its beat times are known *exactly*,
+which makes it the ground truth for automated tests of beat detection
+(``parapara-beatmap``), the suitability check, song import and the beat-map
+check app (see :mod:`parapara.audio.demo_song`). It is not meant to sound
+like real Eurobeat and is not in the game's song library.
 
 Arrangement at ``bpm`` (default 150, inside the game's 140-160 range):
 

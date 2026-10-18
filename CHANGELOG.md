@@ -6,12 +6,44 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 5 additions – song import and demo catalog.**
+  - `audio.suitability`: Para Para suitability check (tempo 135–165 BPM,
+    steady tempo, beats on a constant grid, beat clarity from kick on- vs.
+    off-beat, length, declared licence; NC/ND/SA warnings). Thresholds from
+    measurements of the demo track and ~50 CC BY tracks.
+  - The generated track is now a **machine-testing fixture only**, not for
+    dancing: `assets/songs/demo/` and the `parapara-make-demo-song` command
+    were removed; the demo routine now targets the CC BY track "Lets Go To A
+    Rave" (`defrini-lets-go-to-a-rave`); `parapara-beatcheck` needs a song
+    folder argument.
+  - `uv run parapara-fetch-demo-songs`: downloads the four catalog tracks
+    into `assets/songs/<id>/` (git-ignored; `--from-dir` for a shared drive)
+    and imports them with licence and attribution.
+  - **Licences are optional** for user songs (personal, local use):
+    `song.json` no longer requires `license`/`source`/`artist` (missing
+    licence = "unspecified (personal use)"), the import no longer requires
+    them, and the suitability check no longer rejects on licence. Libraries
+    skip songs whose audio file is missing (`skip_missing_audio`).
+  - `uv run parapara-import-song <file> ...` (`audio.importer`): checks,
+    rejects unsuitable tracks with reasons, copies accepted ones into the user
+    song library outside git (`$PARAPARA_SONGS_DIR` or
+    `~/Library/Application Support/parapara/songs`) with an unverified beat
+    map; `--catalog <id>` fills the metadata. `load_all_songs` merges the
+    built-in and user libraries.
+  - `assets/songs/catalog.json`: four vetted CC BY 4.0 demo candidates from
+    Free Music Archive (metadata, attribution, measured tempo; no audio in
+    git), plus rejected examples and the search notes.
+  - `JAMENDO_CLIENT_ID=... uv run parapara-find-songs` (`audio.find_songs`):
+    Jamendo API search for plain CC BY, downloadable, high-tempo dance tracks,
+    with the suitability check on each.
+  - `.gitignore`: MP3/OGG/FLAC files and Jamendo search results.
+  - Tests: `test_song_import.py`.
 - **Step 5 – music library & beat maps** (`parapara.audio`).
   - `synth`: procedurally generated "Eurobeat-like" demo track (150 BPM,
     intro / 64-count main section / outro; kick, off-beat hats, claps on 2 and
     4, octave bass, saw-lead arpeggios), deterministic, exact beat map.
-    `uv run parapara-make-demo-song` writes `assets/songs/demo/demo.wav`
-    (git-ignored, ~3 MB) and `song.json` (committed).
+    **For machine testing only** (`audio.demo_song.make_demo_song` renders it
+    into temporary test folders); it is not in the game's song library.
   - `song`: `song.json` format v1 with mandatory licence and source, beat
     grid (`bpm`, `first_beat_s`, `routine_start_beat`), beat-map status;
     validated loading, warnings for unverified maps and tempos outside

@@ -165,7 +165,7 @@ def save(song_dir: Path, grid: BeatGrid, changed: bool) -> Path:
 
 def run(argv: list[str] | None = None) -> BeatGrid:
     parser = argparse.ArgumentParser(description="Verify a song's beat map by ear")
-    parser.add_argument("song_dir", nargs="?", type=Path, default=Path("assets/songs/demo"))
+    parser.add_argument("song_dir", type=Path, help="e.g. assets/songs/defrini-lets-go-to-a-rave")
     parser.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # tests: scripted keys
     args = parser.parse_args(argv)
     data = json.loads((args.song_dir / "song.json").read_text())

@@ -18,5 +18,13 @@ logs/
 # Landmark recordings of the player (personal data; fixtures are copied explicitly)
 recordings/
 
-# Generated demo audio (regenerate: uv run parapara-make-demo-song)
-assets/songs/demo/*.wav
+# Song library: only the catalog is tracked. Fetched CC BY demo tracks
+# (uv run parapara-fetch-demo-songs) stay local.
+assets/songs/*
+!assets/songs/catalog.json
+
+# Song candidate search results / downloads (licensed third-party audio stays out of git)
+jamendo-candidates.json
+*.mp3
+*.ogg
+*.flac
