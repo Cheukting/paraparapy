@@ -60,3 +60,12 @@ calibration (`calibration.json`).
 ```sh
 uv run parapara-tune-filters             # re-tune the smoothing filters on a session
 ```
+
+## Scoring recorded clips
+
+```sh
+uv run parapara-score                    # latest session; --latency-ms N or --auto-latency
+```
+
+Runs the block clips through the real scoring engine (grades, accuracy,
+combo, flow, posture) and writes `score.json` into the session folder.

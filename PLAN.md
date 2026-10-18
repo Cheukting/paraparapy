@@ -192,39 +192,58 @@ assets/        # music, beat maps, routines, avatar renders
 
 ## 5. Scoring design
 
-Pipeline for every landmark sample:
+Implemented in Step 4 (`parapara.scoring`); based on the 2026-10-18 recordings.
 
-1. **Smooth** with a One Euro filter (low jitter, low lag).
-2. **Normalize**: translate to mid-shoulder origin, scale by shoulder width.
-3. **Mirror** horizontally (player faces the screen and copies the demo like a
-   mirror).
-4. **Extract features**: elbow and shoulder angles, upper/lower-arm direction
-   vectors, wrist positions, hand direction (from the pose index/pinky
-   points), wrist distance (for claps).
+Feature pipeline per sample (Step 3, `pose.features`): One Euro filtered
+landmarks → body frame from the shoulders/torso (adaptively smoothed) → arm
+segment directions, wrist positions and distance, posture; relative to the
+player calibration. Features always use the dancer's anatomical left/right;
+mirroring is only a display concern.
 
-Per keyframe (a target pose on a given count):
+Per keyframe (`scoring.judge`), within a window around its expected time
+(`scoring.schedule`: routine + beat clock + **latency offset**):
 
-- Search a window around the beat time for the best-matching sample.
-- **Pose accuracy** (0–1): weighted similarity of features to the target.
-- **Timing** from the offset of the best sample:
+- **Pose accuracy**: angular error of upper arm, forearm (and hand when set),
+  **front-weighted** (depth counts half: it is MediaPipe's noisiest axis).
+  Full credit within the block's tolerance (25° sharp, 35° flowing, 40° chop
+  reach), linear to zero at twice the tolerance.
+- **Timing**: the best-matching sample in the window, refined between
+  samples (~23 fps camera); offset graded:
 
-  | Grade | Window (tunable; ~155 BPM beat ≈ 387 ms) |
+  | Grade | Window |
   |---|---|
   | Perfect | ±60 ms |
   | Great | ±120 ms |
-  | Good | ±190 ms |
-  | Miss | otherwise, or pose accuracy below threshold |
+  | Good | ±190 ms, capped at 0.45 beat (no overlap at fast tempos) |
+  | Hold | repeated pose (e.g. second knock): judged on pose only |
+  | Miss | outside the window, or pose score < 0.3 |
 
-- Flowing blocks (Sweep, Wrist Roll) are additionally compared over their whole
-  duration with **DTW** against the reference trajectory, plus a smoothness
-  (jerk) score.
+- **Claps**: hands together (wrist distance); timing from the clap sound when
+  available (§5.1), otherwise from the moment the wrists are closest.
+- **Flowing blocks** (sweeps, wrist roll): an extra "keep moving" score: the
+  share of the block with the wrists moving faster than 0.6 shoulder widths/s
+  (held poses stay below, the recorded wrist roll above). This replaces the
+  originally planned DTW comparison, which the keyframe matching already
+  covers; DTW remains an option if flowing moves need finer judgment.
 
-Final score = sum of keyframe scores × combo multiplier + posture bonus.
-Only upper-body landmarks (shoulders, elbows, wrists, the pose model's hand
-points, head, and hips for torso angle when visible) are used; **footwork and
-hand shape are never scored**. No model training is required initially; a
-learned classifier is a possible later improvement once recorded gameplay data
-exists.
+Score (`scoring.scorekeeper`): Σ 100 × pose score × timing factor (Perfect 1,
+Great 0.8, Good 0.5, Hold 1) × combo multiplier (+0.1 per 10-hit combo, max
+×2), + flow bonus (up to 50 per flowing block), + posture bonus (up to 10% of
+the maximum keyframe points: torso lean / side tilt within 15° of neutral,
+head not dropped). Accuracy (mean keyframe points) is reported separately.
+Only upper-body landmarks are used; **footwork and hand shape are never
+scored**.
+
+Findings when scoring the recordings (`parapara-score`):
+
+- **Latency compensation is essential**: a sweep danced 0.7 s late scored 45%
+  uncompensated vs. 81% compensated, so the clap-to-the-beat latency
+  calibration (§4) is a must before play. The latency must be measured through
+  the same pipeline (it then also absorbs the ~28 ms landmark-filter lag).
+- Flick + Clap scores only ~30% with its current poses (recalibration
+  deferred, §10).
+- The posture rule marked 30% of a sweep as poor posture (the torso tilts with
+  the sweep); to be tuned on more recordings.
 
 ### 5.1 Clap detection (sound + vision)
 
@@ -317,7 +336,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **2. Pose capture prototype** | Webcam + MediaPipe Pose, skeleton overlay, FPS + latency readout, capture benchmark | Live debug window, `parapara-capture-bench` |
 | **3a. Guided recorder** | Record calibration poses, axis checks and each building block (landmarks only) | `parapara-record`, first recordings |
 | **3. Pose features** | One Euro filter, body frame, calibration, feature extraction; axes verified on the 3a recordings | Unit-tested feature functions |
-| **4. Scoring engine** | Keyframe matching, timing grades, DTW, posture/smoothness | Scores computed on recorded fixtures |
+| **4. Scoring engine** | Keyframe matching, timing grades, holds, claps, flow, posture, combo | `parapara.scoring`, `parapara-score` on recordings |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
 | **5. Music library & beat maps** | Collect tracks, license metadata, beat-map tool | ≥ 1 verified song |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
@@ -339,6 +358,8 @@ Decided (2026-10-18):
 - Single player only for now.
 
 Open items (to resolve before the step named):
+- **Step 4b deferred** (project owner, 2026-10-18): continue with Step 5
+  and revisit the real-dancer test run later, together with:
 - **Deferred recording & recalibration** (postponed by the project owner on
   2026-10-18; do before Step 4b at the latest): re-record the six block
   clips with the position check passing (hips in the picture), run

@@ -6,6 +6,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 4 – scoring engine** (`parapara.scoring`).
+  - `schedule`: `BeatClock` (tempo, first beat, latency offset),
+    `schedule_routine`, `schedule_block_clip`; repeated poses are marked as
+    holds.
+  - `matching`: front-weighted angular error (depth counts half), pose score
+    from block tolerances, clap score from wrist distance.
+  - `judge`: streaming `Judge` emitting a judgment as soon as each window
+    closes: best match in the window with sub-sample time refinement,
+    Perfect / Great / Good / Hold / Miss, claps (sound onset + vision gate, or
+    vision only), and a "keep moving" flow check for flowing blocks.
+  - `scorekeeper`: points × timing factor × combo multiplier, flow and
+    posture bonuses, accuracy, grade counts.
+  - `uv run parapara-score [session] [--latency-ms N | --auto-latency]`
+    scores recorded clips with the real pipeline and writes `score.json`.
+  - `PoseFeatures` gained body-relative wrist positions.
+  - Tests: `test_scoring.py` (synthetic on-beat, late and still dancers;
+    clap onsets; streaming; combo); the synthetic dancer helper moved to
+    `tests/pose_synth.py`.
+- `PLAN.md` §5 rewritten to match the implemented scoring, with the findings
+  from scoring the recordings.
 - **Step 3 – pose features.**
   - `parapara.pose.filters.OneEuroFilter`: vectorized One Euro filter
     (Casiez et al., CHI 2012), with ns timestamps and per-element reset on

@@ -13,7 +13,8 @@
    turns slowly while arms move fast, and a raised arm lifting its shoulder
    should not swing the whole frame.
 4. Extract features: arm segment directions in the body frame, the wrist
-   distance in shoulder widths (clap gate), and posture (lean, side tilt,
+   distance in shoulder widths (clap gate), wrist positions relative to the
+   mid-shoulder point in the body frame (motion checks), and posture (lean, side tilt,
    shoulder tilt, head height; relative to the calibrated neutral pose when a
    :class:`~parapara.pose.calibration.Calibration` is given).
 
@@ -88,6 +89,8 @@ class PoseFeatures:
     right: ArmFeatures
     left: ArmFeatures
     wrist_distance: float  # between the wrists, in shoulder widths
+    right_wrist: Vec  # (3,) relative to mid-shoulder, body frame, shoulder widths
+    left_wrist: Vec
     lean_deg: float  # towards the camera
     side_tilt_deg: float  # torso tilting sideways (+ = towards the dancer's left)
     shoulder_tilt_deg: float  # shoulder line vs. horizontal (+ = right shoulder higher)
@@ -142,6 +145,10 @@ class FeatureExtractor:
         shoulder_w = (self.calibration.shoulder_width_m if self.calibration
                       else float(np.linalg.norm(rs - ls)))  # fmt: skip
         wrists = np.linalg.norm(world[P.RIGHT_WRIST, :3] - world[P.LEFT_WRIST, :3]) / shoulder_w
+        mid = (rs + ls) / 2
+
+        def wrist_position(index: int) -> Vec:
+            return frames.to_body((world[index, :3] - mid)[None])[0] / shoulder_w
 
         up = frames.up[0]
         lean = float(np.degrees(np.arctan2(-up[2], -up[1])))
@@ -160,8 +167,9 @@ class FeatureExtractor:
             a = arms[side]
             return ArmFeatures(a.upper[0], a.fore[0], a.hand[0], bool(a.valid[0]))
 
-        return PoseFeatures(t_ns, arm("right"), arm("left"), float(wrists), lean, side_tilt,
-                            shoulder_tilt, head, hips_visible)  # fmt: skip
+        return PoseFeatures(t_ns, arm("right"), arm("left"), float(wrists),
+                            wrist_position(P.RIGHT_WRIST), wrist_position(P.LEFT_WRIST),
+                            lean, side_tilt, shoulder_tilt, head, hips_visible)  # fmt: skip
 
 
 def extract_recording(

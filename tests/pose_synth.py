@@ -10,6 +10,10 @@ exactly what was put in.
 
 import numpy as np
 
+from parapara.routine.geometry import DOWN, angle_between_deg, slerp
+from parapara.routine.library import BLOCK_LIBRARY
+from parapara.routine.model import ArmPose
+
 from parapara.pose.landmarks import NUM_POSE_LANDMARKS
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
@@ -101,3 +105,43 @@ def image_pose(mid_x=0.52, shoulder_y=0.49, shoulder_w=0.19, hip_y=0.87,
             pose[P[f"{side}_HIP"], 3] = 0.1
     pose[P.NOSE, :2] = (mid_x, shoulder_y - 0.15)
     return pose.astype(np.float32)
+
+
+def danced_block(block_id: str, lag_s: float, bpm: float = 120, fps: float = 50, bars: int = 2):
+    """A recording of a dancer moving smoothly through ``block_id``: each arm
+    segment turns at constant speed from one keyframe's direction to the
+    next, arriving exactly ``lag_s`` after each keyframe's beat."""
+    block = BLOCK_LIBRARY[block_id]
+    beat_s = 60 / bpm
+    count_in = 4
+    first_beat_ns = 1_000_000_000
+    beat_times = [first_beat_ns + int((i - count_in) * beat_s * 1e9) for i in range(count_in + bars * 8)]
+    times = np.arange(0, bars * 8 * beat_s, 1 / fps)
+    kfs = block.keyframes
+
+    def arm(kf, side):
+        return getattr(kf, side) or ArmPose(upper=DOWN, fore=DOWN)
+
+    poses = []
+    for t in times:
+        position = ((t - lag_s) / beat_s) % block.duration
+        k = max(i for i, kf in enumerate(kfs) if kf.beat <= position + 1e-9) if position >= kfs[0].beat else len(kfs) - 1
+        a, nxt = kfs[k], kfs[(k + 1) % len(kfs)]
+        span = (nxt.beat - a.beat) % block.duration or block.duration
+        frac = ((position - a.beat) % block.duration) / span
+        both = {}
+        for side in ("right", "left"):
+            pa, pb = arm(a, side), arm(nxt, side)
+            both[side] = ArmPose(upper=slerp_safe(pa.upper, pb.upper, frac),
+                                 fore=slerp_safe(pa.fore, pb.fore, frac))  # fmt: skip
+        poses.append(world_pose(both["right"], both["left"]))
+    meta = {"clip_id": f"block_{block_id}", "kind": "block", "block_id": block_id, "bpm": bpm,
+            "count_in_beats": count_in, "beat_times_ns": beat_times}  # fmt: skip
+    return recording(poses, [first_beat_ns + int(t * 1e9) for t in times], meta)
+
+
+def slerp_safe(a, b, t):
+    """Interpolate directions; nearly opposite pairs go via a mid direction."""
+    if angle_between_deg(a, b) > 170:
+        return slerp(a, (0.0, 0.0, 1.0), t)
+    return slerp(a, b, t)

@@ -73,6 +73,9 @@ def test_features_of_a_t_pose() -> None:
     # Wrists ~ shoulder width + 2 * (upper + fore) apart.
     assert last.wrist_distance == pytest.approx((0.35 + 4 * 0.22) / 0.35, abs=0.01)
     assert abs(last.lean_deg) < 0.1 and abs(last.shoulder_tilt_deg) < 0.1
+    # Right wrist out to the dancer's right at shoulder height: 0.5 + 2*0.63 widths.
+    np.testing.assert_allclose(last.right_wrist, [0.5 + (0.22 + 0.22) / 0.35, 0, 0], atol=0.01)
+    assert last.left_wrist[0] < 0
 
 
 def test_filters_reduce_frame_to_frame_jitter() -> None:
