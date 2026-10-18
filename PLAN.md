@@ -128,8 +128,9 @@ Routines are stored as data files (JSON/TOML) and validated on load.
   kept free at the end). Deterministic per song and difficulty.
 - **Stored next to the song**: `<song folder>/routines/{easy,normal,hard}.json`,
   written automatically by `parapara-fetch-demo-songs` and
-  `parapara-import-song` (or `parapara-routines generate`). Hand-written
-  examples in `assets/routines/` are found by `song_id`.
+  `parapara-import-song` (or `parapara-routines generate`). This is the
+  only place routines live (the Step 1 hand-written sample is now a test
+  fixture, `tests/fixtures/sample-routine.json`).
 - **Players' own routines** (difficulty `custom`): the same JSON format
   (phrases = lists of move names, `parapara-routines blocks`); start from
   `parapara-routines template --song ID -o file.json`, edit, `check`, then

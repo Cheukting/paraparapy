@@ -14,7 +14,8 @@ from parapara.routine.serialization import (
     save_routine,
 )
 
-SAMPLE = Path(__file__).resolve().parents[1] / "assets" / "routines" / "demo-normal.json"
+# A hand-written routine (the Step 1 sample), kept as a known-valid test fixture.
+SAMPLE = Path(__file__).resolve().parent / "fixtures" / "sample-routine.json"
 
 
 def _sample_data() -> dict:

@@ -86,13 +86,9 @@ def test_demo_song_loads_and_maps_beats(demo_library) -> None:
     assert clock.time_of(0) == 10**9 + int(3.7e9) + 50_000_000  # routine starts after the intro
 
 
-def test_demo_routine_targets_a_catalog_track_and_fits_the_test_track(demo_library) -> None:
-    routine = load_routine(ROOT / "assets/routines/demo-normal.json")
-    catalog = {e["id"]: e for e in json.loads((ROOT / "assets/songs/catalog.json").read_text())["candidates"]}
-    assert routine.song_id in catalog  # danced to a real (CC BY) track
-    m = catalog[routine.song_id]["measured"]
-    assert 8 + routine.total_counts <= m["duration_s"] * m["bpm"] / 60
-    test_track = load_library(demo_library)[DEMO_ID]  # and machine-testable on the generated one
+def test_sample_routine_fits_the_test_track(demo_library) -> None:
+    routine = load_routine(ROOT / "tests/fixtures/sample-routine.json")
+    test_track = load_library(demo_library)[DEMO_ID]
     assert test_track.routine_start_beat + routine.total_counts <= test_track.duration_beats
 
 

@@ -284,6 +284,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   view now draws the pose model's own hand points (index/pinky/thumb).
 
 ### Changed
+- Removed `assets/routines/`: routines live only next to their song. The
+  hand-written Step 1 sample moved to `tests/fixtures/sample-routine.json`
+  (test data).
 - **Block library calibrated against the first real-dancer recording**
   (`recordings/20261018-144829`): chop salute with the elbow at shoulder
   height; chop out keeps 45° with a 40° tolerance; knock upper arm and forearm

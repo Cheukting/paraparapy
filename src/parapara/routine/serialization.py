@@ -4,8 +4,8 @@ File format (``format_version`` 1)::
 
     {
       "format_version": 1,
-      "id": "demo-normal",
-      "song_id": "demo",
+      "id": "my-routine",
+      "song_id": "defrini-lets-go-to-a-rave",
       "difficulty": "normal",
       "phrases": [
         ["sweep_to_right_4", "sweep_to_left_4", ..., "flick_clap"],

@@ -23,7 +23,7 @@ from parapara.scoring.schedule import BeatClock, schedule_block_clip, schedule_r
 from parapara.scoring.scorekeeper import ScoreKeeper
 
 MS = 1_000_000
-ROUTINE = load_routine(__import__("pathlib").Path(__file__).resolve().parents[1] / "assets/routines/demo-normal.json")
+ROUTINE = load_routine(__import__("pathlib").Path(__file__).resolve().parent / "fixtures/sample-routine.json")
 
 
 def _score_clip(block_id: str, lag_s: float, latency_ms: float = 0.0):

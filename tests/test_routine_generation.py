@@ -2,7 +2,6 @@
 
 import json
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
@@ -133,17 +132,9 @@ def test_ensure_generated_writes_missing_routines_only(song, tmp_path) -> None:
     assert sorted(p.stem for p in written) == ["easy", "hard", "normal"]
     assert ensure_generated(song) == []  # already present
     assert len(ensure_generated(song, force=True)) == 3
-    routines = routines_for(song, asset_dir=tmp_path / "none")
+    routines = routines_for(song)
     assert set(routines) == {"song-x-easy", "song-x-normal", "song-x-hard"}
     assert all(len(r.phrases) == 4 for r in routines.values())
-
-
-def test_routines_for_includes_asset_routines(song, tmp_path) -> None:
-    assets = tmp_path / "assets"
-    assets.mkdir()
-    (assets / "example.json").write_text(json.dumps(routine_to_dict(generate_routine("song-x", 1)) | {"id": "example"}))
-    (assets / "other.json").write_text(json.dumps(routine_to_dict(generate_routine("other", 1))))
-    assert set(routines_for(song, asset_dir=assets)) == {"example"}
 
 
 def test_install_a_players_routine(song, tmp_path) -> None:
@@ -178,7 +169,6 @@ def test_install_rejects_invalid_routines(song, tmp_path) -> None:
 
 def test_cli_workflow(song, tmp_path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(cli, "load_all_songs", lambda: {song.id: song})
-    monkeypatch.chdir(tmp_path)  # no assets/routines here
     cli.main(["generate"])
     assert "wrote easy, normal, hard" in capsys.readouterr().out
     template = tmp_path / "mine.json"
@@ -210,15 +200,7 @@ def test_import_generates_routines(tmp_path) -> None:
     audio = tmp_path / "t.wav"
     write_wav(audio, track.samples, track.sample_rate)
     song, _ = importer.import_song(audio, importer.SongInfo("T"), library=tmp_path / "lib")
-    assert set(routines_for(song, asset_dir=tmp_path / "none")) == {f"{song.id}-{d}" for d in ("easy", "normal", "hard")}
+    assert set(routines_for(song)) == {f"{song.id}-{d}" for d in ("easy", "normal", "hard")}
     assert not (tmp_path / "lib2").exists()
     song2, _ = importer.import_song(audio, importer.SongInfo("U"), library=tmp_path / "lib2", routines=False)
     assert not (song2.directory / "routines").exists()
-
-
-def test_demo_routines_exist_for_fetched_songs() -> None:
-    """The committed hand-written example routine still targets a catalog song."""
-    root = Path(__file__).resolve().parents[1]
-    example = load_routine(root / "assets/routines/demo-normal.json")
-    catalog = json.loads((root / "assets/songs/catalog.json").read_text())
-    assert example.song_id in {e["id"] for e in catalog["candidates"]}

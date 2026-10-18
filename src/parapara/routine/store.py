@@ -3,8 +3,7 @@
 Routines are stored **next to their song**: ``<song folder>/routines/<name>.json``
 (JSON format v1, :mod:`parapara.routine.serialization`). Songs fetched or
 imported locally therefore keep their routines locally too (git-ignored with
-the song). Routines in ``assets/routines/`` (committed, hand-written
-examples) are also found, by their ``song_id``.
+the song). This is the only place routines live.
 
 - :func:`routines_for` lists a song's routines;
 - :func:`fit_issues` checks that a routine fits the song: it starts on the
@@ -29,7 +28,6 @@ from parapara.generator.routine_generator import generate_routine
 from parapara.routine.model import COUNTS_PER_PHRASE, Difficulty, Routine, RoutineError
 from parapara.routine.serialization import load_routine, routine_from_dict, save_routine
 
-ASSET_ROUTINES = Path("assets/routines")
 END_MARGIN_COUNTS = 8
 GENERATED = (Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD)
 
@@ -55,17 +53,12 @@ def fit_issues(routine: Routine, song: Song) -> list[str]:
     return issues
 
 
-def routines_for(song: Song, asset_dir: Path = ASSET_ROUTINES) -> dict[str, Routine]:
-    """All routines for ``song``, keyed by routine id (song folder first)."""
-    found: dict[str, Routine] = {}
-    paths = sorted(routine_dir(song).glob("*.json")) if routine_dir(song).exists() else []
-    if asset_dir.exists():
-        paths += [p for p in sorted(asset_dir.glob("*.json"))
-                  if json.loads(p.read_text()).get("song_id") == song.id]  # fmt: skip
-    for path in paths:
-        routine = load_routine(path)
-        found.setdefault(routine.id, routine)
-    return found
+def routines_for(song: Song) -> dict[str, Routine]:
+    """All routines for ``song`` (``<song folder>/routines/*.json``), keyed by id."""
+    if not routine_dir(song).exists():
+        return {}
+    routines = (load_routine(p) for p in sorted(routine_dir(song).glob("*.json")))
+    return {r.id: r for r in routines}
 
 
 def _slug(text: str) -> str:
