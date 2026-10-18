@@ -17,3 +17,6 @@ logs/
 
 # Landmark recordings of the player (personal data; fixtures are copied explicitly)
 recordings/
+
+# Generated demo audio (regenerate: uv run parapara-make-demo-song)
+assets/songs/demo/*.wav

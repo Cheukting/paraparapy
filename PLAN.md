@@ -282,8 +282,12 @@ Decided 2026-10-18: the clap that ends each phrase is detected **by sound**.
 - **Licensing**: record the license of every track in the library metadata.
   CC-BY-NC forbids commercial use; CC-BY-ND may forbid edits. AI-generated
   music rights depend on the generator's terms and subscription tier.
-- **Beat map** per song: BPM, first-beat offset, start/end of the playable
-  section. Detected with `librosa`, then **manually verified** (a 30 ms drift
+- **Beat map** per song (`song.json`): BPM, first-beat offset, the beat on
+  which the routine starts. Detected with `parapara-beatmap` (librosa on the
+  kick band + constant-tempo fit), then **verified by ear** with
+  `parapara-beatcheck`. A generated demo track (`parapara-make-demo-song`)
+  has an exact beat map and is used for development until real tracks are
+  chosen. Detected with `librosa`, then **manually verified** (a 30 ms drift
   breaks scoring). Stored next to the audio file.
 
 ---
@@ -338,7 +342,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **3. Pose features** | One Euro filter, body frame, calibration, feature extraction; axes verified on the 3a recordings | Unit-tested feature functions |
 | **4. Scoring engine** | Keyframe matching, timing grades, holds, claps, flow, posture, combo | `parapara.scoring`, `parapara-score` on recordings |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
-| **5. Music library & beat maps** | Collect tracks, license metadata, beat-map tool | ≥ 1 verified song |
+| **5. Music library & beat maps** | Song format with licence metadata, auto beat map, by-ear check app; generated demo track | `assets/songs/demo` (verified), `parapara-beatmap`, `parapara-beatcheck` |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
 | **7. Routine generator** | Grammar-based generator, Easy / Normal / Hard | 3 routines per song |
 | **8. Avatar demo** | VRM + Blender procedural animation, rendered demo videos | Demo video per routine |

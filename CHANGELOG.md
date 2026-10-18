@@ -6,6 +6,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 5 – music library & beat maps** (`parapara.audio`).
+  - `synth`: procedurally generated "Eurobeat-like" demo track (150 BPM,
+    intro / 64-count main section / outro; kick, off-beat hats, claps on 2 and
+    4, octave bass, saw-lead arpeggios), deterministic, exact beat map.
+    `uv run parapara-make-demo-song` writes `assets/songs/demo/demo.wav`
+    (git-ignored, ~3 MB) and `song.json` (committed).
+  - `song`: `song.json` format v1 with mandatory licence and source, beat
+    grid (`bpm`, `first_beat_s`, `routine_start_beat`), beat-map status;
+    validated loading, warnings for unverified maps and tempos outside
+    140-160 BPM; `Song.routine_clock` gives the scoring `BeatClock`.
+  - `beatmap` / `uv run parapara-beatmap <song dir>`: librosa 1.0 beat
+    tracking on the **kick band** (the full spectrum locked onto Eurobeat's
+    off-beat hats/bass: ~150 ms errors), constant-tempo least-squares fit
+    using the **mean** beat spacing (frame quantization biased the median),
+    detection-lag correction. On the demo track: 150.007 BPM (true 150),
+    first beat 501.7 ms (true 500), drift 4 ms.
+  - `beatgrid` + `uv run parapara-beatcheck [song dir]`: guided by-ear check
+    with sample-accurate clicks mixed into the audio, a kick-energy strip
+    under the beat grid, nudge keys, and save-as-verified.
+  - librosa added in a `tools` dependency group (installed by default for
+    development; not needed to play).
+  - Tests: `test_audio.py`.
 - **Step 4 – scoring engine** (`parapara.scoring`).
   - `schedule`: `BeatClock` (tempo, first beat, latency offset),
     `schedule_routine`, `schedule_block_clip`; repeated poses are marked as

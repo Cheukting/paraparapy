@@ -21,6 +21,9 @@ parapara-record = "parapara.game.recorder:main"
 parapara-analyze = "parapara.diagnostics.pose_analysis:main"
 parapara-tune-filters = "parapara.diagnostics.filter_tuning:main"
 parapara-score = "parapara.diagnostics.score_clips:main"
+parapara-make-demo-song = "parapara.audio.demo_song:main"
+parapara-beatmap = "parapara.audio.beatmap:main"
+parapara-beatcheck = "parapara.game.beatcheck:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
@@ -30,3 +33,10 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
 ]
+tools = [
+    "librosa>=1.0.0",
+]
+
+[tool.uv]
+# librosa (beat-map tools) is needed for development and tests, not to play the game.
+default-groups = ["dev", "tools"]

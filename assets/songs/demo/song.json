@@ -1,0 +1,23 @@
+{
+  "format_version": 1,
+  "id": "demo",
+  "title": "Demo Eurobeat (generated)",
+  "artist": "parapara.audio.synth",
+  "audio": "demo.wav",
+  "license": {
+    "name": "project-generated (no third-party rights)",
+    "url": null
+  },
+  "source": "generated in code by parapara.audio.synth.render_demo_song(bpm=150.0, phrases=2)",
+  "bpm": 150.0,
+  "first_beat_s": 0.5,
+  "routine_start_beat": 8,
+  "duration_beats": 80,
+  "beat_map": {
+    "method": "generated",
+    "verified": true,
+    "drift_ms": 0.0,
+    "notes": "exact by construction; sections {'intro': (0, 8), 'main': (8, 72), 'outro': (72, 80)}"
+  },
+  "attribution": ""
+}

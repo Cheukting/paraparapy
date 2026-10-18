@@ -69,3 +69,13 @@ uv run parapara-score                    # latest session; --latency-ms N or --a
 
 Runs the block clips through the real scoring engine (grades, accuracy,
 combo, flow, posture) and writes `score.json` into the session folder.
+
+## Songs
+
+```sh
+uv run parapara-make-demo-song           # generate the demo track (assets/songs/demo)
+uv run parapara-beatmap assets/songs/<id> --audio track.ogg   # detect a new track's beat map
+uv run parapara-beatcheck assets/songs/<id>                   # verify it by ear, then save
+```
+
+Every song folder has a `song.json` with its licence, source and beat map.
