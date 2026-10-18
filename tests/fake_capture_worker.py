@@ -52,3 +52,27 @@ def crash(**kwargs):
 def hang(**kwargs):
     """A worker that ignores the stop event (must be terminated)."""
     time.sleep(60)
+
+
+def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock):
+    """Like a real camera: READY, then a sample (and frame) every ~20 ms with
+    a person in it, until the stop event is set."""
+    frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
+    try:
+        results.put(CaptureStatus(StatusKind.READY, "fake stream", {"camera_width": config.width}))
+        index = 0
+        while not stop_event.wait(timeout=0.02):
+            captured = time.monotonic_ns()
+            frames.write(np.full(frame_shape, index % 256, dtype=np.uint8), index, captured)
+            pose = np.full((NUM_POSE_LANDMARKS, 5), 0.5, dtype=np.float32)
+            results.put(
+                PoseSample(
+                    frame_index=index, captured_ns=captured, processed_ns=time.monotonic_ns(),
+                    frame_size=(config.width, config.height), pose_image=pose, pose_world=pose,
+                    pose_ms=1.0,
+                )
+            )
+            index += 1
+        results.put(CaptureStatus(StatusKind.STOPPED))
+    finally:
+        frames.close()

@@ -34,3 +34,13 @@ Shows the live camera view while it runs the full and lite pose models, then
 writes a comparison to
 `logs/capture-bench-*.json`. `Esc` stops early. A version without a window:
 `uv run python -m parapara.diagnostics.bench`.
+
+## Guided recorder
+
+```sh
+uv run parapara-record                   # --bpm 100 for a slower metronome
+```
+
+Walks you through calibration poses and one clip per building block, with a
+guide figure and a metronome. Clips are saved (landmarks only, no images) to
+`recordings/<date-time>/`.

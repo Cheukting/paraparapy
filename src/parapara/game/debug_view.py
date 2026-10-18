@@ -152,6 +152,93 @@ def poll_quit_and_mirror(mirrored: bool) -> tuple[bool, bool]:
     return quit_requested, mirrored
 
 
+class LiveFeed:
+    """Camera picture + skeleton + HUD statistics for one capture process.
+
+    Shared by the debug view, the windowed benchmark and the guided recorder.
+    Call :meth:`update` once per display frame (it drains the capture queue
+    and fetches the newest frame), :meth:`draw` to paint the camera area, and
+    :meth:`after_flip` right after ``pygame.display.flip()`` to measure
+    camera → screen latency.
+    """
+
+    def __init__(self, config: CaptureConfig, warmup_s: float = 2.0) -> None:
+        self.config = config
+        self.recorder = RunRecorder(warmup_s=warmup_s)
+        self.stats = CaptureStats.new()
+        self.status = CaptureStatus(StatusKind.STARTING, "starting capture process")
+        self.camera_details: dict = {}
+        self.camera_info = ""
+        self.ready_at: float | None = None  # time.monotonic() of READY
+        self._recent: deque[PoseSample] = deque(maxlen=16)  # to match samples to frames
+        self._frame_surface: pygame.Surface | None = None
+        self._shown_index = -1
+        self._shown_captured_ns = 0
+        self._new_frame = False
+
+    def update(self, capture: CaptureClient) -> list[PoseSample]:
+        """Process new messages and frames; returns the new samples."""
+        samples = []
+        for message in capture.poll():
+            if isinstance(message, PoseSample):
+                self.stats.add_sample(message)
+                self.recorder.add(message)
+                self._recent.append(message)
+                samples.append(message)
+            else:
+                self.status = message
+                if message.kind is StatusKind.READY:
+                    self.ready_at = time.monotonic()
+                    d = self.camera_details = dict(message.details)
+                    self.camera_info = (
+                        f"camera {d.get('camera_width')}x{d.get('camera_height')} "
+                        f"@ {float(d.get('camera_fps', 0)):.0f} fps"
+                    )
+                elif message.kind is StatusKind.ERROR:
+                    print(message.details.get("traceback", message.message))
+        snapshot = capture.latest_frame(newer_than=self._shown_index)
+        self._new_frame = snapshot is not None
+        if snapshot is not None:
+            self._frame_surface = pygame.image.frombuffer(
+                snapshot.frame.tobytes(), (self.config.width, self.config.height), "RGB"
+            )
+            self._shown_index, self._shown_captured_ns = snapshot.frame_index, snapshot.captured_ns
+        return samples
+
+    def draw(self, screen: pygame.Surface, mirrored: bool) -> None:
+        """Paint the camera picture and skeleton into the top-left
+        ``width × height`` area of ``screen``."""
+        area = screen.subsurface((0, 0, self.config.width, self.config.height))
+        area.fill((20, 20, 30))
+        if self._frame_surface is None:
+            return
+        frame = self._frame_surface
+        area.blit(pygame.transform.flip(frame, True, False) if mirrored else frame, (0, 0))
+        # The sample for exactly this frame, if we still have it.
+        sample = next((s for s in reversed(self._recent) if s.frame_index == self._shown_index), None)
+        if sample is not None:
+            draw_pose(area, sample, mirrored)
+
+    def after_flip(self) -> None:
+        if self._new_frame and self._shown_captured_ns:
+            latency_ms = (time.monotonic_ns() - self._shown_captured_ns) / 1e6
+            self.stats.display_latency_ms.add(latency_ms)
+            self.recorder.add_display_latency(latency_ms)
+
+    def failure(self, capture: CaptureClient) -> str | None:
+        """A readable message if capture failed, else ``None``."""
+        if self.status.kind is StatusKind.ERROR:
+            return self.status.message or "capture error"
+        if not capture.is_alive and self.status.kind is not StatusKind.STOPPED:
+            return f"capture process exited (code {capture.exitcode})"
+        return None
+
+    def hud_lines(self, mirrored: bool) -> list[str]:
+        return [f"{self.status.kind}: {self.status.message}", self.camera_info,
+                *self.stats.hud_lines(),
+                f"mirror {'on' if mirrored else 'off'}   [M] mirror  [Esc] quit"]  # fmt: skip
+
+
 def run_session(
     screen: pygame.Surface,
     clock: pygame.time.Clock,
@@ -179,65 +266,24 @@ def run_session(
             showing it until the user quits.
         max_frames: end after this many display frames (automated tests).
     """
-    recorder = RunRecorder(warmup_s=warmup_s)
-    stats = CaptureStats.new()
-    recent: deque[PoseSample] = deque(maxlen=16)  # to match samples to frames
-    status: CaptureStatus = CaptureStatus(StatusKind.STARTING, "starting capture process")
-    camera_info = ""
-    camera_details: dict = {}
-    frame_surface: pygame.Surface | None = None
-    shown_index = -1
-    shown_captured_ns = 0
-    ready_at: float | None = None
+    feed = LiveFeed(config, warmup_s=warmup_s)
     quit_requested = False
-
     with CaptureClient(config, worker=worker) as capture:
         drawn = 0
         while True:
             quit_requested, mirrored = poll_quit_and_mirror(mirrored)
             if quit_requested:
                 break
-
-            for message in capture.poll():
-                if isinstance(message, PoseSample):
-                    stats.add_sample(message)
-                    recorder.add(message)
-                    recent.append(message)
-                else:
-                    status = message
-                    if message.kind is StatusKind.READY:
-                        ready_at = time.monotonic()
-                        d = camera_details = dict(message.details)
-                        camera_info = (
-                            f"camera {d.get('camera_width')}x{d.get('camera_height')} "
-                            f"@ {float(d.get('camera_fps', 0)):.0f} fps"
-                        )
-                    elif message.kind is StatusKind.ERROR:
-                        print(message.details.get("traceback", message.message))
-
-            snapshot = capture.latest_frame(newer_than=shown_index)
-            if snapshot is not None:
-                frame_surface = pygame.image.frombuffer(
-                    snapshot.frame.tobytes(), (config.width, config.height), "RGB"
-                )
-                shown_index, shown_captured_ns = snapshot.frame_index, snapshot.captured_ns
-
-            screen.fill((20, 20, 30))
-            if frame_surface is not None:
-                shown = pygame.transform.flip(frame_surface, True, False) if mirrored else frame_surface
-                screen.blit(shown, (0, 0))
-                # The sample for exactly this frame, if we still have it.
-                sample = next((s for s in reversed(recent) if s.frame_index == shown_index), None)
-                if sample is not None:
-                    draw_pose(screen, sample, mirrored)
+            feed.update(capture)
+            feed.draw(screen, mirrored)
 
             # Timed sessions: phase line and end condition.
             phase = ""
             if duration_s is not None:
-                if ready_at is None:
+                if feed.ready_at is None:
                     phase = "starting ..."
                 else:
-                    elapsed = time.monotonic() - ready_at
+                    elapsed = time.monotonic() - feed.ready_at
                     if elapsed < warmup_s:
                         phase = f"warming up ... keep dancing ({warmup_s - elapsed:.0f} s)"
                     else:
@@ -245,37 +291,25 @@ def run_session(
                     if elapsed >= warmup_s + duration_s:
                         break
 
-            worker_died = not capture.is_alive and status.kind is not StatusKind.STOPPED
-            if status.kind is StatusKind.ERROR:
-                lines = [*banner, "CAPTURE ERROR", status.message]
-                colour = ERROR_COLOUR
-            elif worker_died:
-                lines = [*banner, f"capture process exited (code {capture.exitcode})"]
-                colour = ERROR_COLOUR
+            failure = feed.failure(capture)
+            if failure:
+                draw_hud(screen, [*banner, "CAPTURE ERROR", failure], ERROR_COLOUR)
             else:
-                lines = [*banner, phase, f"{status.kind}: {status.message}", camera_info,
-                         *stats.hud_lines(),
-                         f"mirror {'on' if mirrored else 'off'}   [M] mirror  [Esc] quit"]  # fmt: skip
-                colour = TEXT_COLOUR
-            draw_hud(screen, [line for line in lines if line], colour)
+                draw_hud(screen, [line for line in (*banner, phase, *feed.hud_lines(mirrored)) if line])
             pygame.display.flip()
-            # Measured after flip(): when this frame actually reaches the screen buffer.
-            if shown_captured_ns and snapshot is not None:
-                latency_ms = (time.monotonic_ns() - shown_captured_ns) / 1e6
-                stats.display_latency_ms.add(latency_ms)
-                recorder.add_display_latency(latency_ms)
+            feed.after_flip()
             clock.tick(60)
             drawn += 1
-            if stop_on_error and (status.kind is StatusKind.ERROR or worker_died):
-                if worker_died and status.kind is not StatusKind.ERROR:
-                    status = CaptureStatus(
-                        StatusKind.ERROR, f"capture process exited (code {capture.exitcode})"
-                    )
+            if stop_on_error and failure:
+                if feed.status.kind is not StatusKind.ERROR:
+                    feed.status = CaptureStatus(StatusKind.ERROR, failure)
                 break
             if max_frames is not None and drawn >= max_frames:
                 break
 
-    return SessionResult(recorder.summary(), camera_details, status, quit_requested, mirrored)
+    return SessionResult(
+        feed.recorder.summary(), feed.camera_details, feed.status, quit_requested, mirrored
+    )
 
 
 def main(

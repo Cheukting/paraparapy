@@ -14,3 +14,6 @@ __pycache__/
 
 # Run logs (capture benchmarks, debug sessions)
 logs/
+
+# Landmark recordings of the player (personal data; fixtures are copied explicitly)
+recordings/

@@ -312,7 +312,8 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **0. Project setup** | Python 3.13, package layout, dependencies, pytest | `uv sync` + `pytest` pass |
 | **1. Routine model** | Blocks as keyframes, bar/phrase structure, validation rules from §2, JSON load/save | Validated hand-written sample routine |
 | **2. Pose capture prototype** | Webcam + MediaPipe Pose, skeleton overlay, FPS + latency readout, capture benchmark | Live debug window, `parapara-capture-bench` |
-| **3. Pose features** | One Euro filter, normalization, mirroring, feature extraction | Unit-tested feature functions |
+| **3a. Guided recorder** | Record calibration poses, axis checks and each building block (landmarks only) | `parapara-record`, first recordings |
+| **3. Pose features** | One Euro filter, body frame, calibration, feature extraction; axes verified on the 3a recordings | Unit-tested feature functions |
 | **4. Scoring engine** | Keyframe matching, timing grades, DTW, posture/smoothness | Scores computed on recorded fixtures |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
 | **5. Music library & beat maps** | Collect tracks, license metadata, beat-map tool | ≥ 1 verified song |

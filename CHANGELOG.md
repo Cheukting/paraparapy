@@ -6,6 +6,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 3a – guided recorder** (`uv run parapara-record`): live camera view
+  plus a guide panel (instructions, mirrored stick figure of the target pose,
+  countdown / count-in / beat counter, progress bar) that walks the player
+  through calibration poses (neutral, T-pose), axis checks (right arm up /
+  forward) and one clip per building block danced to a metronome. Each clip
+  can be kept, redone or skipped.
+  - `parapara.pose.recording`: `Recording` (`.npz`, landmarks only, never
+    images; loads without pickle) with beat times and metadata.
+  - `parapara.diagnostics.clips`: the recording script and `ClipTimeline`
+    (phases, metronome beats, current target keyframe).
+  - `parapara.game.overlay.guide_figure`: front-view projection of target
+    poses for the guide figure.
+  - `debug_view.LiveFeed`: the shared camera + skeleton + HUD view, now used by
+    the debug view, the benchmark and the recorder.
+  - `recordings/` added to `.gitignore`. Tests: `test_recording.py`
+    (including a headless recorder run with a streaming fake worker).
 - `parapara.diagnostics` (pure; no cv2/mediapipe/pygame):
   - `live_stats`: HUD statistics, moved from `game.overlay`, plus the new
     `CameraRateMeter` (camera delivery rate and share of skipped frames, to
