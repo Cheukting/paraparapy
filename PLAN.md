@@ -381,6 +381,10 @@ project owner (graphics simple, motion that feels danceable).
   mirrored camera view.
 - A 3-D avatar (below) can replace the renderer later: it would consume the
   same `DancerPose`.
+- **Reviewed by the project owner (2026-10-18):** the dancer is on the beat
+  and looks good. Later improvement: make the **flick + clap** clearer (e.g.
+  a bigger, more visible wrist flick, the travelling hand path, and a
+  stronger clap cue).
 
 Original plan (for a later, nicer renderer):
 

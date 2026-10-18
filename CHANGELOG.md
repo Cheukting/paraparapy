@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `parapara-beatcheck`: skip keys `,` / `.` (one phrase back / forward) and
+  End (last 15 s), to check a beat map late in a song.
+- `PLAN.md` §7: demo dancer reviewed (on beat, looks good); flick + clap
+  animation to be made clearer later.
 - **Step 5c – demo dancer.**
   - `parapara.animation.animator.Animator`: routine + beat → `DancerPose`,
     exact on every scored keyframe; motion styles snap / glide / roll /

@@ -14,7 +14,8 @@ Keys::
     ← / →          first beat −/+ 5 ms   (Shift: 1 ms)
     ↓ / ↑          tempo −/+ 0.01 BPM    (Shift: 0.1)
     [ / ]          routine start (count 1) −/+ 1 beat
-    Space          pause / resume        Home  restart
+    , / .          back / forward one phrase (32 counts)
+    Space          pause / resume        Home  restart     End  last 15 s
     S              save as verified      Esc   quit
 
 Saving writes ``bpm``, ``first_beat_s``, ``routine_start_beat`` into
@@ -143,7 +144,7 @@ def draw(screen: pygame.Surface, grid: BeatGrid, env: np.ndarray, pos: float, du
         f"{pos:6.1f} / {duration:.1f} s{'   PAUSED' if paused else ''}",
         # Key names spelled out: pygame's default font has no arrow glyphs.
         "Left/Right offset 5 ms (Shift 1)   Down/Up tempo 0.01 (Shift 0.1)   [ ] count 1   "
-        "Space pause   Home restart   S save   Esc quit",
+        ", . phrase back/fwd   End last 15 s   Space pause   Home restart   S save   Esc quit",
     ]
     for k, line in enumerate(lines):
         _text(screen, line, (16, HEIGHT - 110 + k * 24), 21, TEXT if k < 3 else DIM)
@@ -185,7 +186,8 @@ def run(argv: list[str] | None = None) -> BeatGrid:
     mix = render_click_track(samples, sr, grid)
     player.play(mix, 0.0)
     clock = pygame.time.Clock()
-    script = [pygame.K_RIGHT, pygame.K_UP, pygame.K_s, pygame.K_ESCAPE] if args.auto else []
+    script = [pygame.K_PERIOD, pygame.K_END, pygame.K_COMMA, pygame.K_RIGHT, pygame.K_UP, pygame.K_s,
+              pygame.K_ESCAPE] if args.auto else []  # fmt: skip
     frame, running = 0, True
 
     while running:
@@ -217,6 +219,17 @@ def run(argv: list[str] | None = None) -> BeatGrid:
                 player.pause() if not player.paused else player.play(mix, player.position())
             elif key == pygame.K_HOME:
                 player.play(mix, 0.0)
+            elif key in (pygame.K_COMMA, pygame.K_PERIOD, pygame.K_END):
+                # Jump around to check the beat map late in the song too.
+                if key == pygame.K_END:
+                    target = duration - 15.0
+                else:
+                    target = player.position() + (32 if key == pygame.K_PERIOD else -32) * grid.beat_s
+                target = min(max(0.0, target), duration - 0.5)
+                was_paused = player.paused
+                player.play(mix, target)
+                if was_paused:
+                    player.pause()
             elif key == pygame.K_s:
                 path = save(args.song_dir, grid, grid != loaded)
                 data = json.loads(path.read_text())
