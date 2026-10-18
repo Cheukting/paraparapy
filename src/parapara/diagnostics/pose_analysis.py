@@ -30,6 +30,14 @@ Block clips (one building block danced to the metronome):
   error with a small front-plane error usually means depth noise rather than
   a wrong pose.
 
+Body movement (``torso_motion`` and ``frame_comparison`` in the report):
+dancers turn, lean and step while dancing, so arm directions are measured
+relative to the body. For every block clip the report gives the torso's
+turning / side tilt / lean (mean ± std) and the hip sway in the image, plus
+the mean error under each body-frame variant of
+:data:`parapara.pose.body_frame.FRAME_METHODS`, to check that the default
+frame is still the best choice for new recordings.
+
 Pure NumPy (no cv2/mediapipe/pygame).
 """
 
@@ -43,7 +51,13 @@ from typing import Any
 
 import numpy as np
 
-from parapara.pose.body_frame import angle_deg, arm_directions, body_frames
+from parapara.pose.body_frame import (
+    FRAME_METHODS,
+    angle_deg,
+    arm_directions,
+    body_frames,
+    torso_motion,
+)
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
 from parapara.routine.library import BLOCK_LIBRARY
@@ -162,6 +176,7 @@ def analyze_block(
     block: Block | None = None,
     lags_s: np.ndarray | None = None,
     max_gap_s: float = 0.06,
+    frame_method: str = "torso",
 ) -> BlockReport:
     """Fit a block clip against its library block (see module docstring).
 
@@ -169,6 +184,7 @@ def analyze_block(
         block: block to compare with; defaults to the clip's ``block_id``.
         lags_s: candidate lags (movement after the beat is positive);
             defaults to one block repeat starting at ``LAG_SEARCH_START_S``.
+        frame_method: body-frame variant (see ``body_frame.FRAME_METHODS``).
         max_gap_s: a keyframe instance is skipped if no sample lies within
             this distance of its (lagged) time.
     """
@@ -177,7 +193,7 @@ def analyze_block(
     beat_s = 60.0 / m["bpm"]
     beats = np.asarray(m["beat_times_ns"], dtype=np.int64)[m["count_in_beats"]:]
     t = (rec.captured_ns - beats[0]) / 1e9  # seconds since the first recorded beat
-    arms = arm_directions(rec.pose_world)
+    arms = arm_directions(rec.pose_world, body_frames(rec.pose_world, method=frame_method))
     events = _keyframe_events(block, len(beats), beat_s)
     if lags_s is None:
         period = block.duration * beat_s
@@ -239,6 +255,17 @@ def analyze_block(
     )
 
 
+def body_movement(rec: Recording) -> dict[str, Any]:
+    """Torso motion statistics and the frame-variant comparison for a block clip."""
+    world = rec.pose_world[rec.has_pose]
+    motion = {k: {"mean": _r(v.mean(), 1), "std": _r(v.std(), 1)}
+              for k, v in torso_motion(world).items()}  # fmt: skip
+    hips_x = rec.pose_image[rec.has_pose][:, [P.RIGHT_HIP, P.LEFT_HIP], 0].mean(1)
+    motion["hip_sway_pct_of_width"] = _r(100 * hips_x.std(), 1)
+    comparison = {m: analyze_block(rec, frame_method=m).mean_error_deg for m in FRAME_METHODS}
+    return {"torso_motion": motion, "frame_comparison": comparison}
+
+
 # --- session -----------------------------------------------------------------
 
 
@@ -256,7 +283,7 @@ def analyze_session(session: Path) -> dict[str, Any]:
         if rec.metadata.get("kind") == "static" and rec.has_pose.any():
             static[path.stem] = asdict(analyze_static(rec))
         elif rec.metadata.get("kind") == "block" and rec.has_pose.any():
-            blocks[path.stem] = asdict(analyze_block(rec))
+            blocks[path.stem] = asdict(analyze_block(rec)) | body_movement(rec)
     return {"session": str(session), "static": static, "blocks": blocks}
 
 
@@ -271,6 +298,13 @@ def format_report(report: dict[str, Any]) -> str:
         lag = "not measurable" if b["best_lag_ms"] is None else f"{b['best_lag_ms']:+.0f} ms"
         lines += ["", f"== {b['block_id']}: best lag {lag}, mean error "
                       f"{b['mean_error_deg']}° (at lag 0: {b['mean_error_at_zero_lag_deg']}°)"]  # fmt: skip
+        if "torso_motion" in b:
+            t = b["torso_motion"]
+            lines.append("   torso: " + ", ".join(
+                f"{k} {v['mean']:+.1f}±{v['std']:.1f}°" for k, v in t.items() if isinstance(v, dict)
+            ) + f", hip sway ±{t['hip_sway_pct_of_width']}% of width")  # fmt: skip
+            lines.append("   error by body frame: " + " | ".join(
+                f"{m} {e}°" for m, e in b["frame_comparison"].items()))  # fmt: skip
         for f in b["keyframes"]:
             lines.append(
                 f"   beat {f['beat']:<4} {f['side']:5s} upper {f['target_upper']} -> seen "

@@ -6,6 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Body movement analysis: `body_frame.FRAME_METHODS` (`torso` default,
+  `camera`, `yaw`, `hips`, `blend`) and `torso_motion` (turn / side tilt /
+  lean). `parapara-analyze` now reports torso motion and hip sway per block
+  clip and compares the mean error under every frame variant, so the choice
+  of body frame can be re-checked on new recordings.
 - Recorder **move preview**: while waiting for Space, the guide figure plays
   the move in a loop at the clip's tempo with the count shown
   (`ClipTimeline.preview_at`). During recording the guide stays **on the

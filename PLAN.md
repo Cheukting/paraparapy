@@ -362,8 +362,17 @@ Findings from the first recording session (2026-10-18, `parapara-analyze`):
   repeat looks identical), and not at all for moves that hold one pose.
 - Calibration values: shoulder width ~0.35 m, upper arm / forearm ≈ 0.6–0.7 ×
   shoulder width, torso lean towards the camera 4–12° (camera angle).
-- Re-record the block clips with the look-ahead preview to get usable
-  timing data, then re-run `parapara-analyze` and recalibrate.
+- Second session (2026-10-18, with the move preview): lag fell to
+  140–240 ms for chop, sweeps and wrist roll. Dancers move their torso a lot:
+  shoulders turn by ±26° in sweeps and flicks, the torso tilts sideways by up
+  to ±9°, and the hips sway by up to ±9% of the image width when stepping.
+- Body frame choice (compared with `parapara-analyze`): arm directions must
+  be relative to the **shoulders**. Camera-relative errors are 31° vs 18° on
+  sweeps; a hip-based frame fails because shoulders twist relative to the
+  hips. The default `torso` frame is best or near-best on 10 of 12 clips. Its
+  weakness is chops (raising an arm also lifts that shoulder, ~3–5° extra
+  error). Step 3 will smooth the torso frame more slowly than the arms and
+  apply per-player calibration offsets.
 
 Resolved:
 - Left/right (2026-10-18, human test): MediaPipe pose labels are the

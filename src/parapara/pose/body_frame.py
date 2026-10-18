@@ -25,6 +25,21 @@ player calibration (Step 3) will supply a measured one.
 
 Hand direction comes from the pose model's coarse hand points: wrist → the
 midpoint of the index and pinky knuckle landmarks.
+
+Frame variants (:data:`FRAME_METHODS`), compared on the 2026-10-18
+recordings with ``parapara-analyze`` (mean angle error per block clip):
+
+- ``"torso"`` (default): left/right from the **shoulder** line, up from the
+  hips. Best or near-best on 10 of 12 clips; essential for sweeps and flicks,
+  where dancers twist their shoulders by ±26° (error 31° → 18°). Costs a few
+  degrees on chops, because raising an arm also lifts that shoulder.
+- ``"camera"``: no compensation (camera axes). Best on chops only.
+- ``"yaw"``: camera vertical as up, shoulder line for turning only.
+- ``"hips"``: left/right from the hip line. Fails on sweeps: shoulders twist
+  relative to the hips.
+- ``"blend"``: average of shoulder and hip lines.
+
+The variants are kept so the comparison can be repeated on new recordings.
 """
 
 from __future__ import annotations
@@ -69,13 +84,32 @@ class BodyFrames:
 
 
 def body_frames(
-    world: npt.ArrayLike, fallback_up: tuple[float, float, float] = MEDIAPIPE_UP
+    world: npt.ArrayLike,
+    fallback_up: tuple[float, float, float] = MEDIAPIPE_UP,
+    method: str = "torso",
 ) -> BodyFrames:
-    """Body axes for each sample of ``world`` (N, 33, ≥3; column 3 = visibility)."""
+    """Body axes for each sample of ``world`` (N, 33, ≥3; column 3 = visibility).
+
+    ``method`` selects a frame variant from :data:`FRAME_METHODS` (see the
+    module docstring); the default ``"torso"`` is the one used for scoring.
+    """
+    if method not in FRAME_METHODS:
+        raise ValueError(f"unknown frame method {method!r}, expected one of {FRAME_METHODS}")
     w = np.asarray(world, dtype=np.float64)
+    n = len(w)
     rs, ls = w[:, P.RIGHT_SHOULDER, :3], w[:, P.LEFT_SHOULDER, :3]
     rh, lh = w[:, P.RIGHT_HIP, :3], w[:, P.LEFT_HIP, :3]
-    right = _unit(rs - ls)
+    vertical = np.tile(np.asarray(fallback_up, dtype=np.float64), (n, 1))
+    if method == "camera":
+        right = np.tile(np.array([-1.0, 0.0, 0.0]), (n, 1))
+        return BodyFrames(right, vertical, np.cross(vertical, right))
+    if method == "yaw":
+        right = rs - ls
+        right = _unit(right - (right * vertical).sum(-1, keepdims=True) * vertical)
+        return BodyFrames(right, vertical, np.cross(vertical, right))
+    shoulder_line, hip_line = _unit(rs - ls), _unit(rh - lh)
+    right = {"torso": shoulder_line, "hips": hip_line,
+             "blend": _unit(shoulder_line + hip_line)}[method]  # fmt: skip
     up = (rs + ls) / 2 - (rh + lh) / 2
     if w.shape[-1] > 3:
         hips_seen = np.minimum(w[:, P.RIGHT_HIP, 3], w[:, P.LEFT_HIP, 3]) >= VISIBILITY_THRESHOLD
@@ -83,6 +117,25 @@ def body_frames(
     up = _unit(up - (up * right).sum(-1, keepdims=True) * right)
     forward = np.cross(up, right)
     return BodyFrames(right, up, forward)
+
+
+FRAME_METHODS = ("torso", "camera", "yaw", "hips", "blend")
+
+
+def torso_motion(world: npt.ArrayLike) -> dict[str, npt.NDArray[np.float64]]:
+    """Per-sample torso orientation relative to the camera, in degrees:
+
+    - ``yaw``: turning (shoulder line rotating towards/away from the camera),
+    - ``side_tilt``: leaning sideways (e.g. hip sway from stepping),
+    - ``lean``: leaning towards the camera.
+    """
+    frames = body_frames(world)
+    r, u = frames.right, frames.up
+    return {
+        "yaw": np.degrees(np.arctan2(r[:, 2], -r[:, 0])),
+        "side_tilt": np.degrees(np.arctan2(u[:, 0], -u[:, 1])),
+        "lean": np.degrees(np.arctan2(-u[:, 2], -u[:, 1])),
+    }
 
 
 @dataclass(frozen=True, slots=True)

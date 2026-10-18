@@ -8,7 +8,13 @@ import pytest
 from pose_synth import recording, world_pose
 
 from parapara.diagnostics import pose_analysis
-from parapara.pose.body_frame import angle_deg, arm_directions, body_frames
+from parapara.pose.body_frame import (
+    FRAME_METHODS,
+    angle_deg,
+    arm_directions,
+    body_frames,
+    torso_motion,
+)
 from parapara.routine.geometry import DOWN, FORWARD, LEFT, RIGHT, UP, angle_between_deg, slerp
 from parapara.routine.library import BLOCK_LIBRARY
 from parapara.routine.model import ArmPose
@@ -75,6 +81,41 @@ def test_invisible_arm_is_invalid_and_missing_pose_is_nan() -> None:
     arms = arm_directions(np.stack([pose, missing]))
     assert not arms["right"].valid[0] and arms["left"].valid[0]
     assert not arms["left"].valid[1] and np.isnan(arms["left"].upper[1]).all()
+
+
+@pytest.mark.parametrize("method", FRAME_METHODS)
+def test_every_frame_method_is_exact_for_an_upright_dancer(method) -> None:
+    chop = BLOCK_LIBRARY["chop_right"].keyframes[1].right
+    world = world_pose(right=chop)[None]
+    arms = arm_directions(world, body_frames(world, method=method))
+    assert angle_deg(arms["right"].fore, chop.fore)[0] < 1e-4
+
+
+def test_turning_is_compensated_by_body_relative_frames_only() -> None:
+    """A 25° turn (as in the recorded sweeps) changes the camera-relative
+    direction of a level arm by exactly 25°, but none of the body-relative
+    ones. (A level arm is perpendicular to the turning axis; other directions
+    change by less.)"""
+    arm = ArmPose(upper=RIGHT, fore=RIGHT)
+    world = world_pose(right=arm, turn_deg=25)[None]
+    errors = {m: angle_deg(arm_directions(world, body_frames(world, method=m))["right"].fore,
+                           arm.fore)[0] for m in FRAME_METHODS}  # fmt: skip
+    assert errors["camera"] == pytest.approx(25, abs=0.5)
+    for m in ("torso", "yaw", "hips", "blend"):
+        assert errors[m] < 1e-4, m
+
+
+def test_unknown_frame_method() -> None:
+    with pytest.raises(ValueError, match="frame method"):
+        body_frames(world_pose()[None], method="gravity")
+
+
+def test_torso_motion_measures_turn_and_lean() -> None:
+    world = np.stack([world_pose(turn_deg=20), world_pose(lean_deg=10)])
+    motion = torso_motion(world)
+    assert motion["yaw"] == pytest.approx([20, 0], abs=0.1)
+    assert motion["lean"] == pytest.approx([0, 10], abs=0.1)
+    assert motion["side_tilt"] == pytest.approx([0, 0], abs=0.1)
 
 
 # --- analysis: static ------------------------------------------------------------
@@ -183,6 +224,9 @@ def test_analyze_session_cli_writes_report(tmp_path, capsys) -> None:
     report = pose_analysis.run([str(session)])
     assert set(report["static"]) == {"t_pose"} and set(report["blocks"]) == {"block_knock_right"}
     saved = json.loads((session / "analysis.json").read_text())
-    assert saved["blocks"]["block_knock_right"]["block_id"] == "knock_right"
+    block = saved["blocks"]["block_knock_right"]
+    assert block["block_id"] == "knock_right"
+    assert set(block["frame_comparison"]) == set(FRAME_METHODS)
+    assert block["torso_motion"]["yaw"] == {"mean": 0.0, "std": 0.0}
     assert "== knock_right" in capsys.readouterr().out
     assert pose_analysis.latest_session(tmp_path) == session
