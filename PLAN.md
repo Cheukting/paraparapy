@@ -142,20 +142,46 @@ Routines are stored as data files (JSON/TOML) and validated on load.
   camera + inference + audio-output delay; the offset is saved per machine and
   subtracted when judging timing.
 
-### 4.1 Proposed package layout
+### 4.1 Package layout
 
 ```
 src/parapara/
   routine/     # block definitions, keyframes, routine model, validation, (de)serialization
   generator/   # routine generator with difficulty levels
-  capture/     # camera + MediaPipe wrapper, One Euro filter
-  pose/        # normalization, mirroring, feature extraction (angles, directions)
+  capture/     # capture process only: camera, MediaPipe, model download (cv2/mediapipe allowed)
+  ipc/         # shared by both processes: CaptureClient, shared frame buffer, messages
+  pose/        # landmark types, One Euro filter, normalization, mirroring, features
   scoring/     # keyframe matching, timing judgment, DTW, quality metrics
   audio/       # song library, beat maps, playback clock
-  game/        # pygame-ce screens: menu, calibration, play, results
+  game/        # pygame-ce screens: menu, calibration, play, results, capture debug view
 tests/         # pytest; uses recorded landmark sequences as fixtures
 assets/        # music, beat maps, routines, avatar renders
 ```
+
+### 4.2 Capture pipeline (implemented in Step 2)
+
+- **Camera**: OpenCV `VideoCapture` (AVFoundation on macOS) read on a
+  background thread that keeps only the **newest** frame, so slow inference
+  skips frames instead of falling behind real time.
+- **Detection**: MediaPipe Tasks `PoseLandmarker` (one person) + optional
+  `HandLandmarker` (two hands) in `VIDEO` running mode (synchronous, so every
+  result belongs to a known frame). Timestamps are forced to be strictly
+  increasing, as `VIDEO` mode requires.
+- **Left/right hands** are assigned by matching each hand's wrist to the
+  nearest pose wrist, not by MediaPipe's handedness label (which depends on
+  whether the image is mirrored).
+- **Models** (`pose_landmarker_full`/`_lite`, `hand_landmarker`) are
+  downloaded on first use to `~/Library/Caches/parapara/models` and pinned by
+  SHA-256, because the official URLs point at a moving `latest` path.
+- **IPC**: samples (`PoseSample`) and status messages go through a bounded
+  queue (the worker drops samples rather than block); the frame goes through
+  a lock-protected shared-memory slot, published after detection under the
+  same frame index as its sample.
+- **Timing**: all timestamps are `time.monotonic_ns()` (system-wide on macOS),
+  so the game can measure camera→landmarks and camera→screen latency.
+- **Debug view**: `uv run parapara-capture-debug` shows the camera with the
+  skeleton (cyan = dancer's left, orange = dancer's right), tracking rate,
+  per-model inference time, latency and dropped samples.
 
 ---
 
@@ -258,6 +284,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **2. Pose capture prototype** | Webcam + MediaPipe Pose/Hand, skeleton overlay, FPS + latency readout | Live debug window |
 | **3. Pose features** | One Euro filter, normalization, mirroring, feature extraction | Unit-tested feature functions |
 | **4. Scoring engine** | Keyframe matching, timing grades, DTW, posture/smoothness | Scores computed on recorded fixtures |
+| **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
 | **5. Music library & beat maps** | Collect tracks, license metadata, beat-map tool | ≥ 1 verified song |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
 | **7. Routine generator** | Grammar-based generator, Easy / Normal / Hard | 3 routines per song |
@@ -276,6 +303,14 @@ Decided (2026-10-18):
 - Footwork is a visual guide only; scoring uses upper-body posture only
   (accessibility, seated play supported).
 - Single player only for now.
+
+Open items (to resolve before the step named):
+- Real-dancer test run (4b): confirm MediaPipe's left/right pose labels are
+  the dancer's anatomical sides on an unmirrored webcam image; verify the
+  draft poses (wrist roll, one-armed sweeps, chop salute, clap).
+- Distribution (9): check the MediaPipe model card licences, and tell
+  players that the MediaPipe Tasks API sends usage metrics to Google
+  (images are processed on-device).
 
 Future (out of scope for the current roadmap):
 - Leaderboard (local first, online later).

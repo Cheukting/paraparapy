@@ -6,6 +6,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 2 – pose capture prototype.**
+  - `parapara.capture` (capture process only): `models` (pinned SHA-256
+    MediaPipe bundles, verified download to `~/Library/Caches/parapara/models`),
+    `camera` (newest-frame grabber thread), `detector` (Pose + Hand
+    Landmarker, Tasks API, VIDEO mode, strictly increasing timestamps),
+    `worker` (process entry point and testable `capture_loop`).
+  - `parapara.ipc` (both processes): `CaptureClient` (spawned worker started
+    by module name so the game never imports cv2), `SharedFrameBuffer`
+    (lock-protected shared-memory frame slot), `CaptureConfig` /
+    `CaptureStatus` messages.
+  - `parapara.pose.landmarks`: `PoseSample`, `HandObservation`, landmark
+    indices and connections, and hand-to-wrist left/right assignment.
+  - `parapara.game.debug_view` + `overlay`: live debug window
+    (`uv run parapara-capture-debug`) with the upper-body skeleton, hands,
+    tracking FPS, inference times, latency and dropped samples.
+  - Tests: `test_pose_landmarks.py`, `test_ipc.py` (real spawned processes
+    with fake workers), `test_capture.py` (including a real-MediaPipe test),
+    `test_game_overlay.py` (headless pygame in subprocesses), plus a
+    `conftest.py` guard that cv2 and pygame never load into one process.
+- `PLAN.md`: §4.2 capture pipeline, step 4b real-dancer test run, open items.
 - **Step 1 – routine model** (`parapara.routine`).
   - `geometry`: body-frame vectors (`+x` dancer's right, `+y` up, `+z`
     forward), `unit`, `mirror_x`, `angle_between_deg`. `normalize` leaves
@@ -51,6 +71,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `CHANGELOG.md`.
 
 ### Changed
+- `tests/test_import_boundary.py` runtime check now imports every module of
+  each subpackage, not just its `__init__`.
 - Renamed the package `pythonproject31` → `parapara` (entry point `parapara`);
   removed the PyCharm sample `src/main.py`.
 - Lowered required Python from 3.15 to 3.13 (`.python-version`,

@@ -81,9 +81,13 @@ def test_static_import_boundary(py_file: Path) -> None:
 
 @pytest.mark.parametrize("subpackage", SUBPACKAGES)
 def test_runtime_import_boundary(subpackage: str) -> None:
+    # Import *every* module of the subpackage, not just its __init__, so a
+    # module such as game/debug_view.py pulling in cv2 via ipc is caught.
     probe = (
-        "import json, sys, importlib; "
-        f"importlib.import_module('parapara.{subpackage}'); "
+        "import json, sys, importlib, pkgutil; "
+        f"pkg = importlib.import_module('parapara.{subpackage}'); "
+        "[importlib.import_module(m.name) for m in "
+        "pkgutil.walk_packages(pkg.__path__, pkg.__name__ + '.')]; "
         "print(json.dumps(sorted({m.split('.')[0] for m in sys.modules})))"
     )
     result = subprocess.run(
