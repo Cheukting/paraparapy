@@ -6,6 +6,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `docs/verify-beat-maps.md`: step-by-step guide to verifying a song's beat
+  map by ear (linked from the README, PLAN.md, `parapara-beatcheck` and the
+  unverified-song warning).
+- **Step 6 – the game** (`uv run parapara-play`).
+  - `scoring.session.PlaySession`: features → judge (schedule on the song's
+    beat clock shifted by the measured latency) → score, framing warnings,
+    the play kept as a recording; ending early drops moves not yet due.
+  - `scoring.latency.estimate_latency`: "clap to the beat" calibration
+    through the scoring's own feature pipeline (median clap offset, spread
+    check).
+  - `parapara.settings`: latency and body calibration saved per machine
+    (`$PARAPARA_DATA_DIR` or `~/Library/Application Support/parapara`).
+  - `game.app`: menu (songs, routines, unverified beat maps flagged; B / L
+    redo calibrations), body calibration (position check, neutral pose,
+    T-pose), latency calibration (16 clicks), play (demo dancer and mirrored
+    camera side by side, next-move card, grade pop-ups, score, combo,
+    progress, out-of-picture warning), results (also `logs/game-*.json` and
+    `recordings/game-*/play.npz`).
+  - Tests: `test_play_session.py`, `test_game_app.py` (headless flows with
+    a streaming fake camera and scripted keys).
+
+### Fixed
+- Judge timing for **held poses**: the hit is when the pose was reached
+  (start of the near-minimum stretch lasting ≥ 0.4 beat), not the most
+  exact sample of the hold, which graded hit-and-hold dancing ~100 ms late
+  (found with the demo dancer as a perfect player).
 - `parapara-beatcheck`: skip keys `,` / `.` (one phrase back / forward) and
   End (last 15 s), to check a beat map late in a song.
 - `PLAN.md` §7: demo dancer reviewed (on beat, looks good); flick + clap

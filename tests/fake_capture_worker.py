@@ -79,3 +79,34 @@ def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame
         results.put(CaptureStatus(StatusKind.STOPPED))
     finally:
         frames.close()
+
+
+def perfect_player(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock):
+    """A camera seeing a player who dances the selected routine perfectly
+    (for visual reviews): reads PARAPARA_TEST_SONG_DIR / PARAPARA_TEST_ROUTINE
+    and starts the dance when the worker starts (close enough to playback)."""
+    import os
+    from pathlib import Path
+
+    from pose_synth import routine_play_samples
+
+    from parapara.audio.song import Song
+    from parapara.routine.serialization import load_routine
+
+    song = Song.load(Path(os.environ["PARAPARA_TEST_SONG_DIR"]))
+    routine = load_routine(Path(os.environ["PARAPARA_TEST_ROUTINE"]))
+    frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
+    start = time.monotonic_ns()
+    script = routine_play_samples(song, routine, start, fps=30)
+    try:
+        results.put(CaptureStatus(StatusKind.READY, "perfect player", {"camera_width": config.width}))
+        for s in script:
+            if stop_event.is_set():
+                break
+            while time.monotonic_ns() < s.captured_ns:
+                time.sleep(0.002)
+            frames.write(np.full(frame_shape, 40, dtype=np.uint8), s.frame_index, s.captured_ns)
+            results.put(s)
+        stop_event.wait(timeout=30)
+    finally:
+        frames.close()

@@ -8,10 +8,11 @@ The same code scores recorded clips offline (``parapara-score``).
 Per keyframe, within ``±window`` of its expected time:
 
 - **Normal keyframes**: the sample with the lowest pose error (front-weighted,
-  :mod:`parapara.scoring.matching`) is the hit; a tiny penalty for distance
-  from the beat breaks ties. Its time is refined between samples with a
-  parabola through the neighbouring errors (the camera delivers only ~23 fps,
-  i.e. 43 ms between samples). The offset grades the timing:
+  :mod:`parapara.scoring.matching`) gives the pose score; a tiny penalty for
+  distance from the beat breaks ties. The **timing** is when the pose was
+  *hit*: for a held pose the start of the near-minimum stretch (dancers hit
+  and hold), for a pose passed through the minimum, interpolated between samples (the camera delivers only ~23 fps, i.e.
+  43 ms between samples); see :func:`arrival_time`. The offset grades the timing:
   Perfect ≤ 60 ms, Great ≤ 120 ms, Good ≤ the window (190 ms, capped at
   0.45 beat so neighbouring windows don't overlap).
 - **Hold keyframes** (same pose as the previous one, e.g. the second knock):
@@ -50,6 +51,8 @@ from parapara.scoring.schedule import ScheduledKeyframe
 
 MIN_POSE_SCORE = 0.3
 TIE_BREAK_DEG = 2.0  # error added at the edge of the window, to prefer hits near the beat
+ARRIVAL_DEG = 3.0  # errors within this of the minimum count as "at the pose"
+HOLD_MIN_BEATS = 0.4  # a near-minimum stretch this long is a held pose (snaps hold ~0.6 beat; filtered turnarounds ~0.3)
 MOVING_SPEED = 0.6  # shoulder widths / s
 MOVING_SHARE_FOR_FULL = 0.8
 
@@ -102,7 +105,7 @@ class FlowJudgment:
     score: float
 
 
-def _refine_time(ts: np.ndarray, es: np.ndarray, i: int) -> float:
+def refine_time(ts: np.ndarray, es: np.ndarray, i: int) -> float:
     """Vertex of the parabola through samples i-1, i, i+1 (time of minimum
     error), clamped to the neighbours; ``ts[i]`` at the edges."""
     if i == 0 or i == len(ts) - 1:
@@ -115,6 +118,38 @@ def _refine_time(ts: np.ndarray, es: np.ndarray, i: int) -> float:
     if a <= 0:
         return float(t1)
     return float(np.clip(-b / (2 * a), t0, t2))
+
+
+def arrival_time(ts: np.ndarray, es: np.ndarray, i: int, tolerance_deg: float, beat_ns: float) -> float:
+    """When the pose was hit, around the best sample ``i``.
+
+    The near-minimum stretch around ``i`` (errors within :data:`ARRIVAL_DEG`
+    of the minimum: still, not merely moving slowly) tells movements apart:
+
+    - **held** (stretch at least :data:`HOLD_MIN_BEATS` long): dancers hit a
+      sharp pose and hold it, so the error stays near its minimum and the most
+      exact sample is often late in the hold (the demo dancer graded ~100 ms
+      late otherwise). The hit is the **start** of the stretch (crossing
+      interpolated between samples): when the pose was reached;
+    - **passed through** (a short dip, e.g. a sweep): the hit is the minimum,
+      refined with a parabola between samples;
+    - **already there** (the stretch reaches back to the window start, e.g. a
+      pose held over from the previous keyframe): the arrival cannot be
+      measured, so the best sample is used (the tie-break favours the one
+      nearest the beat).
+    """
+    del tolerance_deg  # kept in the signature: the margin may become tolerance-relative
+    threshold = es[i] + ARRIVAL_DEG
+    j, k = i, i
+    while j > 0 and es[j - 1] <= threshold:
+        j -= 1
+    while k < len(es) - 1 and es[k + 1] <= threshold:
+        k += 1
+    if ts[k] - ts[j] < HOLD_MIN_BEATS * beat_ns or j == 0:
+        return refine_time(ts, es, i)  # passed through, or already there
+    e0, e1 = es[j - 1], es[j]  # held: interpolate the threshold crossing into the hold
+    frac = (e0 - threshold) / (e0 - e1) if e0 != e1 else 1.0
+    return float(ts[j - 1] + frac * (ts[j] - ts[j - 1]))
 
 
 class Judge:
@@ -144,8 +179,15 @@ class Judge:
             return []
         return self._judge_until(now_ns)
 
-    def finish(self) -> list[Judgment | FlowJudgment]:
-        """Judge everything left (end of the routine)."""
+    def finish(self, until_ns: int | None = None) -> list[Judgment | FlowJudgment]:
+        """Judge everything left (end of the routine).
+
+        With ``until_ns`` (the player stopped early), only keyframes due by
+        then are judged; later ones are dropped rather than counted as misses.
+        """
+        if until_ns is not None:
+            self.schedule = [s for s in self.schedule if s.t_ns <= until_ns]
+            self._flow_pending = [(k, item) for k, item in self._flow_pending if item.block_end_ns <= until_ns]
         return self._judge_until(None)
 
     def _judge_until(self, now_ns: int | None) -> list[Judgment | FlowJudgment]:
@@ -199,7 +241,7 @@ class Judge:
 
         cost = es + TIE_BREAK_DEG * np.abs(ts - item.t_ns) / window
         i = int(np.argmin(cost))
-        hit_ns = _refine_time(ts, es, i)
+        hit_ns = arrival_time(ts, es, i, tol, item.beat_ns)
         score = pose_score(float(es[i]), tol)
         offset = hit_ns - item.t_ns
         grade = self.windows.grade(offset, window) if score >= MIN_POSE_SCORE else Grade.MISS
@@ -215,7 +257,7 @@ class Judge:
         else:
             dist = np.array([f.wrist_distance for f in samples])
             i = int(np.argmin(dist + 0.05 * np.abs(ts - item.t_ns) / window))
-            hit_ns = _refine_time(ts, dist, i)
+            hit_ns = refine_time(ts, dist, i)
             score = clap_score(samples[i])
         offset = hit_ns - item.t_ns
         grade = self.windows.grade(offset, window) if score >= MIN_POSE_SCORE else Grade.MISS

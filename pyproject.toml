@@ -28,6 +28,7 @@ parapara-find-songs = "parapara.audio.find_songs:main"
 parapara-fetch-demo-songs = "parapara.audio.fetch_demo_songs:main"
 parapara-routines = "parapara.routine.cli:main"
 parapara-preview = "parapara.game.preview:main"
+parapara-play = "parapara.game.app:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

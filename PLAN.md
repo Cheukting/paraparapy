@@ -228,8 +228,11 @@ Per keyframe (`scoring.judge`), within a window around its expected time
   **front-weighted** (depth counts half: it is MediaPipe's noisiest axis).
   Full credit within the block's tolerance (25° sharp, 35° flowing, 40° chop
   reach), linear to zero at twice the tolerance.
-- **Timing**: the best-matching sample in the window, refined between
-  samples (~23 fps camera); offset graded:
+- **Timing**: when the pose was **hit**: for a held pose (near-minimum error
+  lasting ≥ 0.4 beat) the moment it was reached; for a pose passed through
+  (sweeps) the minimum; interpolated between samples (~23 fps camera). Found
+  with the demo dancer: taking the most exact sample of a hold graded
+  hit-and-hold dancing ~100 ms late. Offset graded:
 
   | Grade | Window |
   |---|---|
@@ -352,7 +355,8 @@ demo tracks are fetched locally and never committed.
 - **Beat map** per song (`song.json`): BPM, first-beat offset, the beat on
   which the routine starts. Detected with `parapara-beatmap` (librosa on the
   kick band + constant-tempo fit) and **verified by ear** with
-  `parapara-beatcheck` (a 30 ms error breaks scoring).
+  `parapara-beatcheck` (a 30 ms error breaks scoring). Step-by-step guide:
+  `docs/verify-beat-maps.md`.
 
 ---
 
@@ -439,7 +443,7 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **5. Music library & beat maps** | Song format, auto beat map, by-ear check app; song import with suitability check; CC BY demo catalog; generated track for machine tests | `catalog.json`, `parapara-fetch-demo-songs`, `parapara-import-song`, `parapara-beatmap`, `parapara-beatcheck` |
 | **5b. Routines for every song** (Step 7 brought forward) | Choreography-unit generator with easy/normal/hard; routines stored next to their song; players' own routines (template, check, add) | `parapara-routines`, routines generated on fetch/import |
 | **5c. Demo dancer** | Smooth stick-figure dancer driven by the scored keyframes; preview app | `parapara.animation`, `parapara-preview` |
-| **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
+| **6. Game loop** | `parapara-play`: menu, body + latency calibration, play (dancer and mirrored camera side by side, grades, score, combo), results; plays saved as recordings | First playable song (needs the real-player test) |
 | **7. Routine generator** | Done early as 5b; later: tune difficulty with play data | – |
 | **8. Avatar demo** | VRM + Blender procedural animation, rendered demo videos | Demo video per routine |
 | **9. Polish** | Menus, high scores, settings, packaging | Distributable app |

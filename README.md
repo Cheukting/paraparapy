@@ -61,6 +61,19 @@ calibration (`calibration.json`).
 uv run parapara-tune-filters             # re-tune the smoothing filters on a session
 ```
 
+## Play
+
+```sh
+uv run parapara-play
+```
+
+Pick a song and routine (Up/Down, Left/Right, Enter). The first time, the
+game calibrates your body (position check, neutral pose, T-pose) and your
+latency (clap on 16 clicks); both are remembered (B / L in the menu redo
+them). Dance with the demo dancer on the left while your mirrored camera view
+is on the right. Esc ends a song early. Results are saved to `logs/` and the
+play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
+
 ## Watch a routine
 
 ```sh
@@ -106,6 +119,8 @@ uv run parapara-beatcheck assets/songs/<id>                   # verify it by ear
 ```
 
 Every song folder has a `song.json` with its licence, source and beat map.
+Verify each song's beat map by ear once before playing it seriously: see
+[docs/verify-beat-maps.md](docs/verify-beat-maps.md).
 
 ### Adding your own songs
 

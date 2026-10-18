@@ -157,7 +157,7 @@ class Song:
         if not DESIGN_BPM[0] <= bpm <= DESIGN_BPM[1]:
             warnings.append(f"bpm {bpm} is outside the design range {DESIGN_BPM}")
         if not bm.get("verified"):
-            warnings.append("beat map not verified by ear yet (run parapara-beatcheck)")
+            warnings.append("beat map not verified by ear yet (see docs/verify-beat-maps.md)")
         return cls(
             id=data["id"], title=data["title"], artist=data.get("artist", ""), audio=data["audio"],
             license=License(lic.get("name") or UNSPECIFIED_LICENSE, lic.get("url")),

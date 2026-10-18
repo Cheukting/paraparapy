@@ -145,3 +145,26 @@ def slerp_safe(a, b, t):
     if angle_between_deg(a, b) > 170:
         return slerp(a, (0.0, 0.0, 1.0), t)
     return slerp(a, b, t)
+
+
+def routine_play_samples(song, routine, playback_start_ns: int, lag_s: float = 0.0, fps: float = 30.0):
+    """PoseSamples of a perfect player: the demo dancer's own motion (which is
+    exact on every scored keyframe), performed ``lag_s`` late, seen by a
+    camera at ``fps`` from audio time 0 to the end of the routine + 1 bar."""
+    from parapara.animation.animator import Animator
+    from parapara.pose.landmarks import PoseSample
+
+    animator = Animator(routine)
+    end_s = song.beat_time_s(song.routine_start_beat + routine.total_counts + 8)
+    image = image_pose()
+    samples = []
+    for i, t in enumerate(np.arange(0.0, end_s, 1.0 / fps)):
+        beat = song.beat_at(t - lag_s) - song.routine_start_beat
+        p = animator.pose_at(beat)
+        arm = lambda s: ArmPose(upper=s.upper, fore=s.fore, hand=s.hand)  # noqa: E731
+        world = world_pose(arm(p.right), arm(p.left))
+        if p.clap_flash > 0.9:  # hands together on the clap
+            world[16, :3] = world[15, :3]
+        t_ns = playback_start_ns + int(t * 1e9)
+        samples.append(PoseSample(i, t_ns, t_ns + 20_000_000, (640, 480), image, world, pose_ms=20.0))
+    return samples

@@ -18,6 +18,8 @@ Keys::
     Space          pause / resume        Home  restart     End  last 15 s
     S              save as verified      Esc   quit
 
+Step-by-step guide for people verifying songs: ``docs/verify-beat-maps.md``.
+
 Saving writes ``bpm``, ``first_beat_s``, ``routine_start_beat`` into
 ``song.json`` and marks the beat map ``verified`` (method ``manual`` if
 anything was changed). It edits the JSON directly, so a song whose licence
@@ -100,6 +102,22 @@ class Player:
     @property
     def paused(self) -> bool:
         return self._started_at is None
+
+    @property
+    def start_ns(self) -> int:
+        """``time.monotonic_ns()`` at which audio time 0 played (or would
+        have, given seeks): the anchor for the song's beat clock."""
+        started = self._started_at if self._started_at is not None else time.monotonic()
+        return int((started - self._start_pos) * 1e9)
+
+
+def load_for_player(player: "Player", path) -> np.ndarray:
+    """Load an audio file as mono float samples at the mixer's sample rate."""
+    samples, sr = load_audio(path)
+    if sr != player.sr:
+        samples = np.interp(np.arange(int(len(samples) / sr * player.sr)) / player.sr,
+                            np.arange(len(samples)) / sr, samples).astype(np.float32)  # fmt: skip
+    return samples
 
 
 def _text(screen, text, pos, size=24, colour=TEXT):
