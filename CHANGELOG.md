@@ -6,6 +6,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Recorder **move preview**: while waiting for Space, the guide figure plays
+  the move in a loop at the clip's tempo with the count shown
+  (`ClipTimeline.preview_at`). During recording the guide stays **on the
+  beat**: the look-ahead introduced earlier now defaults to 0 (`--lookahead`
+  still enables it).
 - `parapara.pose.body_frame`: MediaPipe world landmarks → per-sample body
   frame (right / up / forward rebuilt from the torso every sample, with a
   vertical fallback when the hips are hidden) and arm segment directions

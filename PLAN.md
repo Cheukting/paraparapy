@@ -354,8 +354,10 @@ Findings from the first recording session (2026-10-18, `parapara-analyze`):
   and directions read biased towards the camera. Scoring (Step 4) should
   weight the front plane (x/y) more than depth.
 - The dancer trailed the beat by 200–700 ms because the guide showed poses
-  only *on* their count. The recorder now previews the next pose one count
-  ahead; **the game's move cues (Step 6) must also look ahead**.
+  only *on* their count. The recorder now **previews the whole move before
+  recording** and keeps the guide on the beat while recording; **the game
+  (Step 6) must likewise show players what is coming before they need it**
+  (e.g. a preview of each new block before it starts).
 - Lag is only identifiable within one block repeat (a pose shifted by a whole
   repeat looks identical), and not at all for moves that hold one pose.
 - Calibration values: shoulder width ~0.35 m, upper arm / forearm ≈ 0.6–0.7 ×

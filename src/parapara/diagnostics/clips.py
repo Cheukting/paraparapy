@@ -14,11 +14,13 @@ Clips
   the block repeated for ``bars`` 8-count bars. The beat times are saved with
   the clip so Step 4 can test timing against them.
 
-Look-ahead: the first recording (2026-10-18) showed the dancer trailing the
-beat by 200-700 ms, because the guide only showed a pose *on* its count and
-the dancer had to see it before moving. The guide therefore shows the pose
-``lookahead_counts`` ahead (default one count), like the note highway of a
-rhythm game, so the dancer can be in position *on* the beat.
+Preview, then on-beat guide (decided 2026-10-18): the first recording showed
+the dancer trailing the beat by 200-700 ms, because they only saw each pose
+*on* its count. Rather than a guide that runs ahead, the recorder **previews
+the whole move in a loop before recording** (:meth:`ClipTimeline.preview_at`,
+shown while waiting for Space), so the dancer knows it in advance; during
+recording the guide stays on the beat. A look-ahead guide is still available
+(``lookahead_counts`` > 0) for experiments.
 
 All times in a :class:`ClipTimeline` are seconds relative to the moment the
 player starts the clip.
@@ -112,7 +114,7 @@ class Phase:
         progress: fraction of the recording completed, ``0..1``.
     """
 
-    name: Literal["countdown", "count_in", "recording", "done"]
+    name: Literal["preview", "countdown", "count_in", "recording", "done"]
     label: str = ""
     guide: Keyframe | None = None
     guide_count: int = 0
@@ -131,7 +133,8 @@ class ClipTimeline:
         countdown_s: countdown before a static clip.
         static_seconds: how long a static pose is recorded.
         count_in_beats: metronome beats before a block clip's recording.
-        lookahead_counts: how far ahead the guide shows the target pose.
+        lookahead_counts: how far ahead the guide shows the target pose
+            during recording (default 0: on the beat).
     """
 
     clip: Clip
@@ -139,7 +142,7 @@ class ClipTimeline:
     countdown_s: float = 3.0
     static_seconds: float = 4.0
     count_in_beats: int = 4
-    lookahead_counts: float = 1.0
+    lookahead_counts: float = 0.0
 
     @property
     def beat_s(self) -> float:
@@ -171,6 +174,20 @@ class ClipTimeline:
             accent = i == 0 or (recording_index >= 0 and recording_index % COUNTS_PER_BAR == 0)
             clicks.append((i * self.beat_s, accent))
         return clicks
+
+    def preview_at(self, t: float) -> Phase:
+        """The move demonstrated in a loop at the clip's tempo, ``t`` seconds
+        after the preview started (shown before the player presses Space).
+
+        Block clips cycle through the block's keyframes on the beat, labelled
+        with the count; static clips simply show their pose.
+        """
+        if self.clip.kind == "static":
+            return Phase("preview", guide=self.clip.guide)
+        position = t / self.beat_s
+        count = int(position) % COUNTS_PER_BAR + 1
+        return Phase("preview", str(count), self._keyframe_at(position), guide_count=count,
+                     count=count)  # fmt: skip
 
     def phase_at(self, t: float) -> Phase:
         if t >= self.recording_end:

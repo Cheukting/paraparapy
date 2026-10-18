@@ -100,7 +100,7 @@ def test_static_timeline() -> None:
 
 
 def test_block_timeline_count_in_beats_and_keyframes() -> None:
-    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)  # 0.5 s per beat
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120, lookahead_counts=1)  # 0.5 s/beat
     assert tl.recording_start == 2.0 and tl.recording_end == 10.0  # 4 + 16 beats
     beats = tl.beats()
     assert len(beats) == 20 and beats[1] == (0.5, False)
@@ -109,7 +109,8 @@ def test_block_timeline_count_in_beats_and_keyframes() -> None:
 
     out, salute = BLOCK_LIBRARY["chop_right"].keyframes
     p1, p2, p3 = tl.phase_at(2.1), tl.phase_at(2.6), tl.phase_at(3.1)
-    # The guide previews one count ahead: during count 1 it shows count 2's pose.
+    # With a look-ahead the guide runs one count ahead: during count 1 it
+    # shows count 2's pose.
     assert (p1.bar, p1.count, p1.guide, p1.guide_count) == (1, 1, salute, 2)
     assert (p2.count, p2.guide, p2.guide_count) == (2, out, 3)  # block repeats
     assert (p3.count, p3.guide) == (3, salute)
@@ -117,8 +118,8 @@ def test_block_timeline_count_in_beats_and_keyframes() -> None:
     assert (tl.phase_at(1.6).guide, tl.phase_at(1.6).guide_count) == (out, 1)
 
 
-def test_block_timeline_without_lookahead_shows_current_pose() -> None:
-    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120, lookahead_counts=0)
+def test_block_timeline_guide_is_on_the_beat_by_default() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)
     out, salute = BLOCK_LIBRARY["chop_right"].keyframes
     assert tl.phase_at(2.1).guide == out and tl.phase_at(2.6).guide == salute
     assert tl.phase_at(2.1).guide_count == 1
@@ -127,10 +128,21 @@ def test_block_timeline_without_lookahead_shows_current_pose() -> None:
 
 
 def test_block_timeline_holds_latest_keyframe_between_counts() -> None:
-    tl = ClipTimeline(CLIP_IDS["block_wrist_roll_4"], bpm=120, lookahead_counts=0)  # 0.5 s/count
+    tl = ClipTimeline(CLIP_IDS["block_wrist_roll_4"], bpm=120)  # 0.5 s per count
     kfs = BLOCK_LIBRARY["wrist_roll_4"].keyframes
     assert tl.phase_at(2.0 + 0.25).guide is kfs[0]  # 0.5 counts in: still count 1
     assert tl.phase_at(2.0 + 0.55).guide is kfs[1]  # 1.1 counts in
+
+
+def test_preview_loops_through_the_move_on_the_beat() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)
+    out, salute = BLOCK_LIBRARY["chop_right"].keyframes
+    phases = [tl.preview_at(t) for t in (0.1, 0.6, 1.1, 3.6, 4.1)]
+    assert [p.name for p in phases] == ["preview"] * 5
+    assert [p.guide for p in phases] == [out, salute, out, salute, out]
+    assert [p.count for p in phases] == [1, 2, 3, 8, 1]  # loops over the bar
+    static = ClipTimeline(CLIP_IDS["t_pose"]).preview_at(12.0)
+    assert static.guide is CLIP_IDS["t_pose"].guide and static.count == 0
 
 
 # --- guide figure ----------------------------------------------------------------
@@ -191,5 +203,5 @@ def test_recorder_records_and_saves_clips_headless(tmp_path) -> None:
     block = Recording.load(session / "block_knock_right.npz")
     assert block.metadata["block_id"] == "knock_right" and block.metadata["bpm"] == 960
     assert len(block.metadata["beat_times_ns"]) == 4 + 16  # count-in + 2 bars
-    assert block.metadata["lookahead_counts"] == 1.0
+    assert block.metadata["lookahead_counts"] == 0.0
     assert len(block) > 0

@@ -6,15 +6,17 @@ debug window, plus a guide panel on the right showing:
 
 - the clip title and instructions,
 - a stick figure of the **target pose** (mirrored, like the camera view, so
-  the player copies it like a mirror; unscored arms are dimmed). For moves it
-  shows the *upcoming* pose one count ahead (``--lookahead``), labelled with
-  the count to hit it on,
+  the player copies it like a mirror; unscored arms are dimmed). Before a
+  move clip starts it **plays the move in a loop** at the clip's tempo as a
+  preview; while recording it stays on the beat (``--lookahead`` can make it
+  run ahead instead),
 - a big countdown / count-in / beat counter, and a progress bar.
 
 Block clips play a metronome (accented on count 1) so the moves are danced
 on the beat; the scheduled beat times are saved with the clip.
 
-Flow per clip: ``SPACE`` start → countdown / count-in → recording → review
+Flow per clip: preview (watch the move) → ``SPACE`` start → countdown /
+count-in → recording → review
 (``ENTER`` keep, ``R`` redo, ``S`` skip). ``Esc`` quits at any time; kept
 clips are already saved.
 
@@ -228,9 +230,15 @@ def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
     _draw_guide(surface, phase, clip.guide, (w // 2, y + 135), 58)
 
     big = ""
+    if stage is Stage.READY and phase is not None and phase.name == "preview":
+        caption = "preview: watch the move" if clip.kind == "block" else "get into this pose"
+        _text(surface, caption, (16, h - 190), 24, ACCENT)
+        if phase.count:
+            _text(surface, f"count {phase.count}", (w // 2 - 40, h - 150), 40, DIM)
     if stage is Stage.RUNNING and phase is not None:
         big = phase.label
-        if clip.kind == "block" and phase.guide_count:
+        # Only when the guide runs ahead (--lookahead > 0) does it need a caption.
+        if clip.kind == "block" and phase.name == "recording" and phase.guide_count != phase.count:
             _text(surface, f"next: hit on count {phase.guide_count}", (16, h - 190), 24, ACCENT)
         if phase.name == "recording" and clip.kind == "block":
             _text(surface, f"bar {phase.bar}", (16, h - 128), 22, DIM)
@@ -264,8 +272,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="recordings directory")
     parser.add_argument("--countdown", type=float, default=3.0, help="seconds before a static pose")
     parser.add_argument("--static-seconds", type=float, default=4.0, help="seconds per static pose")
-    parser.add_argument("--lookahead", type=float, default=1.0,
-                        help="counts ahead the guide shows the next pose (0 = no preview)")  # fmt: skip
+    parser.add_argument("--lookahead", type=float, default=0.0,
+                        help="counts the guide runs ahead while recording (default 0: on the beat)")  # fmt: skip
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
@@ -312,6 +320,7 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     run: ClipRun | None = None
     review: list[str] = []
     running = True
+    preview_started: float | None = None  # time.monotonic() when READY began
 
     with CaptureClient(config, worker=worker) as capture:
         while running:
@@ -364,6 +373,13 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                 running = False
 
             phase: Phase | None = None
+            if stage is Stage.READY and clip is not None:
+                # Preview loop: restarts whenever a clip becomes ready again.
+                preview_started = preview_started or time.monotonic()
+                preview = ClipTimeline(clip, bpm=args.bpm)
+                phase = preview.preview_at(time.monotonic() - preview_started)
+            else:
+                preview_started = None
             if stage is Stage.RUNNING and run is not None:
                 run.add(samples)
                 t = run.elapsed()
