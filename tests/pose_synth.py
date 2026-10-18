@@ -75,3 +75,24 @@ def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict) -> R
         pose_world=arr,
         metadata={"frame_size": [640, 480], **metadata},
     )
+
+
+def image_pose(mid_x=0.52, shoulder_y=0.49, shoulder_w=0.19, hip_y=0.87,
+               hips_visible=True) -> np.ndarray:
+    """(33, 5) normalized image landmarks of a player standing upright, facing
+    an unmirrored camera (their right shoulder at the smaller x). Defaults are
+    the neutral pose measured on 2026-10-18; arms hang down."""
+    pose = np.zeros((NUM_POSE_LANDMARKS, 5))
+    pose[:, 3:] = 1.0
+    pose[:, :2] = (mid_x, shoulder_y)  # head and anything unset sit near the shoulders
+    half = shoulder_w / 2
+    for side, sign in (("RIGHT", -1), ("LEFT", 1)):
+        x = mid_x + sign * half
+        pose[P[f"{side}_SHOULDER"], :2] = (x, shoulder_y)
+        pose[P[f"{side}_ELBOW"], :2] = (x + sign * 0.02, shoulder_y + 0.2)
+        pose[P[f"{side}_WRIST"], :2] = (x + sign * 0.03, shoulder_y + 0.38)
+        pose[P[f"{side}_HIP"], :2] = (mid_x + sign * half * 0.65, hip_y)
+        if not hips_visible:
+            pose[P[f"{side}_HIP"], 3] = 0.1
+    pose[P.NOSE, :2] = (mid_x, shoulder_y - 0.15)
+    return pose.astype(np.float32)

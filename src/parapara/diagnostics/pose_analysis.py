@@ -30,6 +30,12 @@ Block clips (one building block danced to the metronome):
   error with a small front-plane error usually means depth noise rather than
   a wrong pose.
 
+Framing (``framing`` in the report): for every clip, the share of samples in
+which the player was well placed (:mod:`parapara.pose.framing`) and which
+issues occurred, e.g. hips out of the picture. Clips with poor framing make
+unreliable references and should be re-recorded. (``turned`` is expected
+while dancing sweeps and flicks.)
+
 Body movement (``torso_motion`` and ``frame_comparison`` in the report):
 dancers turn, lean and step while dancing, so arm directions are measured
 relative to the body. For every block clip the report gives the torso's
@@ -58,6 +64,9 @@ from parapara.pose.body_frame import (
     body_frames,
     torso_motion,
 )
+from collections import Counter
+
+from parapara.pose.framing import check_framing
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
 from parapara.routine.library import BLOCK_LIBRARY
@@ -266,6 +275,17 @@ def body_movement(rec: Recording) -> dict[str, Any]:
     return {"torso_motion": motion, "frame_comparison": comparison}
 
 
+def framing_summary(rec: Recording) -> dict[str, Any]:
+    results = [check_framing(s) for s in rec.samples()]
+    if not results:
+        return {"ok_pct": 0.0, "issues": {}}
+    counts = Counter(code for r in results for code in r.codes)
+    return {
+        "ok_pct": _r(100 * sum(r.ok for r in results) / len(results), 1),
+        "issues": {code: _r(100 * n / len(results), 1) for code, n in counts.most_common()},
+    }
+
+
 # --- session -----------------------------------------------------------------
 
 
@@ -277,18 +297,23 @@ def latest_session(root: Path = DEFAULT_RECORDINGS) -> Path:
 
 
 def analyze_session(session: Path) -> dict[str, Any]:
-    static, blocks = {}, {}
+    static, blocks, framing = {}, {}, {}
     for path in sorted(session.glob("*.npz")):
         rec = Recording.load(path)
+        framing[path.stem] = framing_summary(rec)
         if rec.metadata.get("kind") == "static" and rec.has_pose.any():
             static[path.stem] = asdict(analyze_static(rec))
         elif rec.metadata.get("kind") == "block" and rec.has_pose.any():
             blocks[path.stem] = asdict(analyze_block(rec)) | body_movement(rec)
-    return {"session": str(session), "static": static, "blocks": blocks}
+    return {"session": str(session), "framing": framing, "static": static, "blocks": blocks}
 
 
 def format_report(report: dict[str, Any]) -> str:
-    lines = [f"session {report['session']}", ""]
+    lines = [f"session {report['session']}", "", "framing (share of samples well placed; issues in %):"]
+    for clip, f in report.get("framing", {}).items():
+        issues = ", ".join(f"{k} {v}%" for k, v in f["issues"].items()) or "-"
+        lines.append(f"  {clip:28s} ok {f['ok_pct']:5.1f}%   {issues}")
+    lines.append("")
     for clip, s in report["static"].items():
         r = s["arms"]["right"]
         lines.append(f"{clip:18s} R upper {r['upper']}  fore {r['fore']}   "

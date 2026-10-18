@@ -93,8 +93,11 @@ the chest, towards the camera). "Right arm" always means the dancer's own
 right arm; mirroring (for the player copying an on-screen demo, and for
 generating left/right variants of a block) swaps the arms and negates `x`.
 
-**Player calibration** (before each session): the player holds a neutral pose
-and a T-pose for a few seconds. This measures shoulder width and segment
+**Player calibration** (before each session): first a **position check**
+(`parapara.pose.framing`) guides the player until the whole torso, the hips
+and the room to stretch the arms are in the picture and they face the camera
+("Step back", "Move a little to your LEFT", ...); then the player holds a
+neutral pose and a T-pose for a few seconds. This measures shoulder width and segment
 lengths (to turn direction targets into positions for collarbone/clap checks
 and for drawing the guide figure) and the camera's tilt (to align the camera
 frame with the body frame).
@@ -336,6 +339,13 @@ Decided (2026-10-18):
 - Single player only for now.
 
 Open items (to resolve before the step named):
+- **Deferred recording & recalibration** (postponed by the project owner on
+  2026-10-18; do before Step 4b at the latest): re-record the six block
+  clips with the position check passing (hips in the picture), run
+  `parapara-analyze`, and recalibrate `library.py`, especially Flick + Clap,
+  whose second take did not fit (lag alias / different interpretation).
+  Session 2 (`recordings/20261018-151657`) has the hips out of frame and
+  should not be used for calibration.
 - Real-dancer test run (4b): verify the draft poses (wrist roll, one-armed
   sweeps, chop salute, clap).
 - Camera rate: the webcam delivers ~23 fps although 30 is requested
@@ -366,6 +376,11 @@ Findings from the first recording session (2026-10-18, `parapara-analyze`):
   140–240 ms for chop, sweeps and wrist roll. Dancers move their torso a lot:
   shoulders turn by ±26° in sweeps and flicks, the torso tilts sideways by up
   to ±9°, and the hips sway by up to ±9% of the image width when stepping.
+- Framing: in the second session the **hips were out of the picture in
+  every clip** (hip landmarks at 100–107% of the image height), so the body
+  frame relied on guessed hip positions. A position check now gates
+  calibration and is shown before every clip; the game must keep checking
+  it during play (Step 6).
 - Body frame choice (compared with `parapara-analyze`): arm directions must
   be relative to the **shoulders**. Camera-relative errors are 31° vs 18° on
   sweeps; a hip-based frame fails because shoulders twist relative to the

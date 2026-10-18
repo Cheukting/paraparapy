@@ -6,6 +6,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Position (framing) check** (`parapara.pose.framing`): torso and hips in
+  the picture, room to stretch the arms sideways and upwards (1.3 shoulder
+  widths, measured in the T-pose), not too far, centred, facing the camera.
+  It gives instructions in the player's own left/right ("Move a little to
+  your LEFT", "Step back until your hips are in the picture"); thresholds
+  come from the 2026-10-18 recordings. `FramingMonitor` debounces it.
+  - Recorder: the check is shown before every clip with a guide rectangle
+    on the camera view; calibration and axis clips only start once the
+    position has been OK for ~0.4 s (`--no-framing-check`); move clips warn
+    while recording if the hips leave the picture.
+  - `parapara-analyze` reports framing per clip (share of samples OK,
+    issues). It revealed that the hips were out of the picture throughout
+    the second recording session.
+  - Tests: `test_framing.py`; `pose_synth.image_pose`; the streaming fake
+    worker now sends a well-framed person.
 - Body movement analysis: `body_frame.FRAME_METHODS` (`torso` default,
   `camera`, `yaw`, `hips`, `blend`) and `torso_motion` (turn / side tilt /
   lean). `parapara-analyze` now reports torso motion and hip sway per block

@@ -56,7 +56,11 @@ def hang(**kwargs):
 
 def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock):
     """Like a real camera: READY, then a sample (and frame) every ~20 ms with
-    a person in it, until the stop event is set."""
+    a well-framed person in it (passes the framing check), until the stop
+    event is set."""
+    from pose_synth import image_pose, world_pose  # tests dir is on sys.path
+
+    image, world = image_pose(), world_pose()
     frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
     try:
         results.put(CaptureStatus(StatusKind.READY, "fake stream", {"camera_width": config.width}))
@@ -64,11 +68,10 @@ def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame
         while not stop_event.wait(timeout=0.02):
             captured = time.monotonic_ns()
             frames.write(np.full(frame_shape, index % 256, dtype=np.uint8), index, captured)
-            pose = np.full((NUM_POSE_LANDMARKS, 5), 0.5, dtype=np.float32)
             results.put(
                 PoseSample(
                     frame_index=index, captured_ns=captured, processed_ns=time.monotonic_ns(),
-                    frame_size=(config.width, config.height), pose_image=pose, pose_world=pose,
+                    frame_size=(config.width, config.height), pose_image=image, pose_world=world,
                     pose_ms=1.0,
                 )
             )

@@ -226,7 +226,7 @@ def test_recorder_records_and_saves_clips_headless(tmp_path) -> None:
     manifest = json.loads((session / "session.json").read_text())
     assert list(manifest["clips"]) == ["t_pose", "block_knock_right"]
 
-    static = Recording.load(session / "t_pose.npz")
+    static = Recording.load(session / "t_pose.npz")  # passed the framing gate
     assert len(static) > 5 and static.person_found_pct == 100.0
     start, end = static.metadata["recording_window_ns"]
     assert start <= static.captured_ns.min() and static.captured_ns.max() < end

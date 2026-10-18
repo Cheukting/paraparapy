@@ -16,6 +16,14 @@ Block clips play a metronome (accented on count 1) so the moves are danced
 on the beat, both during the preview loop (``--quiet-preview`` to silence it)
 and while recording; the scheduled beat times are saved with the clip.
 
+Position check: before every clip the panel shows a framing check
+(:mod:`parapara.pose.framing`): hips in the picture, room to stretch the
+arms, centred, facing the camera, with instructions such as "Step back" and a
+guide rectangle on the camera view. Static clips (calibration and axis
+checks) only start once the position has been OK for a moment
+(``--no-framing-check`` disables this); move clips show the check without
+blocking, and warn while recording if the hips leave the picture.
+
 Flow per clip: preview (watch the move) → ``SPACE`` start → countdown /
 count-in → recording → review
 (``ENTER`` keep, ``R`` redo, ``S`` skip). ``Esc`` quits at any time; kept
@@ -53,9 +61,10 @@ from parapara.game.debug_view import (  # noqa: E402
     LiveFeed,
     draw_hud,
 )
-from parapara.game.overlay import GuideArm, guide_figure  # noqa: E402
+from parapara.game.overlay import GuideArm, guide_figure, to_screen  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
+from parapara.pose.framing import FramingMonitor, FramingResult  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
 from parapara.routine.model import ArmPose  # noqa: E402
@@ -65,6 +74,8 @@ PANEL_BG = (28, 28, 40)
 DIM = (90, 90, 110)
 ACCENT = (255, 220, 80)
 DEFAULT_OUT = Path("recordings")
+OK_COLOUR = (90, 220, 120)
+WARN_COLOUR = (255, 150, 60)
 
 
 # --- metronome ---------------------------------------------------------------
@@ -216,8 +227,29 @@ def _draw_guide(surface: pygame.Surface, phase: Phase | None, guide, centre, sca
         _text(surface, "CLAP!", (centre[0] + round(0.7 * scale), centre[1] + round(0.5 * scale)), 36, ACCENT)
 
 
+def draw_framing_box(surface: pygame.Surface, framing: FramingResult | None, mirrored: bool) -> None:
+    """Outline the picture area the player needs (arm span, head room, hips)."""
+    if framing is None or framing.needed_box is None:
+        return
+    x0, y0, x1, y1 = framing.needed_box
+    corners = to_screen([(x0, y0), (x1, y1)], surface.get_size(), mirrored)
+    (ax, ay), (bx, by) = corners
+    rect = pygame.Rect(min(ax, bx), min(ay, by), abs(bx - ax), abs(by - ay))
+    pygame.draw.rect(surface, OK_COLOUR if framing.ok else WARN_COLOUR, rect, 2)
+
+
+def _framing_lines(framing: FramingResult | None, required: bool) -> list[tuple[str, tuple]]:
+    if framing is None:
+        return [("Position check: waiting for camera ...", DIM)]
+    if framing.ok:
+        return [("Position OK", OK_COLOUR)]
+    colour = WARN_COLOUR if required else DIM
+    return [(issue.message, colour) for issue in framing.issues[:2]]
+
+
 def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total: int,
-               stage: Stage, phase: Phase | None, review: list[str], bpm: float) -> None:  # fmt: skip
+               stage: Stage, phase: Phase | None, review: list[str], bpm: float,
+               framing: FramingResult | None = None, can_start: bool = True) -> None:  # fmt: skip
     surface.fill(PANEL_BG)
     w, h = surface.get_size()
     if clip is None:
@@ -241,6 +273,9 @@ def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
         _text(surface, caption, (16, h - 190), 24, ACCENT)
         if phase.count:
             _text(surface, phase.label, (w // 2 - 22, h - 150), 72, ACCENT)
+        yy = h - 84
+        for line, colour in _framing_lines(framing, clip.requires_framing):
+            yy = _text(surface, line, (16, yy), 20, colour)
     if stage is Stage.RUNNING and phase is not None:
         big = phase.label
         # Only when the guide runs ahead (--lookahead > 0) does it need a caption.
@@ -256,7 +291,8 @@ def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
         pygame.draw.rect(surface, (255, 80, 80), (16, h - 64, round((w - 32) * phase.progress), 10))
 
     footer = {
-        Stage.READY: "[Space] start   [S] skip   [Esc] quit",
+        Stage.READY: "[Space] start   [S] skip   [Esc] quit" if can_start
+        else "fix your position to start   [S] skip",
         Stage.RUNNING: "recording ... [Esc] quit",
         Stage.REVIEW: "[Enter] keep   [R] redo   [S] skip",
     }.get(stage, "")
@@ -282,6 +318,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                         help="counts the guide runs ahead while recording (default 0: on the beat)")  # fmt: skip
     parser.add_argument("--quiet-preview", action="store_true",
                         help="no metronome clicks while previewing a move")  # fmt: skip
+    parser.add_argument("--no-framing-check", action="store_true",
+                        help="allow starting clips without a good position")  # fmt: skip
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
@@ -321,6 +359,7 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     clock = pygame.time.Clock()
     metronome = Metronome()
     feed = LiveFeed(config)
+    framing = FramingMonitor()
     mirrored = not args.no_mirror
 
     index = 0
@@ -348,11 +387,15 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                 mirrored = not mirrored
 
             samples = feed.update(capture)
+            for sample in samples:
+                framing.update(sample)
             failure = feed.failure(capture)
             ready = feed.ready_at is not None and failure is None
+            framed = (clip is None or not clip.requires_framing or args.no_framing_check
+                      or framing.stable)  # fmt: skip
 
             # --- state machine ---
-            if stage is Stage.READY and ready and (pygame.K_SPACE in keys or args.auto):
+            if stage is Stage.READY and ready and framed and (pygame.K_SPACE in keys or args.auto):
                 assert clip is not None
                 timeline = ClipTimeline(clip, bpm=args.bpm, countdown_s=args.countdown,
                                         static_seconds=args.static_seconds,
@@ -432,10 +475,21 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
             elif not ready:
                 draw_hud(screen, [f"{feed.status.kind}: {feed.status.message}"])
             else:
-                draw_hud(screen, [feed.camera_info, *feed.stats.hud_lines()[:2]])
+                lines = [feed.camera_info, *feed.stats.hud_lines()[:2]]
+                latest = framing.latest
+                warn = (stage is Stage.RUNNING and latest is not None
+                        and latest.codes & {"no_person", "no_shoulders", "no_hips"})  # fmt: skip
+                if warn:
+                    draw_hud(screen, ["WARNING: " + latest.issues[0].message], WARN_COLOUR)
+                else:
+                    draw_hud(screen, lines)
+                if stage is Stage.READY:
+                    draw_framing_box(screen.subsurface((0, 0, config.width, config.height)),
+                                     latest, mirrored)  # fmt: skip
             panel = screen.subsurface((config.width, 0, PANEL_WIDTH, screen.get_height()))
             draw_panel(panel, clip=clip, index=index, total=len(clips), stage=stage,
-                       phase=phase, review=review, bpm=args.bpm)  # fmt: skip
+                       phase=phase, review=review, bpm=args.bpm, framing=framing.latest,
+                       can_start=framed)  # fmt: skip
             pygame.display.flip()
             feed.after_flip()
             clock.tick(60)

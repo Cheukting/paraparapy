@@ -62,6 +62,14 @@ class Clip:
     def block(self) -> Block | None:
         return None if self.block_id is None else BLOCK_LIBRARY[self.block_id]
 
+    @property
+    def requires_framing(self) -> bool:
+        """Static clips are reference measurements (calibration, axis checks),
+        so they may only start once the player is well framed
+        (:mod:`parapara.pose.framing`). Move clips show the check but don't
+        block on it: turning is part of dancing."""
+        return self.kind == "static"
+
 
 def _static(id: str, title: str, instructions: tuple[str, ...], right: ArmPose, left: ArmPose) -> Clip:
     return Clip(id, title, instructions, "static", guide=Keyframe(beat=0, right=right, left=left))
