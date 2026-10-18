@@ -145,6 +145,37 @@ def test_preview_loops_through_the_move_on_the_beat() -> None:
     assert static.guide is CLIP_IDS["t_pose"].guide and static.count == 0
 
 
+def test_preview_clicks_follow_the_beat() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)  # a beat every 0.5 s
+    assert tl.preview_clicks(-1.0, 0.0) == [True]  # first beat (count 1) at t=0
+    assert tl.preview_clicks(0.0, 0.4) == []
+    assert tl.preview_clicks(0.4, 1.6) == [False, False, False]  # beats 1, 2, 3
+    assert tl.preview_clicks(3.4, 4.0) == [False, True]  # count 8, then count 1 again
+    assert tl.preview_clicks(1.0, 1.0) == []
+    assert ClipTimeline(CLIP_IDS["t_pose"]).preview_clicks(-1, 10) == []
+
+
+def test_preview_clicks_cover_every_beat_exactly_once() -> None:
+    """However the display frames fall, each beat is clicked exactly once."""
+    tl = ClipTimeline(CLIP_IDS["block_knock_right"], bpm=137)
+    frames = [-1.0] + [i / 60 + 0.003 * (i % 3) for i in range(0, 600)]  # jittery 60 Hz
+    clicks = [c for t0, t1 in zip(frames, frames[1:]) for c in tl.preview_clicks(t0, t1)]
+    assert len(clicks) == int(frames[-1] / tl.beat_s) + 1
+    assert clicks[::8] == [True] * len(clicks[::8]) and sum(clicks) == len(clicks[::8])
+
+
+def test_count_in_starts_on_the_next_preview_beat() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)  # 0.5 s per beat
+    assert tl.next_preview_beat(0.0) == 0.5  # strictly after: never "now"
+    assert tl.next_preview_beat(1.2) == 1.5
+    assert tl.next_preview_beat(1.5) == 2.0
+    # No click is lost or doubled across the hand-over: the preview clicks
+    # up to (not including) the start beat, which the count-in then clicks.
+    start = tl.next_preview_beat(1.2)
+    assert tl.preview_clicks(1.2, start - 1e-6) == []
+    assert tl.beats()[0] == (0.0, True)
+
+
 # --- guide figure ----------------------------------------------------------------
 
 

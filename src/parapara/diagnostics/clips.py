@@ -189,6 +189,25 @@ class ClipTimeline:
         return Phase("preview", str(count), self._keyframe_at(position), guide_count=count,
                      count=count)  # fmt: skip
 
+    def preview_clicks(self, t0: float, t1: float) -> list[bool]:
+        """Metronome clicks for the preview loop crossed in ``(t0, t1]``
+        seconds since the preview started, as ``accented`` flags (count 1 of
+        each bar is accented). Beats fall at ``0, beat_s, 2·beat_s, ...``;
+        the first one (``t = 0``) is included when ``t0 < 0``. Static clips
+        have no clicks.
+        """
+        if self.clip.kind == "static" or t1 <= t0:
+            return []
+        first = math.floor(t0 / self.beat_s) + 1  # first beat index strictly after t0
+        last = math.floor(t1 / self.beat_s)
+        return [i % COUNTS_PER_BAR == 0 for i in range(max(first, 0), last + 1)]
+
+    def next_preview_beat(self, t: float) -> float:
+        """Preview time of the first beat strictly after ``t``: where the
+        count-in starts when the player presses Space during the preview, so
+        the metronome keeps one unbroken rhythm."""
+        return (math.floor(t / self.beat_s) + 1) * self.beat_s
+
     def phase_at(self, t: float) -> Phase:
         if t >= self.recording_end:
             return Phase("done", progress=1.0)

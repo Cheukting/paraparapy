@@ -11,6 +11,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`ClipTimeline.preview_at`). During recording the guide stays **on the
   beat**: the look-ahead introduced earlier now defaults to 0 (`--lookahead`
   still enables it).
+- The preview loop is **audible**: metronome clicks on every beat, accented
+  on count 1 (`--quiet-preview` to silence), with the count shown large.
+  Pressing Space starts the count-in on the preview's next beat, so the
+  rhythm continues unbroken into the recording.
 - `parapara.pose.body_frame`: MediaPipe world landmarks → per-sample body
   frame (right / up / forward rebuilt from the torso every sample, with a
   vertical fallback when the hips are hidden) and arm segment directions

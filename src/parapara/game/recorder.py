@@ -13,7 +13,8 @@ debug window, plus a guide panel on the right showing:
 - a big countdown / count-in / beat counter, and a progress bar.
 
 Block clips play a metronome (accented on count 1) so the moves are danced
-on the beat; the scheduled beat times are saved with the clip.
+on the beat, both during the preview loop (``--quiet-preview`` to silence it)
+and while recording; the scheduled beat times are saved with the clip.
 
 Flow per clip: preview (watch the move) → ``SPACE`` start → countdown /
 count-in → recording → review
@@ -118,9 +119,14 @@ class ClipRun:
     """One attempt at a clip."""
 
     timeline: ClipTimeline
-    started_ns: int
+    started_ns: int  # may lie slightly in the future: see preview_started
     samples: list[PoseSample] = field(default_factory=list)
     next_beat: int = 0
+    # For block clips started from the preview loop: the count-in begins on
+    # the preview's next beat, so the metronome keeps one unbroken rhythm.
+    # Until then the preview keeps playing; this is its start time.
+    preview_started: float | None = None
+    preview_t: float = -1.0
 
     def elapsed(self) -> float:
         return (time.monotonic_ns() - self.started_ns) / 1e9
@@ -234,7 +240,7 @@ def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
         caption = "preview: watch the move" if clip.kind == "block" else "get into this pose"
         _text(surface, caption, (16, h - 190), 24, ACCENT)
         if phase.count:
-            _text(surface, f"count {phase.count}", (w // 2 - 40, h - 150), 40, DIM)
+            _text(surface, phase.label, (w // 2 - 22, h - 150), 72, ACCENT)
     if stage is Stage.RUNNING and phase is not None:
         big = phase.label
         # Only when the guide runs ahead (--lookahead > 0) does it need a caption.
@@ -274,6 +280,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--static-seconds", type=float, default=4.0, help="seconds per static pose")
     parser.add_argument("--lookahead", type=float, default=0.0,
                         help="counts the guide runs ahead while recording (default 0: on the beat)")  # fmt: skip
+    parser.add_argument("--quiet-preview", action="store_true",
+                        help="no metronome clicks while previewing a move")  # fmt: skip
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
@@ -321,6 +329,7 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     review: list[str] = []
     running = True
     preview_started: float | None = None  # time.monotonic() when READY began
+    preview_t = -1.0  # preview time of the previous frame (for click timing)
 
     with CaptureClient(config, worker=worker) as capture:
         while running:
@@ -348,7 +357,14 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                 timeline = ClipTimeline(clip, bpm=args.bpm, countdown_s=args.countdown,
                                         static_seconds=args.static_seconds,
                                         lookahead_counts=args.lookahead)  # fmt: skip
-                run = ClipRun(timeline, time.monotonic_ns())
+                start_ns, lead_in = time.monotonic_ns(), None
+                if clip.kind == "block" and preview_started is not None:
+                    # Start the count-in on the preview's next beat.
+                    now = time.monotonic()
+                    next_beat_t = timeline.next_preview_beat(now - preview_started)
+                    start_ns += int((preview_started + next_beat_t - now) * 1e9)
+                    lead_in = preview_started
+                run = ClipRun(timeline, start_ns, preview_started=lead_in, preview_t=preview_t)
                 stage = Stage.RUNNING
             elif stage is Stage.READY and pygame.K_s in keys:
                 index += 1
@@ -375,12 +391,27 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
             phase: Phase | None = None
             if stage is Stage.READY and clip is not None:
                 # Preview loop: restarts whenever a clip becomes ready again.
-                preview_started = preview_started or time.monotonic()
+                if preview_started is None:
+                    preview_started, preview_t = time.monotonic(), -1.0
                 preview = ClipTimeline(clip, bpm=args.bpm)
-                phase = preview.preview_at(time.monotonic() - preview_started)
+                now_t = time.monotonic() - preview_started
+                phase = preview.preview_at(now_t)
+                if not args.quiet_preview:
+                    for accent in preview.preview_clicks(preview_t, now_t):
+                        metronome.click(accent)
+                preview_t = now_t
             else:
                 preview_started = None
-            if stage is Stage.RUNNING and run is not None:
+            if stage is Stage.RUNNING and run is not None and run.elapsed() < 0:
+                # Waiting for the next preview beat: keep the preview going.
+                assert run.preview_started is not None
+                now_t = time.monotonic() - run.preview_started
+                phase = run.timeline.preview_at(now_t)
+                if not args.quiet_preview:
+                    for accent in run.timeline.preview_clicks(run.preview_t, now_t):
+                        metronome.click(accent)
+                run.preview_t = now_t
+            elif stage is Stage.RUNNING and run is not None:
                 run.add(samples)
                 t = run.elapsed()
                 beats = run.timeline.beats()
