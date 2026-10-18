@@ -62,6 +62,13 @@ def test_all_problems_reported_together() -> None:
     assert "phrase 2: phrase must end with flick + clap" in text
 
 
+def test_unknown_block_suggests_the_closest_name() -> None:
+    data = _sample_data()
+    data["phrases"][0][0] = "sweep_to_rihgt_4"
+    with pytest.raises(RoutineError, match="did you mean 'sweep_to_right_4'"):
+        routine_from_dict(data)
+
+
 def test_custom_library_is_used() -> None:
     with pytest.raises(RoutineError, match="unknown block"):
         routine_from_dict(_sample_data(), library={})

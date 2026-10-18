@@ -24,6 +24,7 @@ problems are reported together in one :class:`RoutineError`.
 
 from __future__ import annotations
 
+import difflib
 import json
 from collections.abc import Mapping
 from pathlib import Path
@@ -74,7 +75,12 @@ def routine_from_dict(
     for p_index, block_ids in enumerate(data["phrases"], start=1):
         unknown = [b for b in block_ids if b not in library]
         if unknown:
-            issues.append(f"phrase {p_index}: unknown block id(s) {unknown}")
+            hints = []
+            for name in unknown:  # typos in hand-written routines: suggest the closest names
+                close = difflib.get_close_matches(name, list(library), n=1)
+                hints.append(f"{name!r} (did you mean {close[0]!r}?)" if close else repr(name))
+            issues.append(f"phrase {p_index}: unknown block id(s) [{', '.join(hints)}] "
+                          "(list them with `parapara-routines blocks`)")  # fmt: skip
             continue
         try:
             phrases.append(Phrase(tuple(library[b] for b in block_ids)))

@@ -2,29 +2,31 @@
   "description": "Candidate demo songs for parapara: plain CC BY tracks at ~140-160 BPM that pass the suitability check (parapara.audio.suitability). AUDIO IS NOT IN GIT: download from page_url/audio_url (or the team's shared drive) and import with `uv run parapara-import-song <file> --catalog <id>`. Show the attribution text in the game's credits. Re-check the licence on the page before use: artists can change it.",
   "searched": {
     "date": "2026-10-18",
-    "free_music_archive": "CC BY filter; queries trance, techno, dance, edm, hardstyle, hard trance, happy hardcore, chiptune, uptempo, eurobeat, j-pop, rave, speed (no Eurobeat/Eurodance/Hi-NRG results). ~50 plain CC BY tracks measured; most dance tracks were 115-130 BPM.",
+    "free_music_archive": "CC BY filter; queries trance, techno, dance, edm, hardstyle, hard trance, happy hardcore, chiptune, uptempo, eurobeat, j-pop, rave, speed (no Eurobeat/Eurodance/Hi-NRG results). ~50 plain CC BY tracks measured; most dance tracks were 115-130 BPM. Second round (2026-10-18): vocal-tagged dance/pop/disco/electropop/j-pop and psytrance/goa/hard techno/acid/trance queries, ~75 tracks measured; vocal dance-pop was 110-128 BPM or unsteady; only 'Goa Trolls' (Soulbringer) newly passed.",
     "jamendo": "not searched: the API needs a developer client_id (free at devportal.jamendo.com); run `JAMENDO_CLIENT_ID=... uv run parapara-find-songs` to search it."
   },
   "candidates": [
     {
-      "id": "shane-ivers-broke",
-      "title": "broke",
-      "artist": "Shane Ivers",
+      "id": "soulbringer-goa-trolls",
+      "title": "Goa Trolls",
+      "artist": "Soulbringer",
       "platform": "Free Music Archive",
-      "page_url": "https://freemusicarchive.org/music/shane-ivers/single/broke/",
-      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/tracks/xxS0HzSxzMTLEZibgylWyH7HQdtRnZo4TpHRZbHR.mp3",
+      "page_url": "https://freemusicarchive.org/music/Soulbringer/Soulbringer/Soulbringer_-_Goa_Trolls/",
+      "audio_url": "https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Soulbringer/Soulbringer/Soulbringer_-_Goa_Trolls.mp3",
       "license": {
         "name": "CC-BY-4.0",
         "url": "https://creativecommons.org/licenses/by/4.0/"
       },
-      "attribution": "\"broke\" by Shane Ivers (https://freemusicarchive.org/music/shane-ivers/single/broke/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+      "attribution": "\"Goa Trolls\" by Soulbringer (https://freemusicarchive.org/music/Soulbringer/Soulbringer/Soulbringer_-_Goa_Trolls/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
       "measured": {
-        "bpm": 141.01,
-        "drift_ms": 9.1,
-        "on_grid_share": 1.0,
-        "beat_clarity": 1.61,
-        "duration_s": 198,
-        "warnings": []
+        "bpm": 144.98,
+        "drift_ms": 13.0,
+        "on_grid_share": 0.96,
+        "beat_clarity": 4.29,
+        "duration_s": 228,
+        "warnings": [
+          "beats drift 13 ms from a constant grid; check by ear"
+        ]
       }
     },
     {
@@ -69,7 +71,9 @@
         "beat_clarity": 1.94,
         "duration_s": 170,
         "warnings": []
-      }
+      },
+      "reviewed": "listened to and approved by the project owner (2026-10-18): instrumental (no vocals); hosts the demo routine",
+      "vocals": false
     },
     {
       "id": "shane-ivers-onion-march",
@@ -97,6 +101,11 @@
   ],
   "rejected_examples": [
     {
+      "title": "broke",
+      "artist": "Shane Ivers",
+      "reason": "passed the check (141 BPM, clarity 1.61) but a player found the beat hard to dance to (2026-10-18); replaced by Goa Trolls; clarity below 1.8 now gives a warning"
+    },
+    {
       "title": "Straw Fields",
       "artist": "Rolemusic",
       "reason": "steady but 166.7 BPM (above 165)"
@@ -111,5 +120,8 @@
       "artist": "Shane Ivers",
       "reason": "150 BPM but unsteady (24 ms drift) and unclear beat"
     }
+  ],
+  "open": [
+    "a demo song with vocals (none of the current candidates has vocals)"
   ]
 }

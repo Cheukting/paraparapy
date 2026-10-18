@@ -6,6 +6,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `PLAN.md` future work: an interface to record a routine with the camera;
+  a demo song with vocals (none of the demo tracks has vocals; "Lets Go To A
+  Rave" confirmed instrumental).
+- **Step 5b – routines for every song** (roadmap Step 7 brought forward).
+  - `parapara.generator.routine_generator`: choreography-unit generator
+    (knock R→L, chops RRLL, mirrored sweep pairs, wrist rolls, flick + clap
+    finishers), easy / normal / hard settings (unit weights, 2-4 distinct
+    phrases, AABB or ABCD repetition), deterministic per song.
+  - `parapara.routine.store`: routines stored next to their song
+    (`<song>/routines/*.json`), fit check against the song length,
+    `ensure_generated`, `install_routine` for players' own routines.
+  - `uv run parapara-routines generate|list|blocks|template|check|add`.
+  - Fetching and importing songs now generate their routines.
+  - `Difficulty.CUSTOM` for player-written routines; unknown move names in a
+    routine file get a "did you mean ...?" hint.
+  - Tests: `test_routine_generation.py`.
 - **Step 5 additions – song import and demo catalog.**
   - `audio.suitability`: Para Para suitability check (tempo 135–165 BPM,
     steady tempo, beats on a constant grid, beat clarity from kick on- vs.
@@ -16,6 +32,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     were removed; the demo routine now targets the CC BY track "Lets Go To A
     Rave" (`defrini-lets-go-to-a-rave`); `parapara-beatcheck` needs a song
     folder argument.
+  - Demo catalog: "broke" (Shane Ivers) replaced by "Goa Trolls"
+    (Soulbringer, CC BY 4.0, 145 BPM, beat clarity 4.3) after a player found
+    "broke" hard to dance to; the beat-clarity warning threshold rose from
+    1.5 to 1.8. No CC BY vocal dance track passed the check yet (open item).
   - `uv run parapara-fetch-demo-songs`: downloads the four catalog tracks
     into `assets/songs/<id>/` (git-ignored; `--from-dir` for a shared drive)
     and imports them with licence and attribution.

@@ -11,6 +11,9 @@ Lets users bring their own music, so the project never has to distribute
 3. A ``song.json`` is written with the automatic beat map, marked
    **unverified**: check it by ear with ``uv run parapara-beatcheck
    <library>/<id>`` before playing.
+4. Easy / normal / hard **routines are generated** for the song
+   (:func:`parapara.routine.store.ensure_generated`); players can add their
+   own with ``parapara-routines add``.
 
 Licence and source are **optional** (decided 2026-10-18): imported songs are
 assumed to be the user's own music, used locally for personal play. Only the
@@ -104,7 +107,8 @@ class SongInfo:
 
 
 def import_song(audio: Path, info: SongInfo, song_id: str | None = None,
-                library: Path | None = None, replace: bool = False) -> tuple[Song, SuitabilityReport]:  # fmt: skip
+                library: Path | None = None, replace: bool = False,
+                routines: bool = True) -> tuple[Song, SuitabilityReport]:  # fmt: skip
     """Check and import ``audio`` (see module docstring).
 
     Raises:
@@ -139,7 +143,12 @@ def import_song(audio: Path, info: SongInfo, song_id: str | None = None,
         attribution=info.attribution, directory=directory,
     )  # fmt: skip
     song.save()
-    return Song.load(directory), report
+    song = Song.load(directory)
+    if routines:
+        from parapara.routine.store import ensure_generated  # routine.store imports audio.song
+
+        ensure_generated(song, force=replace)
+    return song, report
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -175,7 +184,8 @@ def main(argv: list[str] | None = None) -> None:
     except SongError as err:
         print("ERROR: " + "; ".join(err.issues))
         sys.exit(1)
-    print(f"imported {song.title!r} as {song.id!r}: {song.bpm:.2f} BPM, {song.duration_beats} beats")
+    print(f"imported {song.title!r} as {song.id!r}: {song.bpm:.2f} BPM, {song.duration_beats} beats; "
+          "generated easy/normal/hard routines")  # fmt: skip
     for warning in report.warnings:
         print(f"  warning: {warning}")
     print(f"next: verify the beat map by ear: uv run parapara-beatcheck {song.directory}")

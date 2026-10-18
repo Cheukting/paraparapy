@@ -10,7 +10,7 @@ check                   reject                        warn
 tempo                   outside 135-165 BPM           outside 140-160 BPM
 steady tempo (drift)    RMS > 15 ms off the grid      > 10 ms
 beats on the grid       < 80 % of detected beats      -
-beat clarity            < 1.3                         < 1.5
+beat clarity            < 1.3                         < 1.8
 length                  < 40 beats                    < 72 beats
 ======================  ============================  ==========================
 
@@ -25,7 +25,7 @@ length                  < 40 beats                    < 72 beats
 Thresholds were set from measurements of 2026-10-18: the generated demo track
 and CC BY dance tracks from Free Music Archive (``assets/songs/catalog.json``).
 Clean dance tracks had drift ≤ 9 ms, ≥ 80 % of beats on the grid and clarity
-≥ 1.5; tracks with tempo changes or no steady kick had drift ≥ 15 ms, as few
+≥ 1.5 (but a player found 1.6 hard to dance to, hence the 1.8 warning); tracks with tempo changes or no steady kick had drift ≥ 15 ms, as few
 as a third of beats on the grid, and clarity ≈ 1.0.
 
 Licences are **not** checked (decided 2026-10-18): imported songs are
@@ -49,7 +49,9 @@ BPM_REJECT = (135.0, 165.0)
 BPM_WARN = (140.0, 160.0)
 DRIFT_REJECT_MS, DRIFT_WARN_MS = 15.0, 10.0
 MIN_ON_GRID = 0.8
-CLARITY_REJECT, CLARITY_WARN = 1.3, 1.5
+# Warn below 1.8: "broke" (clarity 1.61) passed the earlier 1.5 but was
+# reported hard to dance to (2026-10-18); "Lets Go To A Rave" (1.94) was fine.
+CLARITY_REJECT, CLARITY_WARN = 1.3, 1.8
 MIN_BEATS, SHORT_BEATS = 40, 72
 
 

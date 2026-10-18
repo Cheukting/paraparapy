@@ -61,6 +61,22 @@ calibration (`calibration.json`).
 uv run parapara-tune-filters             # re-tune the smoothing filters on a session
 ```
 
+## Routines
+
+```sh
+uv run parapara-routines generate        # easy/normal/hard routines for every song missing them
+uv run parapara-routines list            # songs and their routines
+uv run parapara-routines blocks          # the moves you can use
+uv run parapara-routines template --song <id> -o mine.json   # start your own routine
+uv run parapara-routines check mine.json --song <id>         # validate it
+uv run parapara-routines add mine.json --song <id>           # install it
+```
+
+Routines are generated automatically when a song is fetched or imported, and
+stored next to the song (`<song folder>/routines/`). A routine is a list of
+32-count phrases, each a list of move names; every phrase needs all five
+kinds of move and ends with a flick + clap.
+
 ## Scoring recorded clips
 
 ```sh

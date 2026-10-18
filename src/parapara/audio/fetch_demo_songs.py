@@ -4,7 +4,8 @@ Downloads every candidate in ``assets/songs/catalog.json`` from its
 ``audio_url`` and imports it into the built-in library as
 ``assets/songs/<catalog id>/`` through :func:`parapara.audio.importer.import_song`
 (suitability check, automatic beat map, licence and attribution from the
-catalog). These folders are **git-ignored**: third-party audio is never
+catalog) and generates its easy / normal / hard routines. These folders are
+**git-ignored**: third-party audio is never
 committed, each developer fetches it (or copies it from the team's shared
 drive with ``--from-dir``).
 
@@ -56,7 +57,7 @@ def fetch_demo_songs(
                 download(entry["audio_url"], local)
             try:
                 song, _ = import_song(local, SongInfo.from_catalog(entry), song_id, library, replace=True)
-                outcomes[song_id] = f"imported ({song.bpm:.1f} BPM, beat map unverified)"
+                outcomes[song_id] = f"imported ({song.bpm:.1f} BPM, beat map unverified, routines generated)"
             except ImportRejected as err:
                 outcomes[song_id] = "REJECTED: " + "; ".join(err.report.rejections)
     return outcomes

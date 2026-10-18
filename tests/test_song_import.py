@@ -144,9 +144,9 @@ def test_cli_exit_codes_and_catalog(tracks, tmp_path, capsys) -> None:
     with pytest.raises(SystemExit) as rejected:
         importer.main([str(tracks["slow"]), "--library", lib])
     assert rejected.value.code == 2 and "REJECTED" in capsys.readouterr().out
-    importer.main([str(tracks["good"]), "--catalog", "shane-ivers-broke", "--library", lib])
-    song = Song.load(tmp_path / "lib" / "shane-ivers-broke")
-    assert song.license.name == "CC-BY-4.0" and "Shane Ivers" in song.attribution
+    importer.main([str(tracks["good"]), "--catalog", "soulbringer-goa-trolls", "--library", lib])
+    song = Song.load(tmp_path / "lib" / "soulbringer-goa-trolls")
+    assert song.license.name == "CC-BY-4.0" and "Soulbringer" in song.attribution
     assert song.source.startswith("https://freemusicarchive.org/")
     importer.main([str(tracks["good"]), "--library", lib])  # nothing but the file
     assert Song.load(tmp_path / "lib" / "good").title == "good"  # title from the file name
@@ -180,12 +180,12 @@ def test_fetch_demo_songs_imports_the_catalog(tracks, tmp_path) -> None:
         downloads.append(url)
         path.write_bytes(payload)
 
-    out = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["shane-ivers-broke"], download=fake_download)
-    assert out["shane-ivers-broke"].startswith("imported") and len(downloads) == 1
-    song = Song.load(tmp_path / "shane-ivers-broke")
-    assert song.license.name == "CC-BY-4.0" and "Shane Ivers" in song.attribution
-    again = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["shane-ivers-broke"], download=fake_download)
-    assert again["shane-ivers-broke"] == "already present" and len(downloads) == 1
+    out = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download)
+    assert out["soulbringer-goa-trolls"].startswith("imported") and len(downloads) == 1
+    song = Song.load(tmp_path / "soulbringer-goa-trolls")
+    assert song.license.name == "CC-BY-4.0" and "Soulbringer" in song.attribution
+    again = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download)
+    assert again["soulbringer-goa-trolls"] == "already present" and len(downloads) == 1
 
 
 def test_catalog_entries_are_complete() -> None:

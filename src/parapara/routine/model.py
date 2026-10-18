@@ -67,6 +67,7 @@ class Difficulty(StrEnum):
     EASY = "easy"
     NORMAL = "normal"
     HARD = "hard"
+    CUSTOM = "custom"  # written by a player (``parapara-routines add``)
 
 
 class HandShape(StrEnum):

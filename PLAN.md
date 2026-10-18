@@ -116,6 +116,26 @@ capture.
 
 Routines are stored as data files (JSON/TOML) and validated on load.
 
+### 3.1 Routines for every song (Step 5b)
+
+- **Generated** (`parapara.generator`): phrases are built from idiomatic
+  *units* (knock right → left; chops right-right-left-left; mirrored sweep
+  pairs; wrist rolls; a flick + clap, sometimes an opposite pair, to end
+  every phrase), drawn with difficulty weights and kept only if they pass the
+  phrase rules. A routine repeats a few distinct phrases through the song
+  (easy: 2, in pairs AABB; normal: 3, AABBCC; hard: 4, cycled ABCD), as many
+  32-count phrases as fit after the song's `routine_start_beat` (8 counts
+  kept free at the end). Deterministic per song and difficulty.
+- **Stored next to the song**: `<song folder>/routines/{easy,normal,hard}.json`,
+  written automatically by `parapara-fetch-demo-songs` and
+  `parapara-import-song` (or `parapara-routines generate`). Hand-written
+  examples in `assets/routines/` are found by `song_id`.
+- **Players' own routines** (difficulty `custom`): the same JSON format
+  (phrases = lists of move names, `parapara-routines blocks`); start from
+  `parapara-routines template --song ID -o file.json`, edit, `check`, then
+  `add` (validated: phrase rules, known moves with "did you mean" hints, fits
+  the song).
+
 ---
 
 ## 4. Architecture
@@ -304,12 +324,23 @@ demo tracks are fetched locally and never committed.
      automatic beat map (unverified) and any metadata given;
   3. the user verifies the beat map by ear (`parapara-beatcheck`).
 - **Demo candidates** (`assets/songs/catalog.json`): four plain **CC BY 4.0**
-  tracks from Free Music Archive that pass the check (2026-10-18):
-  "broke" (141 BPM), "80s Motivational Chiptune" (155 BPM, weak kick warning)
-  and "Onion March" (140 BPM) by Shane Ivers, and "Lets Go To A Rave" by
-  Defrini (140 BPM), with attribution text for the credits. Findings: FMA has
-  no CC BY Eurobeat / Eurodance / Hi-NRG; most CC BY dance tracks there are
-  115–130 BPM, and several near 150 BPM failed on tempo steadiness. Jamendo was
+  tracks from Free Music Archive that pass the check (2026-10-18): "Goa
+  Trolls" by Soulbringer (145 BPM, very clear kick), "80s Motivational
+  Chiptune" (155 BPM, weak kick warning) and "Onion March" (140 BPM) by Shane
+  Ivers, and "Lets Go To A Rave" by Defrini (140 BPM; listened to and approved by
+  the project owner, hosts the demo routine), with attribution text for the credits. "broke" (Shane
+  Ivers) was dropped: it passed (clarity 1.61) but its beat was hard to dance
+  to, so clarity below 1.8 now warns. Findings: FMA has no CC BY Eurobeat /
+  Eurodance / Hi-NRG; most CC BY dance tracks there are 115–130 BPM, several
+  near 150 BPM failed on tempo steadiness, and **no vocal dance-pop track
+  passed** (110–128 BPM or unsteady).
+- **Open (future): a demo song with vocals.** None of the current demo
+  tracks has vocals ("Lets Go To A Rave" is instrumental, confirmed by
+  listening 2026-10-18). Options: Jamendo (`parapara-find-songs`
+  with a client id), an AI-generated vocal Eurobeat track (check the
+  generator's terms), or speeding up a steady CC BY vocal track (adaptations
+  are allowed under CC BY with a note of the change), e.g. "The Road Ahead" by
+  Andrey Petrov (127 BPM, clarity 7.6) to ~150 BPM. Jamendo was
   not searched: its API needs a developer client id;
   `JAMENDO_CLIENT_ID=... parapara-find-songs` searches it (dance tags, high
   speed, plain CC BY, downloadable) and runs the suitability check.
@@ -375,8 +406,9 @@ Each step ends with working, tested code and a CHANGELOG entry.
 | **4. Scoring engine** | Keyframe matching, timing grades, holds, claps, flow, posture, combo | `parapara.scoring`, `parapara-score` on recordings |
 | **4b. Real-dancer test run** | Record a real dancer with the debug view; check tracking keeps up, left/right labels, and refine the draft block poses against the recordings | Recorded fixtures + revised `library.py` |
 | **5. Music library & beat maps** | Song format, auto beat map, by-ear check app; song import with suitability check; CC BY demo catalog; generated track for machine tests | `catalog.json`, `parapara-fetch-demo-songs`, `parapara-import-song`, `parapara-beatmap`, `parapara-beatcheck` |
+| **5b. Routines for every song** (Step 7 brought forward) | Choreography-unit generator with easy/normal/hard; routines stored next to their song; players' own routines (template, check, add) | `parapara-routines`, routines generated on fetch/import |
 | **6. Game loop** | pygame-ce screens, audio clock, calibration, move cues, HUD, results; stick-figure demo | First playable song |
-| **7. Routine generator** | Grammar-based generator, Easy / Normal / Hard | 3 routines per song |
+| **7. Routine generator** | Done early as 5b; later: tune difficulty with play data | – |
 | **8. Avatar demo** | VRM + Blender procedural animation, rendered demo videos | Demo video per routine |
 | **9. Polish** | Menus, high scores, settings, packaging | Distributable app |
 
@@ -464,5 +496,13 @@ Resolved:
   tracking**; claps by sound (§5.1).
 
 Future (out of scope for the current roadmap):
+- **Record a routine with the camera**: an interface where players dance
+  their own routine to a song and the game turns the recording into a
+  routine file (custom difficulty): capture with the existing pipeline
+  (`parapara-record`-style guided UI, beat-synced), match each count's pose to
+  the nearest building block / keyframes (scoring's pose matching in
+  reverse), snap to the phrase rules, then let the player review and edit
+  before `parapara-routines add`.
+- **A demo song with vocals** (see §6).
 - Leaderboard (local first, online later).
 - Multiplayer (several dancers in frame, or networked).
