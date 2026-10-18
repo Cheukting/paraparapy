@@ -1,8 +1,19 @@
 """Draft definitions of the five building blocks (PLAN.md §1.2).
 
-⚠ DRAFTS. Poses are written from textual descriptions, not motion capture,
-and will be refined from recordings of a real dancer. They are deliberately
-lenient: an arm that is not part of the move is left unscored (``None``).
+⚠ DRAFTS. Poses were first written from textual descriptions, then
+**calibrated against a recording of a real dancer** (session
+``recordings/20261018-144829``, analysed with ``uv run parapara-analyze``).
+To recalibrate, record new clips (``uv run parapara-record``), run the
+analysis, and move each target towards the reported "seen" direction. The
+drafts are deliberately lenient: an arm that is not part of the move is left
+unscored (``None``).
+
+Calibration notes (2026-10-18 recording):
+
+- Depth (``z``) is MediaPipe's least reliable axis and reads biased towards
+  the camera, so the targets below follow the data mostly in ``x``/``y`` and
+  only partly in ``z``.
+- One take by one dancer; treat values as a starting point.
 
 Reference
 ---------
@@ -24,21 +35,29 @@ Conventions
 
 Interpretation choices (reviewed with the project owner 2026-10-18):
 
-- **Knock**: the upper arm points out to the side and slightly forward (the
-  page only says "horizontal from the shoulder"). Confirmed.
-- **Chop** beat 2: the forearm folds across **in front of the chest** with the
-  flat hand continuing the forearm line (not pointing down), leading into the
-  salute shape.
+- **Knock**: upper arm out to the side and forward (~45°, from the recording);
+  the forearm points up and tilts forward towards the "door".
+- **Chop** beat 1 keeps the reference's 45° up-and-out target, with a wider
+  tolerance (the dancer reached ~20-25°). Beat 2: the elbow stays at shoulder
+  height, out and forward, and the forearm folds across **in front of the
+  chest** with the flat hand continuing the forearm line (salute shape).
 - **Flick + Clap**: the right arm travels left → right; the mirrored block
   travels right → left. **The clap is scored only as a clap** (heard by the
   microphone, confirmed by the wrists meeting), wherever it happens -- arm
-  positions and side are ignored. Hand direction
-  during the backhanded flick is approximated as up and towards the direction
-  of travel.
+  positions and side are ignored. During the flicks the forearm stays
+  roughly **level across the chest** and the elbow carries it from side to
+  side (from the recording); the backhanded flick itself is a wrist rotation,
+  approximated as the hand pointing up and towards the direction of travel.
 - **Hand shapes** (fist for Knocks, open for Chops) are recorded for the demo
   animation only; they are not scored because hands are not tracked.
-- **Sweep**: both arms parallel; the upper arm follows the forearm (see
-  :func:`_sweep_upper`). One-armed sweeps are not drafted yet.
+- **Sweep**: forearms parallel, ±45° arc. The arm on the side the forearms
+  point to extends that way; the arm crossing the body keeps its upper arm
+  pointing forward (see :func:`_sweep_upper`). One-armed sweeps are not
+  drafted yet.
+- **Wrist Roll**: hands in front of the chest, elbows forward. The rolling
+  itself is a wrist rotation that the body landmarks cannot see, so keyframes
+  only hold the position (one per count); Step 4 will add a "keep moving"
+  check.
 """
 
 from __future__ import annotations
@@ -56,20 +75,28 @@ from parapara.routine.model import ArmPose, Block, BlockKind, HandShape, Keyfram
 
 # Forearm end points of the sweeps, at roughly arm's length in front.
 _HIGH, _LOW = (0, 1, 0.4), (0, -1, 0.4)
-_SIDE_LEFT, _SIDE_RIGHT = (-0.87, 0, 0.5), (0.87, 0, 0.5)  # 60° either side
+_SIDE_LEFT, _SIDE_RIGHT = (-0.71, 0, 0.71), (0.71, 0, 0.71)  # 45° either side
 _UPPER_LEFT, _UPPER_RIGHT = (-0.7, 0.7, 0.4), (0.7, 0.7, 0.4)
 _LOWER_LEFT, _LOWER_RIGHT = (-0.7, -0.7, 0.4), (0.7, -0.7, 0.4)
 
 
-def _sweep_upper(fore: Vec3) -> Vec3:
-    """Plausible upper-arm direction for a forearm direction during a sweep.
+def _sweep_upper(fore: Vec3, side: float) -> Vec3:
+    """Upper-arm direction for one arm during a sweep.
 
-    The upper arm follows the forearm but stays lower and further forward
-    (elbows soft and in front of the body), which keeps it anatomically
-    reachable for both arms even when they point across the body.
+    Args:
+        fore: the (shared, parallel) forearm direction.
+        side: ``+1`` for the right arm, ``-1`` for the left.
+
+    Fitted to the recording: when the forearms point to the arm's own side
+    the upper arm extends that way too; the arm crossing the body keeps its
+    upper arm pointing forward; in vertical sweeps both elbows are slightly
+    out. The formula is odd in ``x`` under ``side -> -side``, so mirrored
+    sweeps stay exact mirror images.
     """
     f = normalize(fore)
-    return normalize((0.7 * f[0], 0.7 * f[1] - 0.3, 0.7 * f[2] + 0.3))
+    own_side = max(0.0, f[0] * side)  # how far the forearm points to this arm's side
+    x = side * (0.3 * (1 - abs(f[0])) + 0.8 * own_side)
+    return normalize((x, 0.7 * f[1] - 0.15, 0.8 - 0.5 * own_side))
 
 
 def _sweep(block_id: str, duration: int, start: Vec3, end: Vec3, label: str) -> Block:
@@ -78,14 +105,17 @@ def _sweep(block_id: str, duration: int, start: Vec3, end: Vec3, label: str) -> 
     keyframes = []
     for i in range(duration):
         fore = slerp(start, end, i / (duration - 1))
-        pose = ArmPose(upper=_sweep_upper(fore), fore=fore)
-        keyframes.append(Keyframe(beat=float(i), right=pose, left=pose))
+        keyframes.append(Keyframe(
+            beat=float(i),
+            right=ArmPose(upper=_sweep_upper(fore, +1), fore=fore),
+            left=ArmPose(upper=_sweep_upper(fore, -1), fore=fore),
+        ))  # fmt: skip
     return Block(
         id=block_id,
         kind=BlockKind.SWEEP,
         duration=duration,
         keyframes=tuple(keyframes),
-        description=f"Both arms sweep parallel {label} over {duration} counts; soft wrists.",
+        description=f"Both forearms sweep parallel {label} over {duration} counts; soft wrists.",
     )
 
 
@@ -97,7 +127,9 @@ def _sweep(block_id: str, duration: int, start: Vec3, end: Vec3, label: str) -> 
 #   and mirrored": right hand on 1–2, left hand on 3–4.
 # ---------------------------------------------------------------------------
 
-_KNOCK = ArmPose(upper=(1, 0, 0.5), fore=(0, 1, 0.1), hand_shape=HandShape.FIST)
+# From the recording: upper arm out and ~45° forward, forearm up and tilted
+# forward towards the "door".
+_KNOCK = ArmPose(upper=(0.7, 0.1, 0.7), fore=(-0.15, 0.75, 0.65), hand_shape=HandShape.FIST)
 
 KNOCK_RIGHT = Block(
     id="knock_right",
@@ -120,13 +152,16 @@ KNOCK_RIGHT = Block(
 # ---------------------------------------------------------------------------
 
 _CHOP_OUT = ArmPose(upper=(1, 1, 0), fore=(1, 1, 0), hand_shape=HandShape.OPEN)
-# Salute fold: elbow out and in front, forearm roughly horizontal across the
-# front of the chest, flat hand continuing the forearm line (not drooping).
+# The 45° target is kept, but dancers often reach lower (~20-25° in the
+# recording), so this keyframe is judged more leniently than other sharp ones.
+CHOP_OUT_TOLERANCE_DEG = 40.0
+# Salute fold (from the recording): elbow at shoulder height, out and forward;
+# forearm across the front of the chest, flat hand continuing its line.
 _CHOP_IN = ArmPose(
-    upper=(0.5, -0.6, 0.6),
-    fore=(-1, 0.1, 0.2),
+    upper=(0.7, 0.05, 0.7),
+    fore=(-0.65, 0.25, 0.7),
     hand_shape=HandShape.OPEN,
-    hand=(-1, 0.1, 0.2),
+    hand=(-0.65, 0.25, 0.7),
 )
 
 CHOP_RIGHT = Block(
@@ -134,7 +169,7 @@ CHOP_RIGHT = Block(
     kind=BlockKind.CHOP,
     duration=2,
     keyframes=(
-        Keyframe(beat=0, right=_CHOP_OUT),
+        Keyframe(beat=0, right=_CHOP_OUT, tolerance_deg=CHOP_OUT_TOLERANCE_DEG),
         Keyframe(beat=1, right=_CHOP_IN),
     ),
     description="Right arm reaches 45° up and out (count 1), then folds in front of "
@@ -142,26 +177,20 @@ CHOP_RIGHT = Block(
 )
 
 # ---------------------------------------------------------------------------
-# Wrist Roll (flowing, 2 or 4 counts) -- NOT in the reference page; unverified.
+# Wrist Roll (flowing, 2 or 4 counts) -- NOT in the reference page.
 #   Hands close to the chest at shoulder height, wrists rolling over each
-#   other: forearms horizontal pointing inwards, hands alternate over/under
-#   every half count.
+#   other. From the recording: elbows forward, forearms level and pointing
+#   inwards. The over/under rolling is invisible to body landmarks, so the
+#   keyframes hold this position once per count.
 # ---------------------------------------------------------------------------
 
-
-def _wrist_roll_pose(right_over: bool) -> dict[str, ArmPose]:
-    tilt = 0.35  # forearm tilt up (over) or down (under)
-    over = ArmPose(upper=(0.4, -0.7, 0.5), fore=(-1, tilt, 0.3))
-    under = ArmPose(upper=(0.4, -0.7, 0.5), fore=(-1, -tilt, 0.3))
-    right = over if right_over else under
-    left = (under if right_over else over).mirrored()
-    return {"right": right, "left": left}
+_WRIST_ROLL = ArmPose(upper=(0.43, -0.32, 0.85), fore=(-0.8, 0.08, 0.6))
 
 
 def _wrist_roll(block_id: str, duration: int) -> Block:
     keyframes = tuple(
-        Keyframe(beat=i * 0.5, **_wrist_roll_pose(right_over=i % 2 == 0))
-        for i in range(duration * 2)  # every half count
+        Keyframe(beat=float(i), right=_WRIST_ROLL, left=_WRIST_ROLL.mirrored())
+        for i in range(duration)
     )
     return Block(
         id=block_id,
@@ -169,7 +198,7 @@ def _wrist_roll(block_id: str, duration: int) -> Block:
         duration=duration,
         keyframes=keyframes,
         description=f"Hands at the chest, wrists rolling over each other for "
-        f"{duration} counts. (Unverified draft.)",
+        f"{duration} counts.",
     )
 
 
@@ -184,9 +213,11 @@ def _wrist_roll(block_id: str, duration: int) -> Block:
 
 _TRAVEL_RIGHT = (0.7, 0.7, 0)  # backhanded flick: hand up and towards travel
 
-_FLICK_CROSSED = ArmPose(upper=(-0.4, -0.1, 1), fore=(-1, 0.4, 0.4), hand=_TRAVEL_RIGHT)
-_FLICK_FRONT = ArmPose(upper=(0.3, -0.2, 1), fore=(-0.2, 0.7, 0.7), hand=_TRAVEL_RIGHT)
-_FLICK_SIDE = ArmPose(upper=(1, -0.2, 0.4), fore=(0.2, 1, 0.3), hand=_TRAVEL_RIGHT)
+# From the recording: the forearm stays roughly level across the chest while
+# the elbow carries the hand from the left (crossed) to the right side.
+_FLICK_CROSSED = ArmPose(upper=(0.0, -0.55, 0.85), fore=(-0.6, 0.25, 0.75), hand=_TRAVEL_RIGHT)
+_FLICK_FRONT = ArmPose(upper=(0.23, -0.45, 0.86), fore=(-0.63, -0.1, 0.76), hand=_TRAVEL_RIGHT)
+_FLICK_SIDE = ArmPose(upper=(0.7, -0.55, 0.45), fore=(-0.65, -0.15, 0.72), hand=_TRAVEL_RIGHT)
 
 FLICK_CLAP_TO_RIGHT = Block(
     id="flick_clap_to_right",

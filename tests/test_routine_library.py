@@ -49,10 +49,20 @@ def _fores(block_id: str) -> list[tuple[float, float, float]]:
     return [kf.right.fore for kf in L[block_id].keyframes]
 
 
-def test_sweep_arms_are_parallel() -> None:
+def test_sweep_forearms_are_parallel() -> None:
     for block in L.values():
         if block.kind is BlockKind.SWEEP:
-            assert all(kf.right == kf.left for kf in block.keyframes), block.id
+            assert all(kf.right.fore == kf.left.fore for kf in block.keyframes), block.id
+
+
+def test_sweep_crossing_arm_keeps_upper_arm_forward() -> None:
+    """From the recording: with both forearms pointing left, the left arm
+    extends to the left while the right arm crosses the body with its upper
+    arm pointing forward."""
+    first = L["sweep_to_right_4"].keyframes[0]  # forearms point to the left
+    assert first.left.upper[0] < -0.4  # leading arm extends sideways
+    crossing = first.right.upper
+    assert abs(crossing[0]) < 0.2 and crossing[2] > 0.9  # crossing arm: forward
 
 
 @pytest.mark.parametrize(
@@ -79,33 +89,38 @@ def test_diagonal_sweep_goes_upper_left_to_lower_right() -> None:
 # --- Knocks ------------------------------------------------------------------
 
 
-def test_knock_is_same_hand_twice_with_fist_at_right_angle() -> None:
-    """Reference: same hand on beats 1 & 2, fist, upper arm horizontal,
-    forearm up from the elbow."""
+def test_knock_is_same_hand_twice_with_fist_and_bent_elbow() -> None:
+    """Reference: same hand on beats 1 & 2, fist, upper arm level from the
+    shoulder, forearm up. Recording: upper arm ~45° forward, forearm tilted
+    forward towards the "door"."""
     first, second = L["knock_right"].keyframes
     assert first.right == second.right
     assert first.left is None and second.left is None
     arm = first.right
     assert arm.hand_shape is HandShape.FIST
-    assert arm.upper[1] == pytest.approx(0)  # horizontal upper arm
-    assert angle_between_deg(arm.fore, UP) < 10  # forearm up
-    assert angle_between_deg(arm.upper, arm.fore) == pytest.approx(90, abs=10)
+    assert abs(arm.upper[1]) < 0.2  # roughly level upper arm
+    assert arm.upper[0] > 0.5 and arm.upper[2] > 0.5  # out and forward
+    assert angle_between_deg(arm.fore, UP) < 50 and arm.fore[2] > 0  # up, tilted forward
+    assert 55 < angle_between_deg(arm.upper, arm.fore) < 100  # clearly bent elbow
 
 
 # --- Chops -------------------------------------------------------------------
 
 
 def test_chop_reaches_45_degrees_up_and_out_then_salutes() -> None:
-    out, salute = L["chop_right"].keyframes
+    chop = L["chop_right"]
+    out, salute = chop.keyframes
     assert angle_between_deg(out.right.fore, RIGHT) == pytest.approx(45)
     assert angle_between_deg(out.right.fore, UP) == pytest.approx(45)
+    # More allowance than other sharp keyframes: dancers often reach lower.
+    assert chop.tolerance_for(out) == 40 > chop.tolerance_for(salute)
     assert out.left is None and salute.left is None  # one-armed move
     assert out.right.hand_shape is HandShape.OPEN
-    # Salute: forearm across the front of the chest, roughly level...
+    # Salute: elbow at shoulder height, forearm across the front of the chest...
     arm = salute.right
-    assert arm.fore[0] < 0  # pointing inwards, across the body
-    assert arm.upper[2] > 0 and arm.fore[2] > 0  # in front of the chest
-    assert abs(arm.fore[1]) < 0.2
+    assert abs(arm.upper[1]) < 0.2 and arm.upper[2] > 0  # level elbow, in front
+    assert arm.fore[0] < 0 and arm.fore[2] > 0  # inwards, in front of the chest
+    assert abs(arm.fore[1]) < 0.35
     # ...with the flat hand continuing the forearm, not pointing down.
     assert arm.hand is not None and arm.hand[1] > -0.2
     assert angle_between_deg(arm.hand, arm.fore) < 15
@@ -120,11 +135,17 @@ def test_flick_clap_travels_across_the_body_then_claps() -> None:
     assert [kf.clap for kf in kfs] == [False, False, False, True]
     # One-armed flicks: the left arm is never scored during the flicks.
     assert all(kf.left is None for kf in kfs[:3])
-    # Beat 1 crossed over the body, beat 3 on the opposite (right) side.
-    assert kfs[0].right.fore[0] < 0 and kfs[0].right.upper[0] < 0
-    assert kfs[2].right.upper[0] > 0
-    # Every flick has a hand direction; flicks are just above shoulder height.
-    assert all(kf.right.hand is not None and kf.right.fore[1] > 0 for kf in kfs[:3])
+
+    def wrist_x(arm) -> float:  # in shoulder widths, segment ratios ~0.62
+        return 0.5 + 0.62 * arm.upper[0] + 0.62 * arm.fore[0]
+
+    # The hand travels from crossed (left of the right shoulder) to the right.
+    xs = [wrist_x(kf.right) for kf in kfs[:3]]
+    assert xs == sorted(xs) and xs[0] < 0.25 < xs[-1]
+    # From the recording: forearm roughly level, across the chest, in front.
+    for kf in kfs[:3]:
+        assert abs(kf.right.fore[1]) < 0.3 and kf.right.fore[0] < 0 < kf.right.fore[2]
+        assert kf.right.hand is not None  # the flick direction
 
 
 def test_clap_is_scored_only_as_a_clap() -> None:
@@ -137,11 +158,17 @@ def test_clap_is_scored_only_as_a_clap() -> None:
 # --- Wrist roll (unverified draft) ---------------------------------------------
 
 
-def test_wrist_roll_alternates_every_half_count() -> None:
+def test_wrist_roll_holds_position_every_count() -> None:
+    """The rolling is a wrist rotation the body landmarks cannot see, so the
+    keyframes hold one position per count (Step 4 adds a "keep moving" check)."""
     roll = L["wrist_roll_4"]
-    assert [kf.beat for kf in roll.keyframes] == [i / 2 for i in range(8)]
-    over = [kf.right.fore[1] > kf.left.fore[1] for kf in roll.keyframes]
-    assert over == [True, False] * 4  # right hand over, under, over, ...
+    assert [kf.beat for kf in roll.keyframes] == [0, 1, 2, 3]
+    first = roll.keyframes[0]
+    assert all(kf.right == first.right and kf.left == first.left for kf in roll.keyframes)
+    assert first.left == first.right.mirrored()
+    # Forearms level and pointing inwards, elbows in front of the body.
+    assert first.right.fore[0] < -0.6 and abs(first.right.fore[1]) < 0.2
+    assert first.right.upper[2] > 0.6
 
 
 # --- Anatomical sanity -------------------------------------------------------

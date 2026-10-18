@@ -157,7 +157,7 @@ BENCH_SCRIPT = textwrap.dedent(
     """
     import sys
     from parapara.game import capture_bench
-    capture_bench.main(["--seconds", "0.4", "--warmup", "0", "--pause", "0.1",
+    capture_bench.run(["--seconds", "0.4", "--warmup", "0", "--pause", "0.1",
                         "--width", "64", "--height", "48", "--configs", "full,lite",
                         "--log-dir", sys.argv[1]], worker=sys.argv[2])
     """

@@ -1,0 +1,77 @@
+"""Synthetic MediaPipe world landmarks built from body-frame arm poses.
+
+Test helper: the inverse of ``parapara.pose.body_frame``. It places a
+skeleton in MediaPipe's world axes (+x = dancer's left, +y = down, +z = away
+from the camera, origin at the hip midpoint; measured 2026-10-18) with arm
+segments pointing along given body-frame directions, optionally with the
+torso rotated (leaning / turned), so tests can check that analysis recovers
+exactly what was put in.
+"""
+
+import numpy as np
+
+from parapara.pose.landmarks import NUM_POSE_LANDMARKS
+from parapara.pose.landmarks import PoseLandmark as P
+from parapara.pose.recording import Recording
+
+SHOULDER_HALF = 0.175  # metres
+TORSO = 0.47
+UPPER, FORE, HAND = 0.22, 0.22, 0.08
+
+# Body-frame axes (right, up, forward) in MediaPipe coordinates, unrotated.
+BODY_TO_MP = np.array([[-1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]])  # rows: right, up, forward
+
+
+def rotation(lean_deg: float = 0.0, turn_deg: float = 0.0) -> np.ndarray:
+    """Rotation of the torso in MediaPipe coordinates: lean towards the
+    camera (about x), then turn (about the vertical y axis)."""
+    a, b = np.radians(lean_deg), np.radians(turn_deg)
+    lean = np.array([[1, 0, 0], [0, np.cos(a), -np.sin(a)], [0, np.sin(a), np.cos(a)]])
+    turn = np.array([[np.cos(b), 0, np.sin(b)], [0, 1, 0], [-np.sin(b), 0, np.cos(b)]])
+    return turn @ lean
+
+
+def world_pose(right=None, left=None, lean_deg=0.0, turn_deg=0.0, hips_visible=True) -> np.ndarray:
+    """One (33, 5) MediaPipe world pose. ``right``/``left`` are ArmPose-like
+    objects (``upper``, ``fore``, optional ``hand``) or ``None`` (arm down)."""
+    rot = rotation(lean_deg, turn_deg)
+    axes = BODY_TO_MP @ rot.T  # rows: body right/up/forward in MediaPipe coords
+
+    def mp(v) -> np.ndarray:  # body-frame direction -> MediaPipe vector
+        return np.asarray(v, dtype=np.float64) @ axes
+
+    pose = np.zeros((NUM_POSE_LANDMARKS, 5))
+    pose[:, 3:] = 1.0
+    up = mp((0, 1, 0)) * TORSO
+    for side, sign, (s, e, w, ix, pk, h) in (
+        ("right", 1, (P.RIGHT_SHOULDER, P.RIGHT_ELBOW, P.RIGHT_WRIST, P.RIGHT_INDEX, P.RIGHT_PINKY, P.RIGHT_HIP)),
+        ("left", -1, (P.LEFT_SHOULDER, P.LEFT_ELBOW, P.LEFT_WRIST, P.LEFT_INDEX, P.LEFT_PINKY, P.LEFT_HIP)),
+    ):  # fmt: skip
+        arm = right if side == "right" else left
+        upper = getattr(arm, "upper", (0, -1, 0))
+        fore = getattr(arm, "fore", (0, -1, 0))
+        hand = getattr(arm, "hand", None) or fore
+        unit = lambda v: np.asarray(v, float) / np.linalg.norm(v)  # noqa: E731
+        pose[h, :3] = mp((sign * 0.11, 0, 0))
+        pose[s, :3] = up + mp((sign * SHOULDER_HALF, 0, 0))
+        pose[e, :3] = pose[s, :3] + mp(unit(upper)) * UPPER
+        pose[w, :3] = pose[e, :3] + mp(unit(fore)) * FORE
+        pose[ix, :3] = pose[pk, :3] = pose[w, :3] + mp(unit(hand)) * HAND
+        if not hips_visible:
+            pose[h, 3] = 0.1
+    return pose.astype(np.float32)
+
+
+def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict) -> Recording:
+    n = len(poses)
+    arr = np.stack(poses).astype(np.float32)
+    return Recording(
+        frame_index=np.arange(n, dtype=np.int64),
+        captured_ns=np.asarray(times_ns, dtype=np.int64),
+        processed_ns=np.asarray(times_ns, dtype=np.int64) + 20_000_000,
+        pose_ms=np.full(n, 20.0, np.float32),
+        has_pose=np.ones(n, bool),
+        pose_image=arr.copy(),
+        pose_world=arr,
+        metadata={"frame_size": [640, 480], **metadata},
+    )

@@ -6,6 +6,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `parapara.pose.body_frame`: MediaPipe world landmarks → per-sample body
+  frame (right / up / forward rebuilt from the torso every sample, with a
+  vertical fallback when the hips are hidden) and arm segment directions
+  (upper arm, forearm, hand) with validity masks.
+- `uv run parapara-analyze [session]` (`parapara.diagnostics.pose_analysis`):
+  compares recorded clips with the block library, reporting the best lag
+  (searched within one block repeat; "not measurable" when the pose barely
+  changes), per-keyframe danced vs. target directions in 3-D and in the
+  front plane, and calibration values from static clips. Writes
+  `<session>/analysis.json`. This is the tool for recalibrating the poses.
+- Recorder look-ahead: the guide shows the next pose one count ahead
+  (`--lookahead`), labelled "next: hit on count N"; saved in clip metadata.
+- Tests: `test_body_frame_and_analysis.py` with synthetic skeletons
+  (`tests/pose_synth.py`), plus a check that console entry points return
+  `None`.
+
+### Fixed
+- Console entry points `parapara-capture-bench`, `parapara-record`,
+  `parapara-analyze` and the headless benchmark returned a value from
+  `main()`, which `sys.exit(main())` printed and turned into exit status 1.
+  `main()` now returns `None`; `run()` returns the result.
+- `geometry.py` wrongly described the body frame as right-handed; it is
+  physically left-handed (forward = up × right).
 - **Step 3a – guided recorder** (`uv run parapara-record`): live camera view
   plus a guide panel (instructions, mirrored stick figure of the target pose,
   countdown / count-in / beat counter, progress bar) that walks the player
@@ -116,6 +139,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   view now draws the pose model's own hand points (index/pinky/thumb).
 
 ### Changed
+- **Block library calibrated against the first real-dancer recording**
+  (`recordings/20261018-144829`): chop salute with the elbow at shoulder
+  height; chop out keeps 45° with a 40° tolerance; knock upper arm and forearm
+  tilted forward; flick forearm level across the chest with the elbow
+  carrying it; sweeps ±45° with the crossing arm's upper arm pointing forward;
+  wrist roll holds one position per count (rolling is invisible to body
+  landmarks). Mean angle error per block fell from 30-50° to 9-29°.
 - Claps will be detected **by sound**, confirmed by the wrists meeting
   (`PLAN.md` §5.1). `HandShape` is now descriptive only (demo animation), and
   `ArmPose.hand` is scored from the pose model's hand points.

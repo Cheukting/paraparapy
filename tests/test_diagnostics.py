@@ -78,7 +78,7 @@ def test_write_log(tmp_path) -> None:
 
 
 def test_bench_runs_configs_and_logs(tmp_path, capsys) -> None:
-    path = bench.main(
+    path = bench.run(
         ["--seconds", "0.5", "--warmup", "0", "--pause", "0", "--width", "8", "--height", "6",
          "--configs", "full,lite", "--log-dir", str(tmp_path)],
         worker="fake_capture_worker:run",
@@ -94,7 +94,7 @@ def test_bench_runs_configs_and_logs(tmp_path, capsys) -> None:
 
 
 def test_bench_records_worker_failure(tmp_path) -> None:
-    path = bench.main(
+    path = bench.run(
         ["--seconds", "0.2", "--pause", "0", "--configs", "full", "--log-dir", str(tmp_path)],
         worker="fake_capture_worker:crash",
     )
@@ -105,4 +105,4 @@ def test_bench_records_worker_failure(tmp_path) -> None:
 
 def test_bench_rejects_unknown_config(tmp_path) -> None:
     with pytest.raises(SystemExit):
-        bench.main(["--configs", "turbo", "--log-dir", str(tmp_path)])
+        bench.run(["--configs", "turbo", "--log-dir", str(tmp_path)])

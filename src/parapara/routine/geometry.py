@@ -1,10 +1,17 @@
 """Tiny 3-D vector helpers for authoring and comparing keyframe directions.
 
-Body frame (PLAN.md §3) -- dancer's own anatomy, right-handed:
+Body frame (PLAN.md §3) -- dancer's own anatomy:
 
 - ``+x``: towards the dancer's **right** hand
 - ``+y``: up
 - ``+z``: forward, out of the dancer's chest (towards the camera)
+
+Handedness: physically this (right, up, forward) frame is **left-handed**
+(right × up points *backwards*), so when the frame is built from landmarks,
+forward must be computed as ``up × right``. Measured on 2026-10-18
+recordings, MediaPipe's world landmarks use the opposite direction on every
+axis: ``+x`` = dancer's left, ``+y`` = down, ``+z`` = away from the camera,
+which is a physically right-handed frame.
 
 Vectors are plain ``tuple[float, float, float]`` so that keyframes stay
 immutable, hashable and trivially JSON-serializable. Scoring code that needs

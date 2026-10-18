@@ -109,17 +109,28 @@ def test_block_timeline_count_in_beats_and_keyframes() -> None:
 
     out, salute = BLOCK_LIBRARY["chop_right"].keyframes
     p1, p2, p3 = tl.phase_at(2.1), tl.phase_at(2.6), tl.phase_at(3.1)
-    assert (p1.bar, p1.count, p1.guide) == (1, 1, out)  # count 1: arm out
-    assert (p2.count, p2.guide) == (2, salute)  # count 2: salute
-    assert (p3.count, p3.guide) == (3, out)  # block repeats
+    # The guide previews one count ahead: during count 1 it shows count 2's pose.
+    assert (p1.bar, p1.count, p1.guide, p1.guide_count) == (1, 1, salute, 2)
+    assert (p2.count, p2.guide, p2.guide_count) == (2, out, 3)  # block repeats
+    assert (p3.count, p3.guide) == (3, salute)
+    # During the count-in the first pose of the block is previewed.
+    assert (tl.phase_at(1.6).guide, tl.phase_at(1.6).guide_count) == (out, 1)
+
+
+def test_block_timeline_without_lookahead_shows_current_pose() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120, lookahead_counts=0)
+    out, salute = BLOCK_LIBRARY["chop_right"].keyframes
+    assert tl.phase_at(2.1).guide == out and tl.phase_at(2.6).guide == salute
+    assert tl.phase_at(2.1).guide_count == 1
     p_bar2 = tl.phase_at(6.1)
     assert (p_bar2.bar, p_bar2.count) == (2, 1)
 
 
-def test_block_timeline_half_beat_keyframes() -> None:
-    tl = ClipTimeline(CLIP_IDS["block_wrist_roll_4"], bpm=120)
+def test_block_timeline_holds_latest_keyframe_between_counts() -> None:
+    tl = ClipTimeline(CLIP_IDS["block_wrist_roll_4"], bpm=120, lookahead_counts=0)  # 0.5 s/count
     kfs = BLOCK_LIBRARY["wrist_roll_4"].keyframes
-    assert tl.phase_at(2.0 + 0.25).guide is kfs[1]  # 0.5 counts in
+    assert tl.phase_at(2.0 + 0.25).guide is kfs[0]  # 0.5 counts in: still count 1
+    assert tl.phase_at(2.0 + 0.55).guide is kfs[1]  # 1.1 counts in
 
 
 # --- guide figure ----------------------------------------------------------------
@@ -147,7 +158,7 @@ RECORD_SCRIPT = textwrap.dedent(
     """
     import sys
     from parapara.game import recorder
-    recorder.main(["--auto", "--out", sys.argv[1], "--bpm", "960", "--countdown", "0.2",
+    recorder.run(["--auto", "--out", sys.argv[1], "--bpm", "960", "--countdown", "0.2",
                    "--static-seconds", "0.4", "--width", "64", "--height", "48",
                    "--clips", "t_pose,block_knock_right"], worker="fake_capture_worker:stream")
     """
@@ -180,4 +191,5 @@ def test_recorder_records_and_saves_clips_headless(tmp_path) -> None:
     block = Recording.load(session / "block_knock_right.npz")
     assert block.metadata["block_id"] == "knock_right" and block.metadata["bpm"] == 960
     assert len(block.metadata["beat_times_ns"]) == 4 + 16  # count-in + 2 bars
+    assert block.metadata["lookahead_counts"] == 1.0
     assert len(block) > 0

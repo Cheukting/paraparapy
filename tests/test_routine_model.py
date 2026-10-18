@@ -116,7 +116,8 @@ def test_flick_clap_must_end_with_clap() -> None:
 def test_tolerance_defaults_depend_on_style() -> None:
     sweep, chop = L["sweep_to_right_4"], L["chop_right"]
     assert sweep.is_flowing and not chop.is_flowing
-    assert sweep.tolerance_for(sweep.keyframes[0]) > chop.tolerance_for(chop.keyframes[0])
+    # chop.keyframes[1] uses the default; keyframes[0] has its own override.
+    assert sweep.tolerance_for(sweep.keyframes[0]) > chop.tolerance_for(chop.keyframes[1])
     override = Keyframe(beat=0, right=POSE, tolerance_deg=10)
     assert chop.tolerance_for(override) == 10
 
@@ -207,7 +208,14 @@ def test_timeline_musical_positions() -> None:
 
 
 def test_timeline_off_beat_counts() -> None:
-    # wrist_roll_4 starts on bar 3 count 5 and has keyframes every half count.
-    rolls = [t for t in _routine(1).timeline() if t.block.kind is BlockKind.WRIST_ROLL]
+    # A block with keyframes every half count, in place of wrist_roll_4
+    # (bar 3, count 5): off-beat keyframes get fractional counts.
+    half = Block(id="half_roll", kind=BlockKind.WRIST_ROLL, duration=4,
+                 keyframes=tuple(Keyframe(beat=i / 2, right=POSE) for i in range(8)))  # fmt: skip
+    blocks = tuple(half if b.id == "wrist_roll_4" else b for b in _blocks(VALID_IDS))
+    routine = Routine(id="r", song_id="s", difficulty=Difficulty.NORMAL, phrases=(Phrase(blocks),))
+    rolls = [t for t in routine.timeline() if t.block is half]
     assert [t.count for t in rolls] == [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5]
     assert {t.bar for t in rolls} == {2}
+
+

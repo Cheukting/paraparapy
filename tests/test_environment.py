@@ -47,3 +47,25 @@ def test_pygame_is_community_edition() -> None:
         "import pygame; print(bool(getattr(pygame, 'IS_CE', False)))"
     )
     assert out == "True"
+
+
+def test_console_entry_points_return_none() -> None:
+    """Console scripts run ``sys.exit(main())``: a non-None return value is
+    printed and turns into exit status 1, so every entry point must return
+    ``None`` (regression: several returned their log/report path)."""
+    import ast
+    import tomllib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    scripts = tomllib.loads((root / "pyproject.toml").read_text())["project"]["scripts"]
+    for name, target in scripts.items():
+        module, func = target.split(":")
+        source = (root / "src" / Path(*module.split("."))).with_suffix(".py")
+        if not source.exists():
+            source = root / "src" / Path(*module.split(".")) / "__init__.py"
+        tree = ast.parse(source.read_text())
+        (fn,) = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == func]
+        returns = ast.unparse(fn.returns) if fn.returns else None
+        assert returns == "None", f"{name}: {target} is annotated to return {returns}"
+        assert all(r.value is None for r in ast.walk(fn) if isinstance(r, ast.Return)), name

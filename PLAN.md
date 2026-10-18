@@ -87,7 +87,7 @@ for the demo animation and **never scored** (hands are not tracked).
 Direction vectors ignore limb length, so targets are independent of the
 player's size and distance from the camera.
 
-**Body frame** (dancer's own anatomy, right-handed): origin at mid-shoulder,
+**Body frame** (dancer's own anatomy; physically left-handed, see `geometry.py`): origin at mid-shoulder,
 `+x` = towards the dancer's **right** hand, `+y` = up, `+z` = forward (out of
 the chest, towards the camera). "Right arm" always means the dancer's own
 right arm; mirroring (for the player copying an on-screen demo, and for
@@ -346,6 +346,22 @@ Open items (to resolve before the step named):
 - Distribution (9): check the MediaPipe model card licences, and tell
   players that the MediaPipe Tasks API sends usage metrics to Google
   (images are processed on-device).
+
+Findings from the first recording session (2026-10-18, `parapara-analyze`):
+- MediaPipe world axes: +x = dancer's left, +y = down, +z = away from the
+  camera (opposite to the body frame on every axis).
+- Depth is the weakest axis: wrist jitter 4–17 mm in x/y but 12–59 mm in z,
+  and directions read biased towards the camera. Scoring (Step 4) should
+  weight the front plane (x/y) more than depth.
+- The dancer trailed the beat by 200–700 ms because the guide showed poses
+  only *on* their count. The recorder now previews the next pose one count
+  ahead; **the game's move cues (Step 6) must also look ahead**.
+- Lag is only identifiable within one block repeat (a pose shifted by a whole
+  repeat looks identical), and not at all for moves that hold one pose.
+- Calibration values: shoulder width ~0.35 m, upper arm / forearm ≈ 0.6–0.7 ×
+  shoulder width, torso lean towards the camera 4–12° (camera angle).
+- Re-record the block clips with the look-ahead preview to get usable
+  timing data, then re-run `parapara-analyze` and recalibrate.
 
 Resolved:
 - Left/right (2026-10-18, human test): MediaPipe pose labels are the

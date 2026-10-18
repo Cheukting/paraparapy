@@ -44,3 +44,13 @@ uv run parapara-record                   # --bpm 100 for a slower metronome
 Walks you through calibration poses and one clip per building block, with a
 guide figure and a metronome. Clips are saved (landmarks only, no images) to
 `recordings/<date-time>/`.
+
+## Pose analysis / recalibration
+
+```sh
+uv run parapara-analyze                  # latest session in recordings/, or pass a path
+```
+
+Compares the recorded clips with the block library (danced vs. target arm
+directions, best lag, calibration values) and writes `analysis.json` into the
+session folder. Use it to recalibrate `src/parapara/routine/library.py`.

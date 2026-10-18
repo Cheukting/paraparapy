@@ -52,7 +52,7 @@ def _between_configs(
     return False, mirrored
 
 
-def main(
+def run(
     argv: list[str] | None = None,
     *,
     worker: str = DEFAULT_WORKER,
@@ -111,6 +111,13 @@ def main(
 
     pygame.quit()
     return finish(args, results)
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entry point. Returns ``None`` on purpose: console scripts call
+    ``sys.exit(main())``, which would print any returned value and exit with
+    status 1. Use :func:`run` to get the result programmatically."""
+    run(argv)
 
 
 if __name__ == "__main__":

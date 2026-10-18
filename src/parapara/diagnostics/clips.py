@@ -11,9 +11,14 @@ Clips
   MediaPipe's world axes (up and towards the camera), which the docs leave
   unspecified. Together with the T-pose (sideways) they cover all three axes.
 - **Block clips** (dance one building block to a metronome): a count-in, then
-  the block repeated for ``bars`` 8-count bars. The guide shows the target
-  keyframe of the current count, and the beat times are saved with the clip so
-  Step 4 can test timing against them.
+  the block repeated for ``bars`` 8-count bars. The beat times are saved with
+  the clip so Step 4 can test timing against them.
+
+Look-ahead: the first recording (2026-10-18) showed the dancer trailing the
+beat by 200-700 ms, because the guide only showed a pose *on* its count and
+the dancer had to see it before moving. The guide therefore shows the pose
+``lookahead_counts`` ahead (default one count), like the note highway of a
+rhythm game, so the dancer can be in position *on* the beat.
 
 All times in a :class:`ClipTimeline` are seconds relative to the moment the
 player starts the clip.
@@ -75,18 +80,18 @@ CLIPS: tuple[Clip, ...] = (
     _static("right_arm_forward", "Right arm forward", ("Point your RIGHT arm straight",
             "at the camera, at shoulder height.", "(It looks short from the front.)"),
             ArmPose(upper=FORWARD, fore=FORWARD), _ARM_DOWN),
-    _block("sweep_to_right_4", "Sweep to the right", "Both arms parallel, sweep from",
+    _block("sweep_to_right_4", "Sweep to the right", "Forearms parallel, sweep from",
            "your left to your right over 4 counts."),
-    _block("sweep_down_4", "Sweep down", "Both arms parallel, sweep from",
+    _block("sweep_down_4", "Sweep down", "Forearms parallel, sweep from",
            "high to low over 4 counts."),
     _block("knock_right", "Knock (right)", "Right fist knocks twice: upper arm",
            "level, forearm up. Like knocking on a door."),
     _block("chop_right", "Chop (right)", "Count 1: right arm 45° up and out.",
            "Count 2: fold in front of the chest, like a salute."),
     _block("wrist_roll_4", "Wrist roll", "Hands in front of the chest,",
-           "rolling over each other every half count."),
-    _block("flick_clap_to_right", "Flick + Clap", "Right hand flicks: crossed, front,",
-           "right side (counts 1-3), then CLAP (4)."),
+           "keep rolling them over each other."),
+    _block("flick_clap_to_right", "Flick + Clap", "Right forearm level across the chest,",
+           "flick crossed, front, right (1-3), then CLAP (4)."),
 )  # fmt: skip
 """The default recording script, in recording order."""
 
@@ -100,7 +105,9 @@ class Phase:
     Attributes:
         name: ``"countdown"``, ``"count_in"``, ``"recording"`` or ``"done"``.
         label: big text for the guide panel (e.g. ``"3"``, ``"5"``, ``"REC"``).
-        guide: target pose to draw, if any.
+        guide: target pose to draw, if any (for block clips: the *upcoming*
+            pose, ``lookahead_counts`` ahead).
+        guide_count: the count (1-8) on which ``guide`` should be hit, or 0.
         bar, count: musical position while recording a block clip (1-based).
         progress: fraction of the recording completed, ``0..1``.
     """
@@ -108,6 +115,7 @@ class Phase:
     name: Literal["countdown", "count_in", "recording", "done"]
     label: str = ""
     guide: Keyframe | None = None
+    guide_count: int = 0
     bar: int = 0
     count: int = 0
     progress: float = 0.0
@@ -123,6 +131,7 @@ class ClipTimeline:
         countdown_s: countdown before a static clip.
         static_seconds: how long a static pose is recorded.
         count_in_beats: metronome beats before a block clip's recording.
+        lookahead_counts: how far ahead the guide shows the target pose.
     """
 
     clip: Clip
@@ -130,6 +139,7 @@ class ClipTimeline:
     countdown_s: float = 3.0
     static_seconds: float = 4.0
     count_in_beats: int = 4
+    lookahead_counts: float = 1.0
 
     @property
     def beat_s(self) -> float:
@@ -170,15 +180,17 @@ class ClipTimeline:
                 return Phase("countdown", str(math.ceil(self.countdown_s - t)), self.clip.guide)
             beat = int(t / self.beat_s)
             label = str(self.count_in_beats - beat)  # 4, 3, 2, 1
-            first = self._keyframe_at(0.0)
-            return Phase("count_in", label, first)
+            return Phase("count_in", label, self._keyframe_at(0.0), guide_count=1)
         progress = (t - self.recording_start) / (self.recording_end - self.recording_start)
         if self.clip.kind == "static":
             return Phase("recording", "REC", self.clip.guide, progress=progress)
         position = (t - self.recording_start) / self.beat_s  # counts since recording start
         index = int(position)
         bar, count = index // COUNTS_PER_BAR + 1, index % COUNTS_PER_BAR + 1
-        return Phase("recording", str(count), self._keyframe_at(position), bar, count, progress)
+        ahead = position + self.lookahead_counts
+        guide_count = int(ahead) % COUNTS_PER_BAR + 1
+        return Phase("recording", str(count), self._keyframe_at(ahead), guide_count,
+                     bar, count, progress)  # fmt: skip
 
     def _keyframe_at(self, position: float) -> Keyframe | None:
         """Target keyframe at ``position`` counts into the repeated block: the

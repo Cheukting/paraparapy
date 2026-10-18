@@ -137,7 +137,7 @@ def finish(args: argparse.Namespace, results: dict[str, dict[str, Any]]) -> Path
     return path
 
 
-def main(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
+def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     """Headless benchmark (``python -m parapara.diagnostics.bench``).
 
     ``uv run parapara-capture-bench`` runs the windowed version in
@@ -157,6 +157,13 @@ def main(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path
         except BenchError as err:
             results[name] = {"config": dataclasses.asdict(config), "error": str(err)}
     return finish(args, results)
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entry point. Returns ``None`` on purpose: console scripts call
+    ``sys.exit(main())``, which would print any returned value and exit with
+    status 1. Use :func:`run` to get the result programmatically."""
+    run(argv)
 
 
 if __name__ == "__main__":

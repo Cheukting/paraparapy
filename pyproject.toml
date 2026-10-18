@@ -18,6 +18,7 @@ parapara = "parapara:main"
 parapara-capture-debug = "parapara.game.debug_view:main"
 parapara-capture-bench = "parapara.game.capture_bench:main"
 parapara-record = "parapara.game.recorder:main"
+parapara-analyze = "parapara.diagnostics.pose_analysis:main"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]

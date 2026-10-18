@@ -6,7 +6,9 @@ debug window, plus a guide panel on the right showing:
 
 - the clip title and instructions,
 - a stick figure of the **target pose** (mirrored, like the camera view, so
-  the player copies it like a mirror; unscored arms are dimmed),
+  the player copies it like a mirror; unscored arms are dimmed). For moves it
+  shows the *upcoming* pose one count ahead (``--lookahead``), labelled with
+  the count to hit it on,
 - a big countdown / count-in / beat counter, and a progress bar.
 
 Block clips play a metronome (accented on count 1) so the moves are danced
@@ -144,6 +146,7 @@ class ClipRun:
                 "bars": clip.bars if clip.kind == "block" else None,
                 "bpm": bpm if clip.kind == "block" else None,
                 "count_in_beats": tl.count_in_beats if clip.kind == "block" else None,
+                "lookahead_counts": tl.lookahead_counts if clip.kind == "block" else None,
                 "beat_times_ns": beat_times,
                 "recording_window_ns": list(self.window_ns()),
                 "camera": camera,
@@ -202,7 +205,7 @@ def _draw_guide(surface: pygame.Surface, phase: Phase | None, guide, centre, sca
     arm(fig.left, LEFT_COLOUR)
     arm(fig.right, RIGHT_COLOUR)
     if keyframe.clap:
-        _text(surface, "CLAP!", (centre[0] - 40, centre[1] + round(1.5 * scale)), 40, ACCENT)
+        _text(surface, "CLAP!", (centre[0] + round(0.7 * scale), centre[1] + round(0.5 * scale)), 36, ACCENT)
 
 
 def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total: int,
@@ -227,6 +230,8 @@ def draw_panel(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
     big = ""
     if stage is Stage.RUNNING and phase is not None:
         big = phase.label
+        if clip.kind == "block" and phase.guide_count:
+            _text(surface, f"next: hit on count {phase.guide_count}", (16, h - 190), 24, ACCENT)
         if phase.name == "recording" and clip.kind == "block":
             _text(surface, f"bar {phase.bar}", (16, h - 128), 22, DIM)
     if big:
@@ -259,6 +264,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="recordings directory")
     parser.add_argument("--countdown", type=float, default=3.0, help="seconds before a static pose")
     parser.add_argument("--static-seconds", type=float, default=4.0, help="seconds per static pose")
+    parser.add_argument("--lookahead", type=float, default=1.0,
+                        help="counts ahead the guide shows the next pose (0 = no preview)")  # fmt: skip
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
@@ -273,7 +280,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     return args
 
 
-def main(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
+def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     """Run the guided recorder; returns the session directory.
 
     ``worker`` and the hidden ``--auto`` flag (start and keep every clip
@@ -330,7 +337,8 @@ def main(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path
             if stage is Stage.READY and ready and (pygame.K_SPACE in keys or args.auto):
                 assert clip is not None
                 timeline = ClipTimeline(clip, bpm=args.bpm, countdown_s=args.countdown,
-                                        static_seconds=args.static_seconds)  # fmt: skip
+                                        static_seconds=args.static_seconds,
+                                        lookahead_counts=args.lookahead)  # fmt: skip
                 run = ClipRun(timeline, time.monotonic_ns())
                 stage = Stage.RUNNING
             elif stage is Stage.READY and pygame.K_s in keys:
@@ -392,6 +400,13 @@ def main(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path
     else:
         print("no clips kept; nothing saved")
     return session_dir
+
+
+def main(argv: list[str] | None = None) -> None:
+    """Console entry point. Returns ``None`` on purpose: console scripts call
+    ``sys.exit(main())``, which would print any returned value and exit with
+    status 1. Use :func:`run` to get the result programmatically."""
+    run(argv)
 
 
 if __name__ == "__main__":
