@@ -53,4 +53,10 @@ uv run parapara-analyze                  # latest session in recordings/, or pas
 
 Compares the recorded clips with the block library (danced vs. target arm
 directions, best lag, calibration values) and writes `analysis.json` into the
-session folder. Use it to recalibrate `src/parapara/routine/library.py`.
+session folder. Use it to recalibrate `src/parapara/routine/library.py`. If
+the session has neutral-pose and T-pose clips it also saves the player
+calibration (`calibration.json`).
+
+```sh
+uv run parapara-tune-filters             # re-tune the smoothing filters on a session
+```

@@ -389,6 +389,12 @@ Findings from the first recording session (2026-10-18, `parapara-analyze`):
   error). Step 3 will smooth the torso frame more slowly than the arms and
   apply per-player calibration offsets.
 
+- Step 3 results (2026-10-18): filtering makes features ~60% steadier
+  frame to frame (fewer flickering scores) but barely changes the *mean* fit
+  to the targets (19.8° → 19.6°), which is dominated by how moves are danced
+  and by depth bias. So Step 4 should rely on tolerances, front-plane
+  weighting and time windows rather than expect filtering to close the gap.
+
 Resolved:
 - Left/right (2026-10-18, human test): MediaPipe pose labels are the
   dancer's anatomical sides on an unmirrored webcam image (left = cyan in the

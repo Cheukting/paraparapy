@@ -6,6 +6,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Step 3 – pose features.**
+  - `parapara.pose.filters.OneEuroFilter`: vectorized One Euro filter
+    (Casiez et al., CHI 2012), with ns timestamps and per-element reset on
+    missing landmarks.
+  - `parapara.pose.calibration`: per-player calibration from the neutral pose
+    and T-pose: shoulder width, arm segment ratios, neutral torso "up" (camera
+    angle), neutral lean and head height. Validated, with the arm checks in
+    the front plane (depth bias made hanging forearms read ~40° forward) and
+    framing required. JSON save/load.
+  - `parapara.pose.features.FeatureExtractor`: streaming pipeline (filtered
+    landmarks → body frame → adaptive torso smoothing → arm directions,
+    wrist distance in shoulder widths, lean / side tilt / shoulder tilt / head
+    height, relative to the calibration).
+  - Filter settings tuned on `recordings/20261018-144829`: landmarks
+    `min_cutoff 0.5, beta 10` (forearm jitter at rest 1.19° → 0.47° per
+    frame, ~28 ms lag); torso `min_cutoff 0.5, beta 0.5` (a fixed slow torso
+    filter lagged sweep turns: 18° → 26–32° error).
+  - `uv run parapara-tune-filters [session]` repeats the tuning on new
+    recordings; `parapara-analyze` now also computes and saves
+    `calibration.json` and reports the full pipeline (`torso+filters`) in the
+    frame comparison.
+  - Tests: `test_filters.py`, `test_features_calibration.py`.
 - **Position (framing) check** (`parapara.pose.framing`): torso and hips in
   the picture, room to stretch the arms sideways and upwards (1.3 shoulder
   widths, measured in the T-pose), not too far, centred, facing the camera.

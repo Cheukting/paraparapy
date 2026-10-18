@@ -226,7 +226,7 @@ def test_analyze_session_cli_writes_report(tmp_path, capsys) -> None:
     saved = json.loads((session / "analysis.json").read_text())
     block = saved["blocks"]["block_knock_right"]
     assert block["block_id"] == "knock_right"
-    assert set(block["frame_comparison"]) == set(FRAME_METHODS)
+    assert set(block["frame_comparison"]) == {*FRAME_METHODS, "torso+filters"}
     assert block["torso_motion"]["yaw"] == {"mean": 0.0, "std": 0.0}
     assert "== knock_right" in capsys.readouterr().out
     assert pose_analysis.latest_session(tmp_path) == session

@@ -59,19 +59,24 @@ def world_pose(right=None, left=None, lean_deg=0.0, turn_deg=0.0, hips_visible=T
         pose[ix, :3] = pose[pk, :3] = pose[w, :3] + mp(unit(hand)) * HAND
         if not hips_visible:
             pose[h, 3] = 0.1
+    pose[P.NOSE, :3] = up + mp((0, 0.18, 0.05))  # head above the shoulders
     return pose.astype(np.float32)
 
 
-def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict) -> Recording:
+def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict,
+              images: list[np.ndarray] | None = None) -> Recording:
+    """A Recording of world ``poses``; image landmarks default to a copy of the
+    world ones (fine unless the framing check is involved: pass ``images``)."""
     n = len(poses)
     arr = np.stack(poses).astype(np.float32)
+    image_arr = np.stack(images).astype(np.float32) if images is not None else arr.copy()
     return Recording(
         frame_index=np.arange(n, dtype=np.int64),
         captured_ns=np.asarray(times_ns, dtype=np.int64),
         processed_ns=np.asarray(times_ns, dtype=np.int64) + 20_000_000,
         pose_ms=np.full(n, 20.0, np.float32),
         has_pose=np.ones(n, bool),
-        pose_image=arr.copy(),
+        pose_image=image_arr,
         pose_world=arr,
         metadata={"frame_size": [640, 480], **metadata},
     )

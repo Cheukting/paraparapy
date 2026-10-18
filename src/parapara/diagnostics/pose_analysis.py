@@ -30,6 +30,11 @@ Block clips (one building block danced to the metronome):
   error with a small front-plane error usually means depth noise rather than
   a wrong pose.
 
+Calibration (``calibration`` in the report): if the session has
+``neutral.npz`` and ``t_pose.npz``, the player calibration
+(:mod:`parapara.pose.calibration`) is computed and saved as
+``<session>/calibration.json``; if it is rejected, the reasons are reported.
+
 Framing (``framing`` in the report): for every clip, the share of samples in
 which the player was well placed (:mod:`parapara.pose.framing`) and which
 issues occurred, e.g. hips out of the picture. Clips with poor framing make
@@ -41,8 +46,9 @@ dancers turn, lean and step while dancing, so arm directions are measured
 relative to the body. For every block clip the report gives the torso's
 turning / side tilt / lean (mean ± std) and the hip sway in the image, plus
 the mean error under each body-frame variant of
-:data:`parapara.pose.body_frame.FRAME_METHODS`, to check that the default
-frame is still the best choice for new recordings.
+:data:`parapara.pose.body_frame.FRAME_METHODS` and under the full real-time
+pipeline (``torso+filters``: :class:`parapara.pose.features.FeatureExtractor`),
+to check that the defaults are still the best choice for new recordings.
 
 Pure NumPy (no cv2/mediapipe/pygame).
 """
@@ -59,6 +65,7 @@ import numpy as np
 
 from parapara.pose.body_frame import (
     FRAME_METHODS,
+    ArmDirections,
     angle_deg,
     arm_directions,
     body_frames,
@@ -186,6 +193,7 @@ def analyze_block(
     lags_s: np.ndarray | None = None,
     max_gap_s: float = 0.06,
     frame_method: str = "torso",
+    arms: dict[str, ArmDirections] | None = None,
 ) -> BlockReport:
     """Fit a block clip against its library block (see module docstring).
 
@@ -194,6 +202,9 @@ def analyze_block(
         lags_s: candidate lags (movement after the beat is positive);
             defaults to one block repeat starting at ``LAG_SEARCH_START_S``.
         frame_method: body-frame variant (see ``body_frame.FRAME_METHODS``).
+        arms: precomputed arm directions per sample (e.g. from the smoothed
+            feature pipeline, ``features.as_arm_directions``); overrides
+            ``frame_method``.
         max_gap_s: a keyframe instance is skipped if no sample lies within
             this distance of its (lagged) time.
     """
@@ -202,7 +213,8 @@ def analyze_block(
     beat_s = 60.0 / m["bpm"]
     beats = np.asarray(m["beat_times_ns"], dtype=np.int64)[m["count_in_beats"]:]
     t = (rec.captured_ns - beats[0]) / 1e9  # seconds since the first recorded beat
-    arms = arm_directions(rec.pose_world, body_frames(rec.pose_world, method=frame_method))
+    if arms is None:
+        arms = arm_directions(rec.pose_world, body_frames(rec.pose_world, method=frame_method))
     events = _keyframe_events(block, len(beats), beat_s)
     if lags_s is None:
         period = block.duration * beat_s
@@ -272,6 +284,11 @@ def body_movement(rec: Recording) -> dict[str, Any]:
     hips_x = rec.pose_image[rec.has_pose][:, [P.RIGHT_HIP, P.LEFT_HIP], 0].mean(1)
     motion["hip_sway_pct_of_width"] = _r(100 * hips_x.std(), 1)
     comparison = {m: analyze_block(rec, frame_method=m).mean_error_deg for m in FRAME_METHODS}
+    # The real-time pipeline: filtered landmarks + adaptive torso smoothing.
+    from parapara.pose.features import as_arm_directions, extract_recording
+
+    smoothed = as_arm_directions(extract_recording(rec))
+    comparison["torso+filters"] = analyze_block(rec, arms=smoothed).mean_error_deg
     return {"torso_motion": motion, "frame_comparison": comparison}
 
 
@@ -305,11 +322,31 @@ def analyze_session(session: Path) -> dict[str, Any]:
             static[path.stem] = asdict(analyze_static(rec))
         elif rec.metadata.get("kind") == "block" and rec.has_pose.any():
             blocks[path.stem] = asdict(analyze_block(rec)) | body_movement(rec)
-    return {"session": str(session), "framing": framing, "static": static, "blocks": blocks}
+    calibration: dict[str, Any] = {}
+    if (session / "neutral.npz").exists() and (session / "t_pose.npz").exists():
+        from parapara.pose.calibration import CalibrationError, calibrate_session
+
+        try:
+            cal = calibrate_session(session)
+            cal.save(session / "calibration.json")
+            calibration = asdict(cal) | {"saved_to": str(session / "calibration.json")}
+        except CalibrationError as err:
+            calibration = {"rejected": err.issues}
+    return {"session": str(session), "calibration": calibration, "framing": framing,
+            "static": static, "blocks": blocks}  # fmt: skip
 
 
 def format_report(report: dict[str, Any]) -> str:
-    lines = [f"session {report['session']}", "", "framing (share of samples well placed; issues in %):"]
+    lines = [f"session {report['session']}", ""]
+    cal = report.get("calibration") or {}
+    if "rejected" in cal:
+        lines += ["calibration REJECTED: " + "; ".join(cal["rejected"]), ""]
+    elif cal:
+        lines += [f"calibration: shoulders {cal['shoulder_width_m']} m, upper/fore "
+                  f"{cal['upper_arm_ratio']}/{cal['forearm_ratio']}, neutral lean "
+                  f"{cal['neutral_lean_deg']}°, head {cal['neutral_head_height']} "
+                  f"-> {cal['saved_to']}", ""]  # fmt: skip
+    lines.append("framing (share of samples well placed; issues in %):")
     for clip, f in report.get("framing", {}).items():
         issues = ", ".join(f"{k} {v}%" for k, v in f["issues"].items()) or "-"
         lines.append(f"  {clip:28s} ok {f['ok_pct']:5.1f}%   {issues}")
