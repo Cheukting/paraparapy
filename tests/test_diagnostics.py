@@ -106,3 +106,30 @@ def test_bench_records_worker_failure(tmp_path) -> None:
 def test_bench_rejects_unknown_config(tmp_path) -> None:
     with pytest.raises(SystemExit):
         bench.run(["--configs", "turbo", "--log-dir", str(tmp_path)])
+
+
+def test_low_light_monitor_waits_then_warns_and_recovers() -> None:
+    """Below 25 fps for 3 s -> active; above again for 3 s -> cleared; a
+    short dip does not trigger it."""
+    from parapara.diagnostics.live_stats import LowLightMonitor
+
+    m = LowLightMonitor(min_fps=25.0, hold_s=3.0)
+    t, frame = 0, 0
+
+    def run(fps: float, seconds: float) -> None:
+        nonlocal t, frame
+        for _ in range(int(fps * seconds)):
+            t += int(1e9 / fps)
+            frame += 1
+            m.add(t, frame)
+
+    run(30, 4)
+    assert not m.active
+    run(20, 1)  # short dip
+    run(30, 3)
+    assert not m.active
+    run(20, 5)
+    assert m.active and 18 < m.fps < 22
+    run(30, 5)
+    assert not m.active
+    assert 0.0 < m.low_share < 0.5

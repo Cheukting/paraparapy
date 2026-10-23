@@ -65,15 +65,17 @@ def font(size: float) -> pygame.font.Font:
 
 
 def _wrap(f: pygame.font.Font, s: str, max_w: int) -> list[str]:
+    """Greedy word wrap. Runs of spaces are kept inside a line (column gaps
+    such as "1.   706   79%"); a line break swallows the spaces at it."""
     lines, line = [], ""
     for word in s.split(" "):
-        trial = f"{line} {word}".strip()
-        if line and f.size(trial)[0] > max_w:
-            lines.append(line)
+        trial = f"{line} {word}" if line else word
+        if line.strip() and word and f.size(trial)[0] > max_w:
+            lines.append(line.rstrip())
             line = word
         else:
             line = trial
-    return [*lines, line]
+    return [*lines, line.rstrip()]
 
 
 def text(surface, s, pos, size=24, colour=TEXT, centre=False, right=False, draw=True) -> int:

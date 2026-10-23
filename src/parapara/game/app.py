@@ -63,11 +63,12 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import numpy as np  # noqa: E402
 import pygame  # noqa: E402  (must follow the env var above)
 
-from parapara import settings  # noqa: E402
+from parapara import scores, settings  # noqa: E402
 from parapara.animation.animator import Animator, DancerPose  # noqa: E402
 from parapara.audio.beatgrid import BeatGrid, render_click_track  # noqa: E402
 from parapara.audio.importer import load_all_songs  # noqa: E402
 from parapara.audio.song import Song  # noqa: E402
+from parapara.diagnostics.live_stats import LowLightMonitor  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon, wordmark  # noqa: E402
@@ -78,6 +79,7 @@ from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported for tests)
     UI,
     Drawn,  # noqa: F401
+    font,
     adjust_scale,
     display_flags,
     footer,
@@ -144,6 +146,7 @@ class Scene(Enum):
     LEARN = auto()
     CREDITS = auto()
     PRIVACY = auto()
+    SCORES = auto()
 
 
 @dataclasses.dataclass
@@ -202,6 +205,9 @@ class Game:
         self.learn_blocks = learn_order()
         self.learn_index, self.learn_speed = 0, 0
         self.lead_in_s = 0.0
+        self.low_light = LowLightMonitor()  # "more light helps" hint (camera fps)
+        self.camera_hint_top = 0  # top of the hint on the camera view (warnings go above it)
+        self.placement: scores.Placement | None = None  # the last play's place on the score board
         self.layout_reported: set[str] = set()
         self._reset_scene_state()
 
@@ -218,6 +224,8 @@ class Game:
         self.results: dict | None = None
         self.calibration_issues: list[str] = []
         self.doc_scroll, self.doc_more = 0, False  # Credits / Privacy screens
+        self.play_fps: list[float] = []
+        self.play_low = 0
 
     def go(self, scene: Scene) -> None:
         self.player.pause()  # stop clicks / music from the scene being left
@@ -253,6 +261,10 @@ class Game:
             samples = self.feed.update(self.capture)
             for sample in samples:
                 self.framing.update(sample)
+                self.low_light.add(sample.captured_ns, sample.frame_index)
+            if self.scene is Scene.PLAY:  # camera rate during the song, for the log
+                self.play_fps.append(self.low_light.fps)
+                self.play_low += self.low_light.active
             running = self.handle(keys, samples) and running
             self.draw()
             pygame.display.flip()
@@ -282,7 +294,10 @@ class Game:
         if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):
             self.go(Scene.MENU)
             return True
-        if self.scene in (Scene.CREDITS, Scene.PRIVACY):
+        if self.scene in (Scene.CREDITS, Scene.PRIVACY, Scene.SCORES):
+            if self.scene is Scene.SCORES and (pygame.K_LEFT in keys or pygame.K_RIGHT in keys):
+                self.menu.routine_index += 1 if pygame.K_RIGHT in keys else -1  # another level
+                self.doc_scroll = 0
             self.handle_document(keys)
             return True
         {Scene.BODY: self.handle_body, Scene.LATENCY: self.handle_latency, Scene.PLAY: self.handle_play,
@@ -314,6 +329,9 @@ class Game:
             return True
         if pygame.K_c in keys or pygame.K_p in keys:
             self.go(Scene.CREDITS if pygame.K_c in keys else Scene.PRIVACY)
+            return True
+        if pygame.K_s in keys:
+            self.go(Scene.SCORES)
             return True
         if (pygame.K_RETURN in keys or pygame.K_SPACE in keys) and m.routine is not None:
             self.next_after(Scene.MENU)
@@ -442,6 +460,11 @@ class Game:
         self.player.pause()
         session = self.session
         self.results = session.summary()
+        fps = [f for f in self.play_fps if f > 0]
+        self.results["camera_fps"] = round(float(np.median(fps)), 1) if fps else None
+        self.results["low_light_pct"] = round(100 * self.play_low / len(self.play_fps), 1) if self.play_fps else 0.0
+        self.placement = scores.record(self.results)  # None if ended early (not ranked)
+        self.results["placement"] = scores.placement_dict(self.placement)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         rec_dir = Path("recordings") / f"game-{stamp}"
         session.recording().save(rec_dir / "play.npz")
@@ -469,6 +492,26 @@ class Game:
 
     def draw_privacy(self, stage, camera, panel) -> None:
         self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "Esc back")
+
+    # -- score board ----------------------------------------------------------------
+
+    @staticmethod
+    def board_line(rank: int, entry: dict) -> str:
+        played = datetime.fromisoformat(entry["played"]).strftime("%d %b %H:%M")
+        return f"{rank}.   {entry['score']:,}   {entry['accuracy_pct']:.0f}%   {played}"
+
+    def draw_scores(self, stage, camera, panel) -> None:
+        """The score board of the selected song: Left/Right switch level."""
+        song, routine = self.menu.song, self.menu.routine
+        entries = [("title", "Score board"), ("heading", song.title)]
+        if routine is None:
+            entries.append(("small", "no routines"))
+        else:
+            entries.append(("text", f"< {routine.difficulty.value} >"))
+            board = scores.top(song.id, routine.id, 10)
+            entries += [("text", self.board_line(i + 1, e)) for i, e in enumerate(board)] or [
+                ("small", "No plays yet: finish a song to get on the board.")]
+        self.doc_more = draw_document(stage, entries, self.doc_scroll, "Left/Right level   Esc back")
 
     # -- learn the moves -----------------------------------------------------------
 
@@ -524,6 +567,16 @@ class Game:
         stage = self.screen.subsurface((0, 0, STAGE_W, HEIGHT))
         panel = self.screen.subsurface((STAGE_W, self.config.height, WIDTH - STAGE_W, HEIGHT - self.config.height))
         panel.fill(PANEL)
+        # Low-light hint at the bottom of the camera view (other warnings go above it).
+        self.camera_hint_top = camera.get_height()
+        if self.low_light.active and not failure and self.feed.ready_at is not None:
+            hint = f"Camera {self.low_light.fps:.0f} fps: more light helps"
+            x = max(8, camera.get_width() // 2 - font(20).size(hint)[0] // 2)
+            h = text_height(camera, hint, 20, x)
+            band = pygame.Surface((camera.get_width(), h + 12), pygame.SRCALPHA)
+            band.fill((0, 0, 0, 160))  # readable on a bright camera picture
+            camera.blit(band, (0, camera.get_height() - h - 16))
+            self.camera_hint_top = footer(camera, [(hint, 20, WARN)], x=x)
         getattr(self, f"draw_{self.scene.name.lower()}")(stage, camera, panel)
         if UI.drawn is not None:
             for issue in layout_issues(UI.drawn):
@@ -539,7 +592,7 @@ class Game:
             return
         bottom = footer(stage, [("New? T learn the moves", 18, ACCENT),
                                 ("Up/Down song   Left/Right level   Enter play", 16, DIM),
-                                ("+/- text size   F fullscreen   C credits   P privacy   Esc quit", 16, DIM)])  # fmt: skip
+                                ("S scores   C credits   P privacy   +/- text size   F fullscreen   Esc quit", 16, DIM)])  # fmt: skip
         # Song list: the selected song is framed with its level and tempo
         # (third test run: it blended into the other titles). If the list is
         # taller than the room above the key hints, it scrolls to keep the
@@ -555,6 +608,9 @@ class Game:
                 lines.append((f"by {song.artist}   {licence}", 16, DIM))
             lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM" if r else "no routines",
                           20, TEXT))  # fmt: skip
+            top = scores.best(song.id, r.id) if r else None
+            if top:
+                lines.append((f"best {top['score']:,}   {top['accuracy_pct']:.0f}%", 16, DIM))
             if not song.beat_map.verified:
                 lines.append(("beat map not checked", 18, WARN))
             return lines
@@ -707,9 +763,10 @@ class Game:
             rise = round(12 * (1 - (now - t) / POPUP_S))
             text(top, label, (DANCER_X, 18 - rise), 56, GRADE_COLOUR[grade], centre=True)
         warning = session.framing_warning
-        if warning is not None:
-            text(camera, warning.issues[0].message, (camera.get_width() // 2, camera.get_height() - 120), 28,
-                 WARN, centre=True)  # fmt: skip
+        if warning is not None:  # above the low-light hint, if that is shown
+            message = warning.issues[0].message
+            y = min(camera.get_height() - 120, self.camera_hint_top - 8 - text_height(camera, message, 28, camera.get_width() // 2))
+            text(camera, message, (camera.get_width() // 2, y), 28, WARN, centre=True)
         k = session.keeper
         y = text(panel, f"{k.score:,}", (20, 6), 56, ACCENT)
         text(panel, f"combo {k.combo}", (20, y), 30)
@@ -794,11 +851,26 @@ class Game:
         y = text(stage, f"perfect {g.get('perfect', 0)}  great {g.get('great', 0)}  good {g.get('good', 0)}",
                  (24, y + 6), 20, DIM)  # fmt: skip
         y = text(stage, f"hold {g.get('hold', 0)}  miss {g.get('miss', 0)}", (24, y), 20, DIM)
+        p = self.placement
         if r.get("ended_early"):
-            text(stage, "ended early", (24, y), 18, DIM)
-        footer(panel, [(self.message, 12, DIM)], x=20)
-        text(panel, f"posture {r.get('posture_pct', 0):.0f}%   latency {r.get('latency_ms', 0):.0f} ms",
-             (20, 16), 20)  # fmt: skip
+            text(stage, "ended early: not on the score board", (24, y + 6), 18, DIM)
+        elif p is not None and p.new_best:
+            text(stage, "New best!", (24, y + 6), 32, OK)
+        elif p is not None:
+            text(stage, f"#{p.rank} of {p.entries} on this level", (24, y + 6), 24, TEXT)
+        # Panel: posture / latency, then this level's board (yours highlighted).
+        bottom = footer(panel, [(self.message, 12, DIM)], x=20)
+        y = text(panel, f"posture {r.get('posture_pct', 0):.0f}%   latency {r.get('latency_ms', 0):.0f} ms",
+                 (20, 10), 20)  # fmt: skip
+        routine = self.menu.routine
+        if routine is None or p is None:
+            return
+        y = text(panel, f"Score board ({routine.difficulty.value})", (20, y + 4), 18, ACCENT)
+        for i, entry in enumerate(scores.top(self.menu.song.id, routine.id, 5)):
+            line = self.board_line(i + 1, entry)
+            if y + text_height(panel, line, 16, 20) > bottom:
+                break
+            y = text(panel, line, (20, y), 16, ACCENT if i + 1 == p.rank else TEXT)
 
 
 def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:

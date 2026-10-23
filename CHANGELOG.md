@@ -6,6 +6,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Low-light hint** (`LowLightMonitor`): "Camera N fps: more light helps"
+  on a dark band at the bottom of the camera view while the camera delivers
+  under 25 fps for 3 s (webcams slow down in dim light; ~23 fps was seen
+  against the requested 30); other camera warnings move above it. Each
+  play's log records `camera_fps` and `low_light_pct`. Tests: the monitor's
+  hold / recovery, a ~14 fps fake camera in the game.
+- **Score board** (`parapara.scores`, `scores.json` in the data folder): the
+  best 20 finished plays per song and level (plays ended early are not
+  ranked). The results screen says "New best!" or "#2 of 5 on this level"
+  and lists the board with your play highlighted; the selected song shows
+  its best score; `S` in the menu opens the score board (Left/Right level).
+  The placement is logged with each play. Tests: ranking, levels, cap,
+  broken file; the game flow and layout at text sizes 1.0 and 2.6.
+- **Player guide**: `docs/how-to-play.md` (setup, first start, menu, learning
+  the moves, calibration, playing, grades, score board, troubleshooting),
+  linked from the README.
 - **Credits** (`C` in the menu of `parapara-play`): demo songs with title,
   artist, CC BY licence and source; MediaPipe and its pose models (Apache
   2.0), pygame-ce, NumPy, OpenCV; the dance-move reference; the logo. The
@@ -83,6 +99,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- Text keeps runs of spaces inside a line (column gaps such as
+  "1.   43,826   79%"; they had collapsed to one space).
 - pytest only collects `tests/` (`[tool.pytest] testpaths`): it had also
   imported `src/` modules named `*_test.py`, which loaded pygame into the
   test process next to cv2 (caught by the conftest guard).

@@ -85,6 +85,8 @@ uv run parapara-tune-filters             # re-tune the smoothing filters on a se
 uv run parapara-play                     # or simply: uv run parapara
 ```
 
+New player? Read the **[player guide](docs/how-to-play.md)**.
+
 Pick a song and routine (Up/Down, Left/Right, Enter). The first time, the
 game calibrates your body (position check, neutral pose, T-pose) and your
 latency (clap on 8 clicks); both are remembered (B / L in the menu redo

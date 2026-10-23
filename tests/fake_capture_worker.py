@@ -54,7 +54,7 @@ def hang(**kwargs):
     time.sleep(60)
 
 
-def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock):
+def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock, interval_s=0.02):
     """Like a real camera: READY, then a sample (and frame) every ~20 ms with
     a well-framed person in it (passes the framing check), until the stop
     event is set."""
@@ -65,7 +65,7 @@ def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame
     try:
         results.put(CaptureStatus(StatusKind.READY, "fake stream", {"camera_width": config.width}))
         index = 0
-        while not stop_event.wait(timeout=0.02):
+        while not stop_event.wait(timeout=interval_s):
             captured = time.monotonic_ns()
             frames.write(np.full(frame_shape, index % 256, dtype=np.uint8), index, captured)
             results.put(
@@ -110,3 +110,8 @@ def perfect_player(*, config, results, stop_event, frame_buffer_name, frame_shap
         stop_event.wait(timeout=30)
     finally:
         frames.close()
+
+
+def slow_stream(**kwargs):
+    """Like :func:`stream` at ~14 fps: a camera in dim light (low-light hint)."""
+    stream(**kwargs, interval_s=0.07)

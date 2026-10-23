@@ -27,14 +27,15 @@ def accept_privacy(data_dir: Path) -> None:
     ui.write_text(json.dumps(prefs | {"privacy_notice": PRIVACY_VERSION}))
 
 
-def _run_game(tmp_path, args: list[str], privacy_accepted: bool = True) -> subprocess.CompletedProcess:
+def _run_game(tmp_path, args: list[str], privacy_accepted: bool = True,
+              worker: str = "fake_capture_worker:stream") -> subprocess.CompletedProcess:
     if privacy_accepted:
         accept_privacy(tmp_path / "data")
     if not (tmp_path / "lib").exists():
         track = render_demo_song()
         write_wav(tmp_path / "t.wav", track.samples, track.sample_rate)
         importer.import_song(tmp_path / "t.wav", importer.SongInfo("Test"), library=tmp_path / "lib")
-    script = f"from parapara.game import app; app.run({args!r}, worker='fake_capture_worker:stream')"
+    script = f"from parapara.game import app; app.run({args!r}, worker={worker!r})"
     env = os.environ | {
         "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1",
         "PARAPARA_SONGS_DIR": str(tmp_path / "lib"), "PARAPARA_DATA_DIR": str(tmp_path / "data"),
@@ -251,3 +252,38 @@ def test_credits_and_privacy_screens(tmp_path, scale) -> None:
     keys = "10:c 30:down 40:down 50:up 70:escape 90:p 110:down 130:escape 150:escape"
     result = _run_game(tmp_path, ["--check-layout", "--text-scale", scale, "--keys", keys])
     assert "LAYOUT" not in result.stderr, result.stderr
+
+
+def test_low_light_hint_shows_and_is_logged(tmp_path) -> None:
+    """A camera delivering ~14 fps (dim light): the "more light helps" hint
+    appears on the camera view without overlapping the other text, and the
+    play's log records the camera rate and how long the hint was shown."""
+    result = _run_game(tmp_path, ["--auto", "--auto-seconds", "8", "--count-in", "0", "--check-layout",
+                                  "--text-scale", "2.6"], worker="fake_capture_worker:slow_stream")  # fmt: skip
+    assert "LAYOUT" not in result.stderr, result.stderr
+    (log,) = glob.glob(str(tmp_path / "logs" / "game-*.json"))
+    summary = json.loads(Path(log).read_text())["result"]
+    assert summary["camera_fps"] < 20 and summary["low_light_pct"] > 20
+    normal = _run_game(tmp_path / "ok", ["--auto", "--auto-seconds", "4", "--count-in", "0"])
+    (log,) = glob.glob(str(tmp_path / "ok" / "logs" / "game-*.json"))
+    assert json.loads(Path(log).read_text())["result"]["low_light_pct"] == 0.0 and normal.returncode == 0
+
+
+def test_score_board(tmp_path) -> None:
+    """Two plays to the end of the (short) test song: both on the board
+    (scores.json, best first) with their placement in the log; the results
+    screen shows the board (checked at text sizes 1.0 and 2.6), the menu the
+    best score, and S the score board (Left/Right level); no overlaps."""
+    for scale in ("1.0", "2.6"):
+        result = _run_game(tmp_path, ["--auto", "--auto-seconds", "60", "--count-in", "0", "--check-layout",
+                                      "--text-scale", scale])  # fmt: skip
+        assert "LAYOUT" not in result.stderr, result.stderr
+    board = json.loads((tmp_path / "data" / "scores.json").read_text())["scores"]
+    assert len(board) == 2
+    logs = sorted(glob.glob(str(tmp_path / "logs" / "game-*.json")))
+    placements = [json.loads(Path(log).read_text())["result"]["placement"] for log in logs]
+    assert placements[0]["rank"] == 1 and placements[1]["entries"] == 2
+    for scale in ("1.0", "2.6"):
+        keys = "10:s 30:right 50:left 70:escape 90:escape"
+        result = _run_game(tmp_path, ["--check-layout", "--text-scale", scale, "--keys", keys])
+        assert "LAYOUT" not in result.stderr, result.stderr

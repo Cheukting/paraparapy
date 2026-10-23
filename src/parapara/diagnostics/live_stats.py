@@ -69,6 +69,56 @@ class CameraRateMeter:
         return max(0.0, 1 - processed / delivered) if delivered > 0 else 0.0
 
 
+class LowLightMonitor:
+    """Says when the camera delivers too few frames, usually because of dim light.
+
+    Webcams lower their frame rate when the picture is dark (longer exposure):
+    the project owner's camera gave ~23 fps instead of the requested 30 in a
+    dim room (2026-10-18), and fewer frames mean coarser timing (~43 ms
+    between samples instead of 33). The game shows a "more light helps" hint
+    while :attr:`active`: the camera rate (:class:`CameraRateMeter`) has been
+    below ``min_fps`` for ``hold_s`` seconds; it clears once the rate has
+    recovered for the same time, so a single slow moment does not make it
+    flicker. :attr:`low_share` (fraction of the time it was active) goes into
+    the game's log.
+    """
+
+    def __init__(self, min_fps: float = 25.0, hold_s: float = 3.0) -> None:
+        self.min_fps, self._hold_ns = min_fps, int(hold_s * 1e9)
+        self.meter = CameraRateMeter()
+        self.active = False
+        self._since: int | None = None  # when the rate last crossed the limit (in the other direction)
+        self._first: int | None = None
+        self._last: int | None = None
+        self._active_ns = 0
+
+    def add(self, captured_ns: int, frame_index: int) -> None:
+        if self._last is not None and self.active:
+            self._active_ns += captured_ns - self._last
+        self._first = captured_ns if self._first is None else self._first
+        self._last = captured_ns
+        self.meter.add(captured_ns, frame_index)
+        rate = self.meter.rate
+        if rate == 0.0:
+            return  # not enough samples yet
+        wants = rate < self.min_fps
+        if wants == self.active:
+            self._since = None
+        elif self._since is None:
+            self._since = captured_ns
+        elif captured_ns - self._since >= self._hold_ns:
+            self.active, self._since = wants, None
+
+    @property
+    def fps(self) -> float:
+        return self.meter.rate
+
+    @property
+    def low_share(self) -> float:
+        span = (self._last - self._first) if self._first is not None and self._last is not None else 0
+        return self._active_ns / span if span > 0 else 0.0
+
+
 class RollingMean:
     """Mean of the last ``size`` values (for jittery timings)."""
 
