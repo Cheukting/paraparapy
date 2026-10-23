@@ -19,7 +19,8 @@ Flow (one capture process for the whole session)::
   songs of the session. ``S`` on the latency screen reuses the last saved
   latency; ``--reuse-calibration`` skips both when saved ones exist.
 - **Body calibration**: the position check (:mod:`parapara.pose.framing`)
-  must pass, then a neutral pose and a T-pose are held for a few seconds each
+  must pass, then a neutral pose and a T-pose (each shown by a stick figure)
+  are held for a few seconds each
   (:mod:`parapara.pose.calibration`); saved in the user data folder.
 - **Latency calibration**: clap on each of 8 metronome clicks; the median
   delay, measured through the same feature pipeline as the scoring
@@ -70,7 +71,7 @@ from parapara.audio.importer import load_all_songs  # noqa: E402
 from parapara.audio.song import Song  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
-from parapara.game.dancer_view import block_title, draw_dancer, static_pose  # noqa: E402
+from parapara.game.dancer_view import REST, block_title, draw_dancer, static_pose  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
@@ -81,7 +82,7 @@ from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
 from parapara.routine.library import BLOCK_LIBRARY  # noqa: E402
-from parapara.routine.model import Block, BlockKind, Routine  # noqa: E402
+from parapara.routine.model import ArmPose, Block, BlockKind, Keyframe, Routine  # noqa: E402
 from parapara.routine.store import routines_for  # noqa: E402
 from parapara.scoring.judge import FlowJudgment, Grade  # noqa: E402
 from parapara.scoring.latency import LatencyResult, estimate_latency  # noqa: E402
@@ -102,6 +103,14 @@ CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
 # 8 claps (fourth test run: 16 felt too long); estimate_latency needs MIN_CLAPS (6) of them.
 LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 8
 NEXT_DOTS = 4  # dots in the "next" box: one per count still to go before the move
+
+
+# Stick-figure demonstrations of the body calibration poses.
+CALIBRATION_POSES = {
+    "neutral": Keyframe(beat=0.0, right=REST, left=REST.mirrored()),
+    "t_pose": Keyframe(beat=0.0, right=ArmPose(upper=(1, 0, 0), fore=(1, 0, 0)),
+                       left=ArmPose(upper=(-1, 0, 0), fore=(-1, 0, 0))),  # fmt: skip
+}
 
 
 def learn_order() -> list[Block]:
@@ -683,7 +692,15 @@ class Game:
             elapsed = time.monotonic() - self.t0
             countdown = 0.4 if self.args.fast else CALIBRATION_COUNTDOWN_S
             label = str(int(np.ceil(countdown - elapsed))) if elapsed < countdown else "HOLD"
-            text(stage, label, (STAGE_W // 2, max(y + 20, 280)), 110, ACCENT, centre=True)
+            # The pose to hold, shown by a stick figure (fifth test run) between
+            # the instructions and the countdown at the bottom; fitted like the
+            # Learn screen's dancer (head 0.8 shoulder widths above the
+            # shoulders, feet 3.3 below).
+            label_top = HEIGHT - 10 - text_height(stage, "HOLD", 80)
+            text(stage, label, (STAGE_W // 2, label_top), 80, ACCENT, centre=True)
+            scale = min(DANCER_SCALE, (label_top - y - 20) / 4.1)
+            pose = static_pose(CALIBRATION_POSES["neutral" if self.step == 1 else "t_pose"])
+            draw_dancer(stage, pose, (STAGE_W // 2, round(y + 10 + 0.8 * scale)), scale, self.mirrored)
         elif self.calibration_issues:
             bottom = footer(stage, [("R retry   Esc menu", 20, DIM)])
             y = text(stage, "Try again:", (24, y + 10), 28, WARN)

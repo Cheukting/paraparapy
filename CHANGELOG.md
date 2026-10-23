@@ -28,6 +28,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- `parapara-play` fifth test-run feedback: the body calibration shows the
+  pose to hold (neutral pose, T-pose) as a stick figure between the
+  instructions and the countdown.
 - `parapara-play` fourth test-run feedback:
   - **Latency calibration: 8 claps** instead of 16 (still needs 6 to be
     accepted; test with 8 synthetic claps).
