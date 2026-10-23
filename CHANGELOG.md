@@ -5,6 +5,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Learn the moves** (`T` in the `parapara-play` menu, for new players): the
+  demo dancer loops one move at a time with metronome clicks at 50 / 75 /
+  100 % of the selected song's tempo (Up/Down), with its name and
+  description; Left/Right go through all 18 moves, simplest kinds first. The
+  mirrored camera view lets you try it; nothing is scored.
+- `Animator.for_blocks(blocks)`: animate any block sequence without the
+  phrase rules (used by Learn the moves).
+- Tests: every library move loops exactly (`test_animation.py`), the Learn
+  the moves flow (`test_game_app.py`).
+
 ### Changed
 - **Game screens readable from the dancing spot** (first test run, 2026-10-23:
   the text was too small to read from 1.5-2 m away).
@@ -20,6 +31,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - The grade pop-up (Perfect / Great / Good / Hold / Miss) moved from the
     camera view to just above the demo dancer's head, where players look
     while dancing.
+  - The **next move is a picture**, not text: a small framed stick figure at
+    the dancer's top right dances the coming move in a loop (upper body only,
+    so it can be drawn large), with "in N" counts. It replaces the text card
+    at the bottom, which was hard to read while dancing.
+  - The count moved below the dancer's feet; the dancer moved left to make
+    room for the picture.
+  - The latency screen says the calibration is needed only once (saved;
+    redo with L after changing camera, speakers or headphones).
   - Tests: text-size keys and saving (`test_game_app.py`), `ui.json` round
     trip (`test_play_session.py`).
 

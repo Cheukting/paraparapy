@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import bisect
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -131,25 +132,44 @@ class Animator:
     """Pose of the demo dancer for a routine at any routine beat."""
 
     def __init__(self, routine: Routine) -> None:
-        self.routine = routine
+        self.routine: Routine | None = routine
+        placements = [(p_index * COUNTS_PER_PHRASE + start, block)
+                      for p_index, phrase in enumerate(routine.phrases)
+                      for start, block in phrase.placements()]  # fmt: skip
+        self._place(placements, float(routine.total_counts))
+
+    @classmethod
+    def for_blocks(cls, blocks: Sequence[Block]) -> Animator:
+        """Animator for ``blocks`` danced back to back from beat 0, without the
+        phrase rules of a routine (32 counts, every kind, ...).
+
+        Used to show single moves: the "Learn the moves" screen loops one
+        block (``[block] * n``) at a slow tempo.
+        """
+        self = cls.__new__(cls)
+        self.routine = None
+        starts = np.cumsum([0] + [b.duration for b in blocks])
+        self._place(list(zip(starts[:-1].tolist(), blocks, strict=True)), float(starts[-1]))
+        return self
+
+    def _place(self, placements: list[tuple[int, Block]], end_beat: float) -> None:
+        """Index ``(start_beat, block)`` placements into per-arm targets."""
         self._blocks: list[_Placed] = []
         self._targets: dict[str, list[_Target]] = {"right": [], "left": []}
         self._claps: list[float] = []
-        for p_index, phrase in enumerate(routine.phrases):
-            base = p_index * COUNTS_PER_PHRASE
-            for start, block in phrase.placements():
-                self._blocks.append(_Placed(base + start, base + start + block.duration, block))
-                for kf in block.keyframes:
-                    beat = base + start + kf.beat
-                    if kf.clap:
-                        self._claps.append(beat)
-                    for side in ("right", "left"):
-                        arm = getattr(kf, side)
-                        flick = block.kind is BlockKind.FLICK_CLAP and arm is not None and arm.hand is not None
-                        self._targets[side].append(_Target(beat, _side_pose(arm, kf.clap, side), block, flick))
+        for start, block in placements:
+            self._blocks.append(_Placed(start, start + block.duration, block))
+            for kf in block.keyframes:
+                beat = start + kf.beat
+                if kf.clap:
+                    self._claps.append(beat)
+                for side in ("right", "left"):
+                    arm = getattr(kf, side)
+                    flick = block.kind is BlockKind.FLICK_CLAP and arm is not None and arm.hand is not None
+                    self._targets[side].append(_Target(beat, _side_pose(arm, kf.clap, side), block, flick))
         self._beats = {s: [t.beat for t in ts] for s, ts in self._targets.items()}
         self._block_starts = [b.start for b in self._blocks]
-        self.end_beat = float(routine.total_counts)
+        self.end_beat = end_beat
 
     # -- arms --------------------------------------------------------------
 

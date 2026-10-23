@@ -3,21 +3,31 @@
 Flow (one capture process for the whole session)::
 
     MENU ──▶ BODY calibration ──▶ LATENCY calibration ──▶ PLAY ──▶ RESULTS ──▶ MENU
-             (skipped when a        (skipped when a
-              saved one is kept)     saved one is kept)
+      │      (skipped when a        (skipped when a
+      │       saved one is kept)     saved one is kept)
+      └──▶ LEARN the moves ──▶ MENU
 
 - **Menu**: songs (built-in demo tracks and your imports) with their routines;
   unverified beat maps are flagged. ``B`` / ``L`` redo the body / latency
-  calibration even if saved ones exist.
+  calibration even if saved ones exist; ``T`` opens "Learn the moves".
+- **Learn the moves** (for new players): the demo dancer loops one move at a
+  time, slowed down (50 / 75 / 100 % of the song's tempo) with metronome
+  clicks, next to its name and description; the mirrored camera view lets the
+  player try it. Nothing is scored.
 - **Body calibration**: the position check (:mod:`parapara.pose.framing`)
   must pass, then a neutral pose and a T-pose are held for a few seconds each
   (:mod:`parapara.pose.calibration`); saved in the user data folder.
 - **Latency calibration**: clap on each of 16 metronome clicks; the median
   delay, measured through the same feature pipeline as the scoring
-  (:mod:`parapara.scoring.latency`), shifts the scoring schedule.
-- **Play**: the demo dancer on the left (mirrored, with the count and a
-  next-move card), your mirrored camera view with skeleton on the right
-  (side by side, as decided), grade pop-ups, score, combo and progress; a
+  (:mod:`parapara.scoring.latency`), shifts the scoring schedule. It is saved
+  and only needs redoing when the camera, speakers/headphones or room change.
+- **Play**: the demo dancer on the left (mirrored), your mirrored camera view
+  with skeleton on the right (side by side, as decided). Everything the
+  player needs while dancing sits around the dancer, where they look (first
+  test run, 2026-10-23): the grade pop-up above its head, the next move as a
+  small looping stick figure at its top right (pictures, not text: a move name
+  is hard to read from the dancing spot) and the count below its feet. Score,
+  combo and progress are in the panel; a
   warning when you leave the picture. Driven by
   :class:`parapara.scoring.session.PlaySession` with the audio playback time as
   the clock. ``Esc`` ends the song early.
@@ -45,13 +55,13 @@ import numpy as np  # noqa: E402
 import pygame  # noqa: E402  (must follow the env var above)
 
 from parapara import settings  # noqa: E402
-from parapara.animation.animator import Animator  # noqa: E402
+from parapara.animation.animator import Animator, DancerPose  # noqa: E402
 from parapara.audio.beatgrid import BeatGrid, render_click_track  # noqa: E402
 from parapara.audio.importer import load_all_songs  # noqa: E402
 from parapara.audio.song import Song  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
-from parapara.game.dancer_view import block_title, draw_dancer, static_pose  # noqa: E402
+from parapara.game.dancer_view import block_title, draw_dancer  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
@@ -61,7 +71,8 @@ from parapara.pose.features import FeatureExtractor  # noqa: E402
 from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
-from parapara.routine.model import Routine  # noqa: E402
+from parapara.routine.library import BLOCK_LIBRARY  # noqa: E402
+from parapara.routine.model import Block, BlockKind, Routine  # noqa: E402
 from parapara.routine.store import routines_for  # noqa: E402
 from parapara.scoring.judge import FlowJudgment, Grade  # noqa: E402
 from parapara.scoring.latency import LatencyResult, estimate_latency  # noqa: E402
@@ -69,6 +80,10 @@ from parapara.scoring.session import PlaySession  # noqa: E402
 
 WIDTH, HEIGHT = 1240, 720
 STAGE_W = 600  # demo dancer on the left; camera (640x480) + score panel on the right
+DANCER_X, DANCER_Y, DANCER_SCALE = 210, 190, HEIGHT / 7.6  # mid-shoulder point; px per shoulder width
+NEXT_BOX = pygame.Rect(392, 8, 204, 300)  # "next move" picture, top right of the dancer
+LEARN_SPEEDS = (0.5, 0.75, 1.0)  # fractions of the song's tempo
+LEARN_REPEATS = 64  # a learnt block is looped this many times before the animation restarts
 BG, PANEL, TEXT, DIM, ACCENT = (18, 18, 28), (30, 30, 44), (235, 235, 245), (120, 120, 140), (255, 220, 80)
 OK, WARN = (90, 220, 120), (255, 150, 60)
 GRADE_COLOUR = {Grade.PERFECT: (255, 220, 80), Grade.GREAT: (90, 220, 120), Grade.GOOD: (110, 170, 255),
@@ -78,12 +93,20 @@ CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
 LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 16
 
 
+def learn_order() -> list[Block]:
+    """The library's moves for "Learn the moves", simplest kinds first
+    (knock, chop, wrist roll, sweep, flick + clap); library order within a kind."""
+    kinds = [BlockKind.KNOCK, BlockKind.CHOP, BlockKind.WRIST_ROLL, BlockKind.SWEEP, BlockKind.FLICK_CLAP]
+    return sorted(BLOCK_LIBRARY.values(), key=lambda b: kinds.index(b.kind))
+
+
 class Scene(Enum):
     MENU = auto()
     BODY = auto()
     LATENCY = auto()
     PLAY = auto()
     RESULTS = auto()
+    LEARN = auto()
 
 
 class UI:
@@ -172,6 +195,8 @@ class Game:
         self.scene = Scene.MENU
         self.message = ""
         self.mirrored = True
+        self.learn_blocks = learn_order()
+        self.learn_index, self.learn_speed = 0, 0
         self._reset_scene_state()
 
     def _reset_scene_state(self) -> None:
@@ -187,10 +212,13 @@ class Game:
         self.calibration_issues: list[str] = []
 
     def go(self, scene: Scene) -> None:
+        self.player.pause()  # stop clicks / music from the scene being left
         self.scene = scene
         self._reset_scene_state()
         if scene is Scene.LATENCY:
             self.latency_extractor = FeatureExtractor(calibration=self.calibration)
+        if scene is Scene.LEARN:
+            self.start_learn()
 
     # -- main loop ---------------------------------------------------------
 
@@ -245,11 +273,11 @@ class Game:
             settings.save_ui(text_scale=UI.scale)
         if self.scene is Scene.MENU:
             return self.handle_menu(keys)
-        if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS):
+        if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):
             self.go(Scene.MENU)
             return True
         {Scene.BODY: self.handle_body, Scene.LATENCY: self.handle_latency, Scene.PLAY: self.handle_play,
-         Scene.RESULTS: self.handle_results}[self.scene](keys, samples)  # fmt: skip
+         Scene.RESULTS: self.handle_results, Scene.LEARN: self.handle_learn}[self.scene](keys, samples)  # fmt: skip
         return True
 
     # -- menu ----------------------------------------------------------------
@@ -272,6 +300,9 @@ class Game:
             m.redo_body = not m.redo_body
         if pygame.K_l in keys:
             m.redo_latency = not m.redo_latency
+        if pygame.K_t in keys:
+            self.go(Scene.LEARN)
+            return True
         if (pygame.K_RETURN in keys or pygame.K_SPACE in keys) and m.routine is not None:
             self.next_after(Scene.MENU)
         return True
@@ -393,8 +424,40 @@ class Game:
         if pygame.K_RETURN in keys or pygame.K_SPACE in keys:
             self.go(Scene.MENU)
 
+    # -- learn the moves -----------------------------------------------------------
+
+    @property
+    def learn_bpm(self) -> float:
+        bpm = self.menu.song.bpm if self.menu.songs else 150.0
+        return bpm * LEARN_SPEEDS[self.learn_speed]
+
+    def start_learn(self) -> None:
+        """Loop the selected move with metronome clicks at the learning tempo.
+
+        The audio clock drives the animation (as in play), so the moves land
+        on the clicks. Beat 0 is 0.5 s into the click track; the track lasts
+        LEARN_REPEATS bars and restarts when it ends.
+        """
+        block = self.learn_blocks[self.learn_index]
+        self.animator = Animator.for_blocks([block] * LEARN_REPEATS)
+        self.learn_grid = BeatGrid(self.learn_bpm, 0.5, 0)
+        seconds = 0.5 + self.animator.end_beat * self.learn_grid.beat_s
+        silence = np.zeros(int(seconds * self.player.sr), np.float32)
+        self.learn_track = render_click_track(silence, self.player.sr, self.learn_grid, music_gain=0.0, click_gain=0.5)
+        self.player.play(self.learn_track, 0.0)
+
+    def handle_learn(self, keys: list[int], samples: list[PoseSample]) -> None:
+        step = (pygame.K_RIGHT in keys) - (pygame.K_LEFT in keys)
+        faster = (pygame.K_UP in keys) - (pygame.K_DOWN in keys)
+        if step or faster:
+            self.learn_index = (self.learn_index + step) % len(self.learn_blocks)
+            self.learn_speed = min(len(LEARN_SPEEDS) - 1, max(0, self.learn_speed + faster))
+            self.start_learn()
+        elif self.player.position() >= len(self.learn_track) / self.player.sr:
+            self.start_learn()  # loop
+
     # -- drawing -----------------------------------------------------------------
-    # Sizes below are *base* sizes, multiplied by UI.scale (default 1.6) in
+    # Sizes below are *base* sizes, multiplied by UI.scale (default 2.0) in
     # text(). Screens show few, short lines: they are read from 1.5-2 m away.
 
     def draw(self) -> None:
@@ -430,6 +493,7 @@ class Game:
                 if not song.beat_map.verified:
                     y = text(stage, "     beat map not checked", (24, y), 18, WARN)
             y += 4
+        text(stage, "New? T learn the moves", (24, HEIGHT - 110), 18, ACCENT)
         text(stage, "Up/Down song   Left/Right level   Enter play", (24, HEIGHT - 70), 16, DIM)
         text(stage, "+/- text size   F fullscreen   Esc quit", (24, HEIGHT - 40), 16, DIM)
         cal = "OK" if self.calibration else "needed"
@@ -470,7 +534,9 @@ class Game:
         if self.step == 0:
             y = text(stage, f"Listen to {LATENCY_COUNT_IN} clicks, then clap on the next {LATENCY_CLAPS}.",
                      (24, y + 10), 24)  # fmt: skip
-            text(stage, "Hands in view.", (24, y), 24)
+            y = text(stage, "Hands in view.", (24, y), 24)
+            text(stage, "Only needed once: it is saved. Redo it (L in the menu) after changing camera, "
+                 "speakers or headphones.", (24, y + 20), 18, DIM)  # fmt: skip
             text(stage, "Space start", (24, HEIGHT - 50), 24, ACCENT)
         elif self.step == 1:
             now = time.monotonic_ns()
@@ -495,17 +561,14 @@ class Game:
         pos = self.player.position()
         beat = song.beat_at(pos) - song.routine_start_beat
         pose = self.animator.pose_at(beat)
-        draw_dancer(stage, pose, (STAGE_W // 2, 190), HEIGHT / 7.6, self.mirrored)
-        on_beat = pose.count and beat - np.floor(beat) < 0.12
-        text(stage, str(pose.count) if pose.count else ("ready" if beat < 0 else ""), (16, 6),
-             56 if pose.count else 30, ACCENT if on_beat else TEXT)  # fmt: skip
+        draw_dancer(stage, pose, (DANCER_X, DANCER_Y), DANCER_SCALE, self.mirrored)
+        self.draw_count(stage, pose.count, beat)
         if pose.next_block is not None and pose.next_block_beat is not None:
-            card = stage.subsurface((10, HEIGHT - 120, STAGE_W - 20, 110))
-            card.fill(PANEL)
-            counts = int(np.ceil(pose.next_block_beat - beat))
-            text(card, f"next: {block_title(pose.next_block)}", (12, 8), 24, ACCENT)
-            text(card, f"in {counts}", (12, 8 + round(30 * UI.scale)), 22, TEXT)
-            draw_dancer(card, static_pose(pose.next_block.keyframes[0]), (card.get_width() - 70, 28), 18, self.mirrored)
+            # The next move, danced in a loop by a small figure in sync with
+            # the count it will be danced on (blocks start on a multiple of
+            # their length, so beat % duration is the position inside it).
+            preview = self.animator.pose_at(pose.next_block_beat + beat % pose.next_block.duration)
+            self.draw_next(stage, preview, int(np.ceil(pose.next_block_beat - beat)))
         # Grade pop-up just above the demo dancer's head: players watch the
         # dancer, not their camera view (first test run, 2026-10-23). Drawn
         # after the dancer so a raised arm never hides it.
@@ -513,7 +576,7 @@ class Game:
         for t, grade, points in self.popups[-1:]:
             label = grade.value.upper() + ("!" if grade in (Grade.PERFECT, Grade.GREAT) else "")
             rise = round(12 * (1 - (now - t) / POPUP_S))
-            text(stage, label, (STAGE_W // 2, 18 - rise), 56, GRADE_COLOUR[grade], centre=True)
+            text(stage, label, (DANCER_X, 18 - rise), 56, GRADE_COLOUR[grade], centre=True)
         warning = session.framing_warning
         if warning is not None:
             text(camera, warning.issues[0].message, (camera.get_width() // 2, camera.get_height() - 120), 28,
@@ -525,6 +588,45 @@ class Game:
         bar = pygame.Rect(20, panel.get_height() - 22, panel.get_width() - 40, 12)
         pygame.draw.rect(panel, DIM, bar, 1)
         pygame.draw.rect(panel, ACCENT, (bar.x, bar.y, round(bar.w * progress), bar.h))
+
+    def draw_count(self, stage, count: int, beat: float) -> None:
+        """The count (1-8) below the dancer's feet, flashing on the beat."""
+        on_beat = count and beat - np.floor(beat) < 0.12
+        label = str(count) if count else ("ready" if beat < 0 else "")
+        text(stage, label, (DANCER_X, HEIGHT - round(64 * UI.scale) - 16), 56 if count else 34,
+             ACCENT if on_beat else TEXT, centre=True)  # fmt: skip
+
+    def draw_next(self, stage, pose: DancerPose, counts: int) -> None:
+        """Small "next move" picture at the dancer's top right: a framed stick
+        figure dancing the move, with how many counts until it starts.
+
+        Only the upper body is shown (moves are arms only), so the figure can
+        be drawn large: the drawing is clipped to a window from above raised
+        hands down to just below hanging hands.
+        """
+        box = stage.subsurface(NEXT_BOX)
+        box.fill(PANEL)
+        pygame.draw.rect(box, ACCENT, box.get_rect(), 3)
+        text(box, "next", (box.get_width() // 2, 4), 16, ACCENT, centre=True)
+        scale = 52  # px per shoulder width
+        window = box.subsurface((3, 40, box.get_width() - 6, round(3.6 * scale)))
+        draw_dancer(window, pose, (window.get_width() // 2, round(1.7 * scale)), scale, self.mirrored)
+        text(box, f"in {counts}", (box.get_width() // 2, box.get_height() - round(22 * UI.scale) - 4), 20,
+             centre=True)  # fmt: skip
+
+    def draw_learn(self, stage, camera, panel) -> None:
+        block = self.learn_blocks[self.learn_index]
+        assert self.animator is not None
+        beat = self.learn_grid.beat_at(self.player.position()) % self.animator.end_beat
+        pose = self.animator.pose_at(beat)
+        draw_dancer(stage, pose, (DANCER_X, DANCER_Y + 30), DANCER_SCALE, self.mirrored)
+        text(stage, block_title(block), (16, 8), 30, ACCENT)
+        self.draw_count(stage, pose.count, beat)
+        y = text(panel, block.description, (20, 12), 18)
+        y = text(panel, f"move {self.learn_index + 1} / {len(self.learn_blocks)}   "
+                        f"speed {LEARN_SPEEDS[self.learn_speed]:.0%}", (20, y), 16, DIM)  # fmt: skip
+        text(panel, "Left/Right move   Up/Down speed   Esc menu", (20, panel.get_height() - round(18 * UI.scale) - 10),
+             14, DIM)  # fmt: skip
 
     def draw_results(self, stage, camera, panel) -> None:
         r = self.results or {}

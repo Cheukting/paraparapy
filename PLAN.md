@@ -491,6 +491,12 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
   not be skipped**.
 - The text was too small to read from the dancing spot: the game is now
   fullscreen with a text size (default 2.0, `+` / `-`, saved).
+- Players look at the demo dancer, not their camera view: grade pop-up,
+  next move and count now sit around the dancer. The next move is a small
+  looping stick figure (text was hard to read while dancing).
+- New players need to see the moves before dancing: "Learn the moves" (`T` in
+  the menu) loops each move slowly with clicks. Later: score the practice
+  against the camera (a per-move "try it" check).
 
 Findings from the first recording session (2026-10-18, `parapara-analyze`):
 - MediaPipe world axes: +x = dancer's left, +y = down, +z = away from the

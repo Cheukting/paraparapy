@@ -74,6 +74,15 @@ them). Dance with the demo dancer on the left while your mirrored camera view
 is on the right. Esc ends a song early. Results are saved to `logs/` and the
 play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
 
+New to Para Para? Press `T` in the menu to **learn the moves**: the demo
+dancer shows each move slowly with metronome clicks (Left/Right next move,
+Up/Down speed). While playing, the next move is shown as a small dancing
+figure at the dancer's top right.
+
+The latency calibration is needed only once (it is saved); redo it with `L`
+after changing camera, speakers or headphones. Skipping it makes the grades
+late and unfair.
+
 The game opens fullscreen with large text so it can be read from where you
 dance: `+` / `-` change the text size (remembered), `F` toggles fullscreen,
 `M` mirrors the camera. `--window` starts in a window and `--text-scale 2.4`

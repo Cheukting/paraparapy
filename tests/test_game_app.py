@@ -75,3 +75,11 @@ def test_text_size_keys_change_and_save_the_scale(tmp_path) -> None:
     assert json.loads((tmp_path / "data" / "ui.json").read_text())["text_scale"] == 2.2
     _run_game(tmp_path, ["--fast", "--text-scale", "2.6", "--keys", "10:= 30:escape"])
     assert json.loads((tmp_path / "data" / "ui.json").read_text())["text_scale"] == 2.6  # clamped
+
+
+def test_learn_the_moves_flow(tmp_path) -> None:
+    """Menu -> T (learn the moves) -> next move, faster, previous move (wrapping
+    round to the last one) -> Esc back to the menu -> quit; nothing is scored
+    or saved."""
+    _run_game(tmp_path, ["--fast", "--keys", "10:t 40:right 70:up 90:left 92:left 120:escape 140:escape"])
+    assert not (tmp_path / "logs").exists()

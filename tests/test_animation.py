@@ -152,6 +152,24 @@ def test_counts_blocks_and_preview() -> None:
     assert angle_between_deg(end.right.fore, REST.fore) < 1e-3  # relaxed after the routine
 
 
+@pytest.mark.parametrize("block_id", list(BLOCK_LIBRARY))
+def test_for_blocks_loops_any_single_move_exactly(block_id) -> None:
+    """Animator.for_blocks (the "Learn the moves" screen) dances a block
+    repeated back to back, without phrase rules, exactly on every keyframe."""
+    block = BLOCK_LIBRARY[block_id]
+    animator = Animator.for_blocks([block] * 3)
+    assert animator.routine is None and animator.end_beat == 3 * block.duration
+    for repeat in range(3):
+        start = repeat * block.duration
+        assert animator.block_at(start + 0.5).block is block
+        for kf in block.keyframes:
+            pose = animator.pose_at(start + kf.beat)
+            for side in ("right", "left"):
+                target = getattr(kf, side)
+                if target is not None:
+                    assert angle_between_deg(getattr(pose, side).fore, target.fore) < 1e-3
+
+
 def test_block_titles() -> None:
     assert block_title(BLOCK_LIBRARY["chop_right"]) == "Chop (right)"
     assert block_title(BLOCK_LIBRARY["sweep_to_left_4"]) == "Sweep to left (4)"
