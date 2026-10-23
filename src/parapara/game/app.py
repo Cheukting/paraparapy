@@ -51,7 +51,6 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
-import functools
 import os
 import sys
 import time
@@ -74,6 +73,18 @@ from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
 from parapara.game.dancer_view import REST, block_title, draw_dancer, static_pose  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
+from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported for tests)
+    UI,
+    Drawn,  # noqa: F401
+    adjust_scale,
+    display_flags,
+    footer,
+    layout_issues,
+    load_scale,
+    register_box,
+    text,
+    text_height,
+)
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
 from parapara.pose.calibration import CalibrationError, calibrate  # noqa: E402
@@ -130,129 +141,6 @@ class Scene(Enum):
     LEARN = auto()
 
 
-class UI:
-    """Text size and layout checking.
-
-    - **Text size**, readable from the dancing spot (1.5-2 m away): every font
-      size in this module is multiplied by ``UI.scale``; ``+`` / ``-`` change it
-      during the game and the choice is saved (``settings.save_ui``). The first
-      test run showed desktop-sized text was unreadable from there.
-    - **Layout check** (third test run: some texts overlapped): while
-      ``UI.drawn`` is a list, :func:`text` and :func:`register_box` record
-      what they draw (absolute rectangles) and :func:`layout_issues` reports
-      overlapping or cut-off text. ``parapara-play --check-layout`` prints
-      the issues; the tests run every screen at several text sizes with it.
-    """
-
-    scale = 2.0
-    MIN, MAX, STEP = 1.0, 2.6, 0.2
-    drawn: list[Drawn] | None = None
-
-
-@dataclasses.dataclass(frozen=True)
-class Drawn:
-    """One recorded element: a line of text or a box (absolute screen pixels)."""
-
-    rect: pygame.Rect
-    label: str
-    bounds: pygame.Rect  # the surface it was drawn on
-    box: bool = False
-
-
-@functools.lru_cache(maxsize=64)
-def _font(px: int) -> pygame.font.Font:
-    return pygame.font.Font(None, px)
-
-
-def font(size: float) -> pygame.font.Font:
-    return _font(max(8, round(size * UI.scale)))
-
-
-def _wrap(f: pygame.font.Font, s: str, max_w: int) -> list[str]:
-    lines, line = [], ""
-    for word in s.split(" "):
-        trial = f"{line} {word}".strip()
-        if line and f.size(trial)[0] > max_w:
-            lines.append(line)
-            line = word
-        else:
-            line = trial
-    return [*lines, line]
-
-
-def text(surface, s, pos, size=24, colour=TEXT, centre=False, right=False, draw=True) -> int:
-    """Draw ``s`` at ``size`` x ``UI.scale``; returns the y below it.
-
-    Long text is word-wrapped to the room left on ``surface`` (for centred
-    text: to both sides of ``x``); a single word that is still too wide is
-    drawn smaller, so text never runs off the surface. ``draw=False`` only
-    measures (returns the y below without drawing).
-    """
-    x, y = pos
-    w = surface.get_width()
-    max_w = max(16, (2 * min(x, w - x) - 8) if centre else (x - 8 if right else w - x - 8))
-    px = max(8, round(size * UI.scale))
-    while True:
-        f = _font(px)
-        lines = _wrap(f, s, max_w)
-        if px <= 8 or all(f.size(ln)[0] <= max_w for ln in lines):
-            break
-        px -= 2
-    ox, oy = surface.get_abs_offset()
-    for ln in lines:
-        lw, lh = f.size(ln)
-        lx = x - lw // 2 if centre else (x - lw if right else x)
-        if draw:
-            surface.blit(f.render(ln, True, colour), (lx, y))
-            if UI.drawn is not None and ln.strip():
-                UI.drawn.append(Drawn(pygame.Rect(ox + lx, oy + y, lw, lh), ln.strip(),
-                                      pygame.Rect((ox, oy), surface.get_size())))  # fmt: skip
-        y += lh + 2
-    return y + 4
-
-
-def text_height(surface, s, size, width_from_x: int = 24) -> int:
-    """Height ``text`` would take at ``(width_from_x, 0)`` on ``surface``."""
-    return text(surface, s, (width_from_x, 0), size, draw=False)
-
-
-def footer(surface, lines: list[tuple[str, float, tuple[int, int, int]]], x: int = 24, margin: int = 10) -> int:
-    """Draw ``(text, size, colour)`` lines stacked up from the bottom of
-    ``surface`` (key hints); returns the top y, i.e. the room left above."""
-    y = surface.get_height() - margin
-    for s, size, colour in reversed(lines):
-        y -= text_height(surface, s, size, x)
-        text(surface, s, (x, y), size, colour)
-    return y
-
-
-def register_box(surface, rect: pygame.Rect, label: str) -> None:
-    """Record a framed box (text inside it is fine, text crossing its edge is not)."""
-    if UI.drawn is not None:
-        ox, oy = surface.get_abs_offset()
-        UI.drawn.append(Drawn(rect.move(ox, oy), label, pygame.Rect((ox, oy), surface.get_size()), box=True))
-
-
-def layout_issues(drawn: list[Drawn]) -> list[str]:
-    """Overlapping text, text crossing a box edge, and text cut off by the
-    edge of the surface it was drawn on."""
-    issues = []
-    for d in drawn:
-        if not d.box and not d.bounds.contains(d.rect):
-            issues.append(f"cut off: {d.label!r}")
-    for i, a in enumerate(drawn):
-        for b in drawn[i + 1:]:
-            if a.box and b.box or not a.rect.colliderect(b.rect):
-                continue
-            if a.box or b.box:
-                box, other = (a, b) if a.box else (b, a)
-                if not box.rect.contains(other.rect):
-                    issues.append(f"crosses {box.label}: {other.label!r}")
-            else:
-                issues.append(f"overlap: {a.label!r} / {b.label!r}")
-    return issues
-
-
 @dataclasses.dataclass
 class Menu:
     songs: list[Song]
@@ -281,11 +169,9 @@ class Game:
         self.config = config
         # Fullscreen, scaled from the WIDTH x HEIGHT layout (letterboxed);
         # F toggles a window. The dummy video driver (tests) gets a plain window.
-        headless = os.environ.get("SDL_VIDEODRIVER") == "dummy"
-        flags = 0 if headless or args.window else pygame.SCALED | pygame.FULLSCREEN
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), flags)
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), display_flags(args.window))
         pygame.display.set_caption("parapara")
-        UI.scale = float(args.text_scale or settings.load_ui().get("text_scale", UI.scale))
+        load_scale(args.text_scale)
         self.feed = LiveFeed(config)
         self.framing = FramingMonitor()
         self.player = Player(44100)
@@ -381,11 +267,7 @@ class Game:
             self.mirrored = not self.mirrored
         if pygame.K_f in keys:
             pygame.display.toggle_fullscreen()
-        bigger = {pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS} & set(keys)
-        smaller = {pygame.K_MINUS, pygame.K_KP_MINUS} & set(keys)
-        if bigger or smaller:
-            UI.scale = round(min(UI.MAX, max(UI.MIN, UI.scale + (UI.STEP if bigger else -UI.STEP))), 2)
-            settings.save_ui(text_scale=UI.scale)
+        adjust_scale(keys)
         if self.scene is Scene.MENU:
             return self.handle_menu(keys)
         if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):

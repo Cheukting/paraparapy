@@ -101,37 +101,37 @@ def test_static_timeline() -> None:
 
 def test_block_timeline_count_in_beats_and_keyframes() -> None:
     tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120, lookahead_counts=1)  # 0.5 s/beat
-    assert tl.recording_start == 2.0 and tl.recording_end == 10.0  # 4 + 16 beats
+    assert tl.recording_start == 4.0 and tl.recording_end == 12.0  # 8 + 16 beats
     beats = tl.beats()
-    assert len(beats) == 20 and beats[1] == (0.5, False)
-    assert [i for i, (_, accent) in enumerate(beats) if accent] == [0, 4, 12]
-    assert [tl.phase_at(t).label for t in (0, 0.6, 1.1, 1.6)] == ["4", "3", "2", "1"]
+    assert len(beats) == 24 and beats[1] == (0.5, False)
+    assert [i for i, (_, accent) in enumerate(beats) if accent] == [0, 8, 16]  # count 1 of every bar
+    assert [tl.phase_at(t).label for t in (0, 0.6, 3.1, 3.6)] == ["8", "7", "2", "1"]
 
     out, salute = BLOCK_LIBRARY["chop_right"].keyframes
-    p1, p2, p3 = tl.phase_at(2.1), tl.phase_at(2.6), tl.phase_at(3.1)
+    p1, p2, p3 = tl.phase_at(4.1), tl.phase_at(4.6), tl.phase_at(5.1)
     # With a look-ahead the guide runs one count ahead: during count 1 it
     # shows count 2's pose.
     assert (p1.bar, p1.count, p1.guide, p1.guide_count) == (1, 1, salute, 2)
     assert (p2.count, p2.guide, p2.guide_count) == (2, out, 3)  # block repeats
     assert (p3.count, p3.guide) == (3, salute)
     # During the count-in the first pose of the block is previewed.
-    assert (tl.phase_at(1.6).guide, tl.phase_at(1.6).guide_count) == (out, 1)
+    assert (tl.phase_at(3.6).guide, tl.phase_at(3.6).guide_count) == (out, 1)
 
 
 def test_block_timeline_guide_is_on_the_beat_by_default() -> None:
     tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)
     out, salute = BLOCK_LIBRARY["chop_right"].keyframes
-    assert tl.phase_at(2.1).guide == out and tl.phase_at(2.6).guide == salute
-    assert tl.phase_at(2.1).guide_count == 1
-    p_bar2 = tl.phase_at(6.1)
+    assert tl.phase_at(4.1).guide == out and tl.phase_at(4.6).guide == salute
+    assert tl.phase_at(4.1).guide_count == 1
+    p_bar2 = tl.phase_at(tl.recording_start + 8 * 0.5 + 0.1)  # 8 counts later
     assert (p_bar2.bar, p_bar2.count) == (2, 1)
 
 
 def test_block_timeline_holds_latest_keyframe_between_counts() -> None:
     tl = ClipTimeline(CLIP_IDS["block_wrist_roll_4"], bpm=120)  # 0.5 s per count
     kfs = BLOCK_LIBRARY["wrist_roll_4"].keyframes
-    assert tl.phase_at(2.0 + 0.25).guide is kfs[0]  # 0.5 counts in: still count 1
-    assert tl.phase_at(2.0 + 0.55).guide is kfs[1]  # 1.1 counts in
+    assert tl.phase_at(tl.recording_start + 0.25).guide is kfs[0]  # 0.5 counts in: still count 1
+    assert tl.phase_at(tl.recording_start + 0.55).guide is kfs[1]  # 1.1 counts in
 
 
 def test_preview_loops_through_the_move_on_the_beat() -> None:
@@ -164,15 +164,17 @@ def test_preview_clicks_cover_every_beat_exactly_once() -> None:
     assert clicks[::8] == [True] * len(clicks[::8]) and sum(clicks) == len(clicks[::8])
 
 
-def test_count_in_starts_on_the_next_preview_beat() -> None:
+def test_count_in_starts_on_the_next_preview_bar() -> None:
+    """The count-in starts on count 1 of the preview's next bar (4 s bars at
+    120 BPM), so the 8-count grid is never broken."""
     tl = ClipTimeline(CLIP_IDS["block_chop_right"], bpm=120)  # 0.5 s per beat
-    assert tl.next_preview_beat(0.0) == 0.5  # strictly after: never "now"
-    assert tl.next_preview_beat(1.2) == 1.5
-    assert tl.next_preview_beat(1.5) == 2.0
+    assert tl.next_preview_bar(0.0) == 4.0  # strictly after: never "now"
+    assert tl.next_preview_bar(3.75) == 4.0  # the recorder starts half a beat before the bar ends
+    assert tl.next_preview_bar(4.0) == 8.0
     # No click is lost or doubled across the hand-over: the preview clicks
     # up to (not including) the start beat, which the count-in then clicks.
-    start = tl.next_preview_beat(1.2)
-    assert tl.preview_clicks(1.2, start - 1e-6) == []
+    start = tl.next_preview_bar(3.75)
+    assert tl.preview_clicks(3.75, start - 1e-6) == []
     assert tl.beats()[0] == (0.0, True)
 
 
@@ -233,6 +235,72 @@ def test_recorder_records_and_saves_clips_headless(tmp_path) -> None:
 
     block = Recording.load(session / "block_knock_right.npz")
     assert block.metadata["block_id"] == "knock_right" and block.metadata["bpm"] == 960
-    assert len(block.metadata["beat_times_ns"]) == 4 + 16  # count-in + 2 bars
+    assert len(block.metadata["beat_times_ns"]) == 8 + 16  # count-in bar + 2 bars
     assert block.metadata["lookahead_counts"] == 0.0
     assert len(block) > 0
+
+
+def _run_recorder(tmp_path, args: list[str], timeout: float = 90) -> subprocess.CompletedProcess:
+    script = (f"import sys\nfrom parapara.game import recorder\n"
+              f"recorder.run({args!r} + ['--out', sys.argv[1]], worker='fake_capture_worker:stream')\n")  # fmt: skip
+    tests_dir = os.path.dirname(__file__)
+    env = os.environ | {
+        "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1",
+        "PARAPARA_DATA_DIR": str(tmp_path / "data"),
+        "PYTHONPATH": os.pathsep.join(filter(None, [tests_dir, os.environ.get("PYTHONPATH")])),
+    }  # fmt: skip
+    result = subprocess.run([sys.executable, "-c", script, str(tmp_path / "rec")], capture_output=True,
+                            text=True, env=env, timeout=timeout)  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    return result
+
+
+FAST = ["--bpm", "960", "--countdown", "0.2", "--static-seconds", "0.4", "--width", "64", "--height", "48"]
+
+
+def test_recorder_is_hands_free(tmp_path) -> None:
+    """No keys at all (the player stands back): each clip starts after the
+    position check and the preview, passes the quality check, is kept, the
+    next clip follows, and the recorder closes by itself at the end."""
+    _run_recorder(tmp_path, [*FAST, "--clips", "t_pose,block_knock_right"])
+    (session,) = (tmp_path / "rec").iterdir()
+    clips = json.loads((session / "session.json").read_text())["clips"]
+    assert list(clips) == ["t_pose", "block_knock_right"]
+    assert all(c["quality_ok"] and c["attempts"] == 1 for c in clips.values())
+
+
+def test_recording_quality_check() -> None:
+    """A clip is redone when the person was not seen enough or the hips /
+    shoulders left the picture; a good one passes."""
+    script = textwrap.dedent(
+        """
+        from types import SimpleNamespace as NS
+        from parapara.diagnostics.clips import CLIP_IDS, ClipTimeline
+        from parapara.game.recorder import ClipRun
+        run = ClipRun(ClipTimeline(CLIP_IDS["t_pose"]), 0)
+        good, hips_out = NS(codes=frozenset()), NS(codes=frozenset({"no_hips"}))
+        rec = NS(person_found_pct=100.0, __len__=None)
+        class Rec:
+            def __init__(self, n, pct): self.n, self.person_found_pct = n, pct
+            def __len__(self): return self.n
+        for _ in range(95): run.note_framing(good)
+        for _ in range(5): run.note_framing(hips_out)
+        assert run.quality_issue(Rec(100, 100.0)) is None
+        assert "seen only 50%" in run.quality_issue(Rec(100, 50.0))
+        assert run.quality_issue(Rec(0, 0.0)) == "no camera samples"
+        for _ in range(20): run.note_framing(hips_out)
+        assert "left the picture" in run.quality_issue(Rec(100, 100.0))
+        """
+    )
+    env = os.environ | {"SDL_VIDEODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env, timeout=60)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("scale", ["1.0", "2.6"])
+def test_recorder_text_does_not_overlap(tmp_path, scale) -> None:
+    """Every recorder screen at the smallest and largest text size (full-size
+    camera view, as in real use)."""
+    args = [*FAST[:6], "--clips", "neutral,block_flick_clap_to_right", "--check-layout", "--text-scale", scale]
+    result = _run_recorder(tmp_path, args)
+    assert "LAYOUT" not in result.stderr, result.stderr

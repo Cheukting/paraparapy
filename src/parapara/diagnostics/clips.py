@@ -140,7 +140,9 @@ class ClipTimeline:
         bpm: metronome tempo for block clips.
         countdown_s: countdown before a static clip.
         static_seconds: how long a static pose is recorded.
-        count_in_beats: metronome beats before a block clip's recording.
+        count_in_beats: metronome beats before a block clip's recording: one
+            full 8-count bar (a 4-beat count-in broke the rhythm between the
+            preview and the recording, 2026-10-23 recording session).
         lookahead_counts: how far ahead the guide shows the target pose
             during recording (default 0: on the beat).
     """
@@ -149,7 +151,7 @@ class ClipTimeline:
     bpm: float = 120.0
     countdown_s: float = 3.0
     static_seconds: float = 4.0
-    count_in_beats: int = 4
+    count_in_beats: int = COUNTS_PER_BAR
     lookahead_counts: float = 0.0
 
     @property
@@ -210,11 +212,12 @@ class ClipTimeline:
         last = math.floor(t1 / self.beat_s)
         return [i % COUNTS_PER_BAR == 0 for i in range(max(first, 0), last + 1)]
 
-    def next_preview_beat(self, t: float) -> float:
-        """Preview time of the first beat strictly after ``t``: where the
-        count-in starts when the player presses Space during the preview, so
-        the metronome keeps one unbroken rhythm."""
-        return (math.floor(t / self.beat_s) + 1) * self.beat_s
+    def next_preview_bar(self, t: float) -> float:
+        """Preview time of the first bar start (count 1) strictly after ``t``:
+        where the count-in starts, so preview bar, count-in bar and recording
+        bars follow each other on one unbroken 8-count grid."""
+        bar_s = COUNTS_PER_BAR * self.beat_s
+        return (math.floor(t / bar_s + 1e-9) + 1) * bar_s
 
     def phase_at(self, t: float) -> Phase:
         if t >= self.recording_end:
@@ -223,7 +226,7 @@ class ClipTimeline:
             if self.clip.kind == "static":
                 return Phase("countdown", str(math.ceil(self.countdown_s - t)), self.clip.guide)
             beat = int(t / self.beat_s)
-            label = str(self.count_in_beats - beat)  # 4, 3, 2, 1
+            label = str(self.count_in_beats - beat)  # 8, 7, ... 1
             return Phase("count_in", label, self._keyframe_at(0.0), guide_count=1)
         progress = (t - self.recording_start) / (self.recording_end - self.recording_start)
         if self.clip.kind == "static":

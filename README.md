@@ -42,8 +42,12 @@ uv run parapara-record                   # --bpm 100 for a slower metronome
 ```
 
 Walks you through calibration poses and one clip per building block, with a
-guide figure and a metronome. Clips are saved (landmarks only, no images) to
-`recordings/<date-time>/`.
+guide figure and a metronome. It is **hands-free**, so you can stand back:
+each clip starts once you are in position and have watched the move, is
+checked (you and your hips in the picture) and then kept, or redone with the
+reason shown. Fullscreen with large text (`+` / `-`, `F` window); `S` skips a
+clip, `Esc` quits, `--manual` uses keys instead. Clips are saved (landmarks
+only, no images) to `recordings/<date-time>/`.
 
 ## Pose analysis / recalibration
 

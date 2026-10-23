@@ -6,6 +6,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Hands-free recorder** (`parapara-record`; the player stands back and
+  cannot reach the keyboard): each clip starts by itself once the position
+  check passes and the preview has run, is quality-checked after recording
+  (person seen >= 90%, hips and shoulders in the picture >= 90% of the time)
+  and kept, or redone with the reason shown (up to 3 attempts; the last is
+  kept and marked `quality_ok: false` in `session.json`, with `attempts`).
+  The session closes by itself at the end. `--manual` keeps the key flow.
+  Block clips: one **8-count count-in bar** (8, 7, ... 1; was 4 beats) that
+  starts on count 1 of the preview's next bar, so preview, count-in and
+  recording keep one unbroken 8-count rhythm (`ClipTimeline.next_preview_bar`
+  replaces `next_preview_beat`).
+  Fullscreen with the game's large text and layout (guide figure left,
+  camera right), `+` / `-`, `F`, `--window`, `--text-scale`. Tests: the
+  hands-free run, the quality check, no overlapping text at sizes 1.0/2.6.
+- `parapara.game.ui`: the game's text helpers (text size, word wrap,
+  footer, layout check, fullscreen flags) shared by the game and the recorder.
 - `PLAN.md` §10: pre-release checklist (must do / should do / after
   shipping) agreed after the sixth test run.
 - `parapara-play` third test-run feedback:
