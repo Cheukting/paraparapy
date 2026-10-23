@@ -97,6 +97,18 @@ def test_latency_recovered(delay_ms) -> None:
     assert r.latency_ms == pytest.approx(delay_ms, abs=12)  # 43 ms frames, refined
 
 
+def test_latency_from_8_claps() -> None:
+    """The game asks for 8 claps (fourth test run: 16 felt too long): careful
+    clapping is still recovered, too few or scattered claps rejected."""
+    clicks = CLICKS[:8]
+    r = estimate_latency(_clapping(200, clicks, jitter_ms=25), clicks, BEAT_NS)
+    assert r.ok and r.claps_found == 8
+    assert r.latency_ms == pytest.approx(200, abs=25)
+    few = estimate_latency(_clapping(200, clicks, miss={0, 2, 4}), clicks, BEAT_NS)
+    assert not few.ok  # 5 of 8 is below MIN_CLAPS
+    assert not estimate_latency(_clapping(200, clicks, jitter_ms=120), clicks, BEAT_NS).ok
+
+
 def test_latency_rejects_too_few_or_uneven_claps() -> None:
     few = estimate_latency(_clapping(100, CLICKS, miss=set(range(12))), CLICKS, BEAT_NS)
     assert not few.ok and "of 16 claps" in few.reason

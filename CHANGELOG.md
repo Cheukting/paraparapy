@@ -28,6 +28,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- `parapara-play` fourth test-run feedback:
+  - **Latency calibration: 8 claps** instead of 16 (still needs 6 to be
+    accepted; test with 8 synthetic claps).
+  - **The music starts right after the song is chosen**: the 4-bar count-in
+    with clicks and silence is replaced by a visual **4-count count-in**
+    (4, 3, 2, 1 above the dancer, flashing on each count). Silence is added
+    only if a song's intro is shorter than that. `--countdown-bars` is now
+    `--count-in` (counts, default 4).
+  - "next" box: **dots instead of "in N"**: four rings that fill in the last
+    four counts before the move and go out one per count.
 - `parapara-play` third test-run feedback:
   - **Calibrate at every launch**, not between songs of the same session
     (body and latency); `S` on the latency screen reuses the last saved

@@ -21,7 +21,7 @@ Flow (one capture process for the whole session)::
 - **Body calibration**: the position check (:mod:`parapara.pose.framing`)
   must pass, then a neutral pose and a T-pose are held for a few seconds each
   (:mod:`parapara.pose.calibration`); saved in the user data folder.
-- **Latency calibration**: clap on each of 16 metronome clicks; the median
+- **Latency calibration**: clap on each of 8 metronome clicks; the median
   delay, measured through the same feature pipeline as the scoring
   (:mod:`parapara.scoring.latency`), shifts the scoring schedule.
 - **Play**: the demo dancer on the left (mirrored), your mirrored camera view
@@ -30,8 +30,10 @@ Flow (one capture process for the whole session)::
   test run, 2026-10-23): the grade pop-up above its head, the next move as a
   still stick figure at its top right (pictures, not text: a move name is
   hard to read from the dancing spot; still, because an animation was
-  distracting) and the count below its feet. A **4-bar count-in** with
-  clicks leads into the first move (``--countdown-bars``). Score, combo and
+  distracting) with dots counting down to its start, and the count below its
+  feet. The music starts as soon as a song is chosen; a **4-count count-in**
+  (4, 3, 2, 1 above the dancer) leads into the first move (``--count-in``).
+  Score, combo and
   progress are in the panel; a
   warning when you leave the picture. Driven by
   :class:`parapara.scoring.session.PlaySession` with the audio playback time as
@@ -79,7 +81,7 @@ from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
 from parapara.routine.library import BLOCK_LIBRARY  # noqa: E402
-from parapara.routine.model import COUNTS_PER_BAR, Block, BlockKind, Routine  # noqa: E402
+from parapara.routine.model import Block, BlockKind, Routine  # noqa: E402
 from parapara.routine.store import routines_for  # noqa: E402
 from parapara.scoring.judge import FlowJudgment, Grade  # noqa: E402
 from parapara.scoring.latency import LatencyResult, estimate_latency  # noqa: E402
@@ -97,7 +99,9 @@ GRADE_COLOUR = {Grade.PERFECT: (255, 220, 80), Grade.GREAT: (90, 220, 120), Grad
                 Grade.HOLD: (90, 220, 120), Grade.MISS: (255, 90, 90)}  # fmt: skip
 POPUP_S = 0.7
 CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
-LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 16
+# 8 claps (fourth test run: 16 felt too long); estimate_latency needs MIN_CLAPS (6) of them.
+LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 8
+NEXT_DOTS = 4  # dots in the "next" box: one per count still to go before the move
 
 
 def learn_order() -> list[Block]:
@@ -486,29 +490,22 @@ class Game:
     # -- play ------------------------------------------------------------------
 
     def start_play(self) -> None:
-        """Play the song with a count-in, and score the routine.
+        """Play the song (straight after the song is chosen) and score the routine.
 
-        **Count-in** (third test run): ``--countdown-bars`` 8-count bars (4 by
-        default) of metronome clicks lead into the first move, on the song's
-        beat grid. Most intros are shorter than that (Lets Go To A Rave: 8
-        beats), so silence is put in front of the song (``self.lead_in_s``)
-        and the clicks run from the silence into the intro. Positions on the
-        player are therefore song time + ``lead_in_s``.
+        **Count-in** (fourth test run): the music starts at once and the last
+        ``--count-in`` counts (4) before the first move are counted down on
+        screen (4, 3, 2, 1); no clicks. Only a song whose intro is shorter
+        than that gets silence in front (``self.lead_in_s``), so positions on
+        the player are song time + ``lead_in_s``.
         """
         self.go(Scene.PLAY)
         song, routine = self.menu.song, self.menu.routine
         assert routine is not None
         samples = load_for_player(self.player, song.audio_path)
         sr = self.player.sr
-        count_in_beats = self.args.countdown_bars * COUNTS_PER_BAR
         first_move_s = song.beat_time_s(song.routine_start_beat)
-        self.lead_in_s = max(0.0, count_in_beats * song.beat_s - first_move_s)
+        self.lead_in_s = max(0.0, self.args.count_in * song.beat_s - first_move_s)
         track = np.concatenate([np.zeros(round(self.lead_in_s * sr), np.float32), samples])
-        if count_in_beats:
-            start_s = self.lead_in_s + first_move_s  # first move, in track time
-            grid = BeatGrid(song.bpm, start_s - count_in_beats * song.beat_s, 0)
-            head = round(start_s * sr)
-            track[:head] = render_click_track(track[:head], sr, grid, music_gain=1.0, click_gain=0.6)
         self.player.play(track, 0.0)
         song_start_ns = self.player.start_ns + round(self.lead_in_s * 1e9)
         self.session = PlaySession(song, routine, song_start_ns,
@@ -731,22 +728,19 @@ class Game:
         beat = song.beat_at(pos) - song.routine_start_beat
         pose = self.animator.pose_at(beat)
         draw_dancer(stage, pose, (DANCER_X, DANCER_Y), DANCER_SCALE, self.mirrored)
-        count_in_beats = self.args.countdown_bars * COUNTS_PER_BAR
-        counting_in = -count_in_beats <= beat < 0
-        # Count below the feet; during the count-in it counts the bars too.
-        count = pose.count or (int(np.floor(beat)) % COUNTS_PER_BAR + 1 if counting_in else 0)
-        self.draw_count(stage, count, beat)
+        counting_in = -self.args.count_in <= beat < 0
+        self.draw_count(stage, pose.count, beat, idle="" if counting_in else "ready")
         if pose.next_block is not None and pose.next_block_beat is not None:
             # The next move as a still picture of its first pose (a looping
             # animation was too distracting: third test run).
-            self.draw_next(stage, static_pose(pose.next_block.keyframes[0]), int(np.ceil(pose.next_block_beat - beat)))
+            self.draw_next(stage, static_pose(pose.next_block.keyframes[0]), pose.next_block_beat - beat)
         # Above the dancer's head (players watch the dancer, not their camera
         # view): the count-in, then the grade pop-ups. The area ends at the
         # "next" box, so long words shrink rather than run under it.
         top = stage.subsurface((0, 0, NEXT_BOX.left - 8, DANCER_Y - 40))
-        if counting_in:
-            bars = int(np.ceil(-beat / COUNTS_PER_BAR))
-            text(top, f"{bars} bars" if bars > 1 else "last bar!", (DANCER_X, 10), 34, ACCENT, centre=True)
+        if counting_in:  # 4, 3, 2, 1 into the first move, flashing on each count
+            on_beat = beat - np.floor(beat) < 0.25
+            text(top, str(int(np.ceil(-beat))), (DANCER_X, 0), 64, ACCENT if on_beat else TEXT, centre=True)
         now = time.monotonic()
         for t, grade, points in self.popups[-1:]:
             label = grade.value.upper() + ("!" if grade in (Grade.PERFECT, Grade.GREAT) else "")
@@ -764,19 +758,24 @@ class Game:
         pygame.draw.rect(panel, DIM, bar, 1)
         pygame.draw.rect(panel, ACCENT, (bar.x, bar.y, round(bar.w * progress), bar.h))
 
-    def draw_count(self, stage, count: int, beat: float, top: int | None = None) -> int:
-        """The count (1-8) below the dancer's feet, flashing on the beat;
-        returns its top y."""
+    def draw_count(self, stage, count: int, beat: float, top: int | None = None, idle: str = "ready") -> int:
+        """The count (1-8) below the dancer's feet, flashing on the beat
+        (``idle`` before the routine); returns its top y."""
         on_beat = count and beat - np.floor(beat) < 0.12
-        label = str(count) if count else ("ready" if beat < 0 else "")
+        label = str(count) if count else (idle if beat < 0 else "")
         size = 56 if count else 34
         y = HEIGHT - 10 - text_height(stage, "8", 56) if top is None else top
         text(stage, label, (DANCER_X, y), size, ACCENT if on_beat else TEXT, centre=True)
         return y
 
-    def draw_next(self, stage, pose: DancerPose, counts: int) -> None:
+    def draw_next(self, stage, pose: DancerPose, beats_to_go: float) -> None:
         """Small "next move" picture at the dancer's top right: a framed still
-        stick figure in the move's first pose, with the counts until it starts.
+        stick figure in the move's first pose, and dots saying when it starts.
+
+        **Dots** (fourth test run: "in 3" text was not obvious): NEXT_DOTS
+        dots under the picture. Further away than that they are empty rings;
+        in the last NEXT_DOTS counts one filled dot per count still to go,
+        so they go out one by one, and the move starts when the last goes.
 
         Only the upper body is shown (moves are arms only), so the figure can
         be drawn large: the drawing is clipped to a window from above raised
@@ -787,12 +786,21 @@ class Game:
         pygame.draw.rect(box, ACCENT, box.get_rect(), 3)
         register_box(stage, NEXT_BOX, "[next box]")
         y = text(box, "next", (box.get_width() // 2, 4), 16, ACCENT, centre=True)
-        label_y = box.get_height() - text_height(box, "in 8", 20, box.get_width() // 2) - 2
+        dot_r = 18
+        dots_y = box.get_height() - dot_r - 12
+        label_y = dots_y - dot_r - 6
         scale = 52  # px per shoulder width
         window_h = max(10, min(round(3.6 * scale), label_y - y))
         window = box.subsurface((3, y, box.get_width() - 6, window_h))
         draw_dancer(window, pose, (window.get_width() // 2, round(1.7 * scale)), scale, self.mirrored)
-        text(box, f"in {counts}", (box.get_width() // 2, label_y), 20, centre=True)
+        counts = int(np.ceil(beats_to_go - 1e-9))
+        gap = (box.get_width() - 2 * 14) / NEXT_DOTS
+        for i in range(NEXT_DOTS):
+            centre = (round(14 + gap * (i + 0.5)), dots_y)
+            if counts <= NEXT_DOTS and i < counts:
+                pygame.draw.circle(box, ACCENT, centre, dot_r)
+            else:
+                pygame.draw.circle(box, DIM, centre, dot_r, 3)
 
     def draw_learn(self, stage, camera, panel) -> None:
         block = self.learn_blocks[self.learn_index]
@@ -836,7 +844,7 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     parser.add_argument("--model", choices=("lite", "full"), default="full")
     parser.add_argument("--window", action="store_true", help="run in a window instead of fullscreen")
     parser.add_argument("--text-scale", type=float, help="text size (default: saved, or 2.0; +/- in game)")
-    parser.add_argument("--countdown-bars", type=int, default=4, help="8-count bars counted in before the first move")
+    parser.add_argument("--count-in", type=int, default=4, help="counts shown (4, 3, 2, 1) before the first move")
     parser.add_argument("--reuse-calibration", action="store_true",
                         help="use the saved calibrations instead of calibrating at launch")  # fmt: skip
     parser.add_argument("--check-layout", action="store_true", help=argparse.SUPPRESS)  # tests: report overlapping text

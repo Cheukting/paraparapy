@@ -36,7 +36,7 @@ def _run_game(tmp_path, args: list[str]) -> subprocess.CompletedProcess:
 
 
 def test_game_plays_a_song_and_saves_results(tmp_path) -> None:
-    _run_game(tmp_path, ["--auto", "--auto-seconds", "6", "--countdown-bars", "0"])
+    _run_game(tmp_path, ["--auto", "--auto-seconds", "6", "--count-in", "0"])
     (log,) = glob.glob(str(tmp_path / "logs" / "game-*.json"))
     summary = json.loads(Path(log).read_text())["result"]
     assert summary["song_id"] == "test" and summary["keyframes"] > 0
@@ -113,7 +113,7 @@ def test_latency_skip_keeps_the_value_and_songs_in_a_row_need_no_calibration(tmp
     _save_calibration(tmp_path)
     (tmp_path / "data" / "latency.json").write_text('{"latency_ms": 230.0, "spread_ms": 10, "claps": 16}')
     keys = "10:l 12:return 30:s 120:escape 150:return 170:return 260:escape 290:return 310:escape"
-    _run_game(tmp_path, ["--fast", "--reuse-calibration", "--countdown-bars", "0", "--keys", keys])
+    _run_game(tmp_path, ["--fast", "--reuse-calibration", "--count-in", "0", "--keys", keys])
     logs = sorted(glob.glob(str(tmp_path / "logs" / "game-*.json")))
     assert len(logs) == 2  # two songs; the second needed no calibration
     for log in logs:
@@ -159,7 +159,7 @@ def test_no_overlapping_text_on_any_screen(tmp_path, scale) -> None:
         ["--fast", "--reuse-calibration", "--keys",
          "10:return 20:space 240:s 300:s 460:escape 490:return 510:t 540:right 560:up 580:escape 600:escape"],
         # play with grades and the next-move box
-        ["--auto", "--auto-seconds", "9", "--countdown-bars", "1"],
+        ["--auto", "--auto-seconds", "9", "--count-in", "4"],
     ]
     _save_calibration(tmp_path)
     for args in runs:

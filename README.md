@@ -69,7 +69,7 @@ uv run parapara-play
 
 Pick a song and routine (Up/Down, Left/Right, Enter). The first time, the
 game calibrates your body (position check, neutral pose, T-pose) and your
-latency (clap on 16 clicks); both are remembered (B / L in the menu redo
+latency (clap on 8 clicks); both are remembered (B / L in the menu redo
 them). Dance with the demo dancer on the left while your mirrored camera view
 is on the right. Esc ends a song early. Results are saved to `logs/` and the
 play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
@@ -77,12 +77,13 @@ play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
 New to Para Para? Press `T` in the menu to **learn the moves**: the demo
 dancer shows each move slowly with metronome clicks (Left/Right next move,
 Up/Down speed). While playing, the next move is shown as a small picture
-at the dancer's top right.
+at the dancer's top right; its dots go out one per count until it starts.
 
 Both calibrations run before the first song each time the game starts and
 are kept for the songs that follow (`B` / `L` redo them). Don't skip the
 latency one: without it the grades are late and unfair (`S` reuses the last
-saved value). Each song starts with a 4-bar count-in (`--countdown-bars N`).
+saved value). The music starts as soon as you pick a song; 4, 3, 2, 1 is
+counted above the dancer into the first move (`--count-in N`).
 
 The game opens fullscreen with large text so it can be read from where you
 dance: `+` / `-` change the text size (remembered), `F` toggles fullscreen,

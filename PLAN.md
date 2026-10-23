@@ -498,6 +498,10 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
   before the first move; the next-move picture must be still (animation
   distracts); the selected song needs a frame; overlapping texts are now
   caught automatically (`--check-layout`, run by the tests).
+- Fourth run (latency calibrated: 225 ms, 72.7% accuracy, grades felt
+  fair; no text overlaps): 8 claps are enough for the latency calibration;
+  the music should start at once with a visual 4-count into the first move;
+  the next-move picture needs a graphic countdown (dots), not text.
 - New players need to see the moves before dancing: "Learn the moves" (`T` in
   the menu) loops each move slowly with clicks. Later: score the practice
   against the camera (a per-move "try it" check).
