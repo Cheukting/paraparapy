@@ -71,7 +71,7 @@ def run(
 
     pygame.init()
     screen = pygame.display.set_mode((args.width, args.height))
-    pygame.display.set_caption("parapara – capture benchmark")
+    pygame.display.set_caption("ParaParaPy – capture benchmark")
     clock = pygame.time.Clock()
 
     results: dict[str, dict[str, Any]] = {}

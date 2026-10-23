@@ -194,7 +194,7 @@ def run(argv: list[str] | None = None) -> BeatGrid:
 
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"parapara – beat check: {data.get('title', args.song_dir.name)}")
+    pygame.display.set_caption(f"ParaParaPy – beat check: {data.get('title', args.song_dir.name)}")
     player = Player(sr)
     if player.sr != sr:  # the mixer could not open the file's rate: resample (linear)
         samples = np.interp(np.arange(int(duration * player.sr)) / player.sr,

@@ -6,6 +6,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Demo songs: the beat maps of 80s Motivational Chiptune, Onion March and Goa
+  Trolls accepted by the project owner (marked verified locally; the
+  verification is not yet carried by `catalog.json`, see PLAN.md §10).
+- **ParaParaPy**: the project's name, with the project owner's logo
+  (`assets/branding/paraparapy-logo.png`). `parapara.game.branding` derives
+  the menu title (the wordmark, cropped) and the window / dock icon (the
+  first "P"'s flower, cut to a circle); `python -m parapara.game.branding`
+  writes them as PNGs (the wordmark heads the README). Window titles say
+  ParaParaPy. The distribution is `paraparapy`; the import package, the
+  commands and the user data folder keep the name `parapara`, so saved
+  calibrations and scripts keep working. `parapara` now starts the game.
+  Test: wordmark crop and round icon.
 - **Hands-free recorder** (`parapara-record`; the player stands back and
   cannot reach the keyboard): each clip starts by itself once the position
   check passes and the preview has run, is quality-checked after recording
@@ -46,6 +58,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- **Hit timing on the unsmoothed arms** (`PoseFeatures.for_timing`, used by
+  the judge for keyframes and claps; poses are still scored on the smoothed
+  arms). Through the landmark smoothing a pose's error kept creeping down
+  40-130 ms after the arm had stopped, so held poses were graded late: the
+  demo dancer as a perfect player now scores 100% (was 91-94%) with hits
+  within ±16 ms; the day's game plays 75.6% -> 76.2%. Tests: perfect player
+  timed within ±40 ms; the timing copy has no smoothing lag.
+- **Chop reach 25°** (was 45°): as danced at game speed in every recording;
+  with the timing fix it no longer costs points.
 - **Step 4b, block poses checked against a real dancer** (two hands-free
   sessions at 150 BPM on 2026-10-23 and the day's 6 game plays):
   - Flick + Clap recalibrated: the front and side flicks' forearm targets
@@ -56,7 +77,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     judge then timed the reach later (-5 points); on hold until the
     held-pose timing fix (PLAN.md §10).
   - Sweeps unchanged: on time in the game plays; the recorder's lag comes
-    from its snapping guide figure (follow-up in PLAN.md).
+    from its snapping guide figure (kept as it is: the recorder works fine).
   - Test: the flick's recalibrated forearm directions.
 - `parapara-play` sixth test-run feedback:
   - Latency calibration: the 4 count-in clicks are counted down on screen

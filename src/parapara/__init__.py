@@ -1,4 +1,8 @@
-"""Para Para dance game: webcam pose tracking and rhythm scoring.
+"""ParaParaPy, a Para Para dance game: webcam pose tracking and rhythm scoring.
+
+The project is called ParaParaPy; the Python package, the commands
+(``parapara-play``, ...) and the user data folder keep the short name
+``parapara``.
 
 Package layout (see PLAN.md §4 for the full design):
 
@@ -25,5 +29,7 @@ Objective-C class warnings on macOS and possible crashes, so:
 
 
 def main() -> None:
-    """Console entry point (``parapara``). The game loop arrives in Step 6."""
-    print("parapara: game not implemented yet (see PLAN.md roadmap).")
+    """Console entry point (``parapara``): starts the game, like ``parapara-play``."""
+    from parapara.game import app  # pygame only on demand (see the process boundary above)
+
+    app.main()

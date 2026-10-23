@@ -37,9 +37,9 @@ Interpretation choices (reviewed with the project owner 2026-10-18):
 
 - **Knock**: upper arm out to the side and forward (~45°, from the recording);
   the forearm points up and tilts forward towards the "door".
-- **Chop** beat 1 keeps the reference's 45° up-and-out target, with a wider
-  tolerance (the dancer reached 15-25°; a 25° target waits for the held-pose
-  timing fix, see the note at ``_CHOP_OUT``). Beat 2: the elbow stays at shoulder
+- **Chop** beat 1: 25° up and out (the reference says 45°; lowered on
+  2026-10-23 because the dancer reached 15-25° in every recording), with a
+  wider tolerance. Beat 2: the elbow stays at shoulder
   height, out and forward, and the forearm folds across **in front of the
   chest** with the flat hand continuing the forearm line (salute shape).
 - **Flick + Clap**: the right arm travels left → right; the mirrored block
@@ -153,13 +153,13 @@ KNOCK_RIGHT = Block(
 #   left on 5–6 and 7–8.
 # ---------------------------------------------------------------------------
 
-_CHOP_OUT = ArmPose(upper=(1, 1, 0), fore=(1, 1, 0), hand_shape=HandShape.OPEN)
-# The 45° target is kept, but dancers often reach lower (15-25° in every
-# recording so far), so this keyframe is judged more leniently than other
-# sharp ones. A 25° target fits the recordings better (error 18° -> 9°) but
-# was put on hold on 2026-10-23: the judge then times the reach ~50 ms later
-# (a held pose's arrival is detected late through the smoothing filter), which
-# cost ~5 points. Re-apply it after the held-pose timing fix (PLAN.md §10).
+# Reach: 25° up and out (the reference says 45°). At game speed the dancer
+# reached 15-25° up in every recording (2026-10-18, twice on 2026-10-23); a
+# 25° target halves the arm error (18° -> 9°). Lowered by the project owner on
+# 2026-10-23, once hits were timed on the unsmoothed arms (before that the
+# judge timed the reach ~50 ms late with this target). The wider tolerance
+# from the 45° days is kept for now.
+_CHOP_OUT = ArmPose(upper=(0.9, 0.42, 0), fore=(0.9, 0.42, 0), hand_shape=HandShape.OPEN)
 CHOP_OUT_TOLERANCE_DEG = 40.0
 # Salute fold (from the recording): elbow at shoulder height, out and forward;
 # forearm across the front of the chest, flat hand continuing its line.
@@ -178,7 +178,7 @@ CHOP_RIGHT = Block(
         Keyframe(beat=0, right=_CHOP_OUT, tolerance_deg=CHOP_OUT_TOLERANCE_DEG),
         Keyframe(beat=1, right=_CHOP_IN),
     ),
-    description="Right arm reaches 45° up and out (count 1), then folds in front of "
+    description="Right arm reaches up and out to the side (count 1), then folds in front of "
     "the chest, flat hand level, like a salute (count 2).",
 )
 
@@ -291,7 +291,7 @@ BLOCK_LIBRARY: dict[str, Block] = _index(
         CHOP_RIGHT,
         CHOP_RIGHT.mirrored(
             "chop_left",
-            "Left arm reaches 45° up and out (count 1), then folds in front of "
+            "Left arm reaches up and out to the side (count 1), then folds in front of "
             "the chest, flat hand level, like a salute (count 2).",
         ),
         # Wrist rolls

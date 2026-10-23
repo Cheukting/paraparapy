@@ -145,3 +145,23 @@ def test_analysis_reports_rejected_calibration(tmp_path) -> None:
     report = pose_analysis.analyze_session(session)
     assert any("neutral pose" in issue for issue in report["calibration"]["rejected"])
     assert not (session / "calibration.json").exists()
+
+
+def test_timing_copy_follows_the_arm_without_smoothing_lag() -> None:
+    """for_timing() gives the unsmoothed arm directions (in the smoothed body
+    frame): right after an arm snaps from down to out, the timing copy is
+    already there while the smoothed arm still lags. The judge times hits on
+    the copy and scores poses on the smoothed arms."""
+    extractor = FeatureExtractor()
+    down, out = ArmPose(upper=DOWN, fore=DOWN), ArmPose(upper=RIGHT, fore=RIGHT)
+    image = image_pose()
+    features = []
+    for i in range(12):  # 30 fps: arm down for 10 frames, then out
+        t_ns = i * 33_333_333
+        world = world_pose(down if i < 10 else out)
+        features.append(extractor.update(PoseSample(i, t_ns, t_ns, (640, 480), image, world)))
+    snapped = features[10]
+    timing, smoothed = snapped.for_timing().right, snapped.right
+    assert angle_between_deg(timing.upper, RIGHT) < 2.0 and angle_between_deg(timing.fore, RIGHT) < 2.0
+    assert angle_between_deg(smoothed.upper, RIGHT) > 10.0  # the smoothed arm lags
+    assert snapped.for_timing().left.valid and snapped.for_timing().t_ns == snapped.t_ns

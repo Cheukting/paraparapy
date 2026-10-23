@@ -10,7 +10,9 @@ Per keyframe, within ``±window`` of its expected time:
 - **Normal keyframes**: the sample with the lowest pose error (front-weighted,
   :mod:`parapara.scoring.matching`) gives the pose score; a tiny penalty for
   distance from the beat breaks ties. The **timing** is when the pose was
-  *hit*: for a held pose the start of the near-minimum stretch (dancers hit
+  *hit*, measured on the unsmoothed arm directions
+  (:meth:`~parapara.pose.features.PoseFeatures.for_timing`; the smoothed ones
+  settle 40-130 ms after the arm does): for a held pose the start of the near-minimum stretch (dancers hit
   and hold), for a pose passed through the minimum, interpolated between samples (the camera delivers only ~23 fps, i.e.
   43 ms between samples); see :func:`arrival_time`. The offset grades the timing:
   Perfect ≤ 60 ms, Great ≤ 120 ms, Good ≤ the window (190 ms, capped at
@@ -241,8 +243,12 @@ class Judge:
 
         cost = es + TIE_BREAK_DEG * np.abs(ts - item.t_ns) / window
         i = int(np.argmin(cost))
-        hit_ns = arrival_time(ts, es, i, tol, item.beat_ns)
         score = pose_score(float(es[i]), tol)
+        # When: on the unsmoothed timing copy (PoseFeatures.for_timing), whose
+        # error settles when the arm does, not 40-130 ms later.
+        et = np.array([keyframe_error_deg(f.for_timing(), item.keyframe) for f in samples])
+        it = int(np.argmin(et + TIE_BREAK_DEG * np.abs(ts - item.t_ns) / window))
+        hit_ns = arrival_time(ts, et, it, tol, item.beat_ns)
         offset = hit_ns - item.t_ns
         grade = self.windows.grade(offset, window) if score >= MIN_POSE_SCORE else Grade.MISS
         return Judgment(item, grade, score, score * TIMING_FACTOR[grade], offset / 1e6, float(es[i]),
@@ -255,7 +261,7 @@ class Judge:
             hit_ns = float(min(onsets, key=lambda t: abs(t - item.t_ns)))
             score = clap_score(samples[int(np.argmin(np.abs(ts - hit_ns)))])  # vision gate
         else:
-            dist = np.array([f.wrist_distance for f in samples])
+            dist = np.array([f.for_timing().wrist_distance for f in samples])
             i = int(np.argmin(dist + 0.05 * np.abs(ts - item.t_ns) / window))
             hit_ns = refine_time(ts, dist, i)
             score = clap_score(samples[i])

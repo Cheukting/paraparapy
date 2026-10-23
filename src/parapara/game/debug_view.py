@@ -324,7 +324,7 @@ def main(
     config, mirrored, log_dir = _parse_args(argv)
     pygame.init()
     screen = pygame.display.set_mode((config.width, config.height))
-    pygame.display.set_caption("parapara – capture debug")
+    pygame.display.set_caption("ParaParaPy – capture debug")
     result = run_session(
         screen, pygame.time.Clock(), config, worker=worker, mirrored=mirrored, max_frames=max_frames
     )

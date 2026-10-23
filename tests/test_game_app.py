@@ -165,3 +165,26 @@ def test_no_overlapping_text_on_any_screen(tmp_path, scale) -> None:
     for args in runs:
         result = _run_game(tmp_path, args + check)
         assert "LAYOUT" not in result.stderr, result.stderr
+
+
+def test_branding_logo_and_icon(tmp_path) -> None:
+    """The ParaParaPy wordmark is the logo's artwork (transparent margin
+    cropped, aspect kept); the icon is round (transparent corners, opaque
+    centre); a missing logo file gives None (the game falls back to text)."""
+    script = """
+import pygame
+from pathlib import Path
+from parapara.game import branding
+pygame.init(); pygame.display.set_mode((1, 1))
+mark = branding.wordmark(120)
+assert mark is not None and mark.get_height() == 120
+assert abs(mark.get_width() / 120 - 1877 / 613) < 0.02, mark.get_size()
+icon = branding.icon(64)
+assert icon.get_size() == (64, 64)
+assert icon.get_at((0, 0)).a == 0 and icon.get_at((63, 63)).a == 0 and icon.get_at((32, 32)).a > 240
+assert branding.wordmark(50, Path("missing.png")) is None and branding.icon(64, Path("missing.png")) is None
+"""
+    env = os.environ | {"SDL_VIDEODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env,
+                            cwd=tmp_path, timeout=60)  # fmt: skip
+    assert result.returncode == 0, result.stderr

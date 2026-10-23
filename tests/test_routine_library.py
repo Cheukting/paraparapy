@@ -107,11 +107,13 @@ def test_knock_is_same_hand_twice_with_fist_and_bent_elbow() -> None:
 # --- Chops -------------------------------------------------------------------
 
 
-def test_chop_reaches_45_degrees_up_and_out_then_salutes() -> None:
+def test_chop_reaches_up_and_out_then_salutes() -> None:
     chop = L["chop_right"]
     out, salute = chop.keyframes
-    assert angle_between_deg(out.right.fore, RIGHT) == pytest.approx(45)
-    assert angle_between_deg(out.right.fore, UP) == pytest.approx(45)
+    # 25° up and out, as danced at game speed in every recording (the
+    # reference's 45° was never reached).
+    assert angle_between_deg(out.right.fore, RIGHT) == pytest.approx(25, abs=0.5)
+    assert angle_between_deg(out.right.fore, UP) == pytest.approx(65, abs=0.5)
     # More allowance than other sharp keyframes: dancers often reach lower.
     assert chop.tolerance_for(out) == 40 > chop.tolerance_for(salute)
     assert out.left is None and salute.left is None  # one-armed move

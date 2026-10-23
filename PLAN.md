@@ -1,4 +1,4 @@
-# Plan: Para Para Dance Game (Desktop)
+# Plan: ParaParaPy, a Para Para Dance Game (Desktop)
 
 A desktop rhythm game. The player dances Para Para in front of a webcam, the game
 tracks their upper body in real time, and scores each move against a
@@ -473,21 +473,24 @@ Open items (to resolve before the step named):
     arm error 18° -> 9-11°, game plays 41° -> 38°;
   - sweep to the right: 600 ms "late" in recorder clips but on time
     (+40 ms) in the game plays; the recorder's guide snaps from keyframe to
-    keyframe, the game's dancer glides. No change; make the recorder guide
-    glide like the game's dancer (open item below);
+    keyframe, the game's dancer glides. No change (recorder guide kept as it
+    is, see below);
   - chop reach: 15-25° up in every recording; a 25° target halves the arm
     error but the judge then times the reach ~50 ms later (held-pose arrival
     detected late through the smoothing filter): ~5 points lost, so it is on
     hold (project owner, 2026-10-23) until the held-pose timing is fixed.
   Session 2 of 2026-10-18 (`recordings/20261018-151657`) has the hips out of
   frame and should not be used for calibration.
-- **Held-pose timing**: `judge.arrival_time` takes the start of the
-  near-minimum stretch (within 3°); through the One Euro smoothing a pose
-  reached slowly is detected late (the synthetic perfect player's chop
-  salute is judged 51-100 ms late). Fix (e.g. a tolerance-relative threshold
-  or filter-lag compensation), then re-apply the 25° chop reach.
-- Recorder guide: drive it with the game's animator (gliding sweeps, snaps)
-  instead of holding each keyframe, so recorder clips are timed like play.
+- ~~**Held-pose timing**~~ fixed 2026-10-23: hits are timed on the
+  *unsmoothed* arm directions (`PoseFeatures.for_timing`), poses still scored
+  on the smoothed ones. The smoothed error kept creeping down 40-130 ms after
+  the arm stopped; changing the arrival rule alone did not help. Perfect
+  player 91-94% -> 100% (hits within ±16 ms), game plays 75.6% -> 76.2%.
+  The chop reach is now 25° (no score cost any more).
+- Recorder guide: not changed (project owner, 2026-10-23: the recorder works
+  fine as it is). Its guide holds each keyframe instead of gliding like the
+  game's dancer, so sweep clips read ~600 ms late in `parapara-analyze`;
+  judge sweep timing from game plays, not recorder clips.
 - Camera rate: the webcam delivers ~23 fps although 30 is requested
   (typical auto-exposure behaviour in dim light). Retest in brighter light;
   target ~30 fps (≈ 13 frames per beat at 155 BPM).
@@ -531,11 +534,14 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
 
 Must do before shipping:
 1. ~~**Real-dancer pose check (Step 4b)**~~ done 2026-10-23 (see "Step 4b
-   done" above). Follow-ups: held-pose timing fix, then the 25° chop reach;
-   recorder guide gliding.
-2. **Beat maps** of the other three demo songs checked by ear
-   (`parapara-beatcheck`, `docs/verify-beat-maps.md`), or ship only verified
-   songs.
+   done" above). Follow-ups: held-pose timing fix and 25° chop reach (done);
+   recorder guide left as it is (project owner).
+2. ~~**Beat maps** of the other three demo songs~~ accepted by the project
+   owner on 2026-10-23 (they sounded OK; marked verified without nudges).
+   Verification lives in the git-ignored local `song.json` files, so a fresh
+   `parapara-fetch-demo-songs` would lose it (also for Lets Go To A Rave):
+   carry the verified beat maps in `catalog.json` when deciding how demo songs
+   ship (item 3).
 3. **Credits** for the CC BY demo songs in the game (attribution is
    required); decide whether demo songs are bundled or downloaded by the game.
 4. **Privacy & licences**: MediaPipe model licences; tell players about the

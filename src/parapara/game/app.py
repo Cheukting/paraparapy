@@ -1,4 +1,4 @@
-"""The game: ``uv run parapara-play`` (roadmap Step 6).
+"""The ParaParaPy game: ``uv run parapara-play`` (roadmap Step 6).
 
 Flow (one capture process for the whole session)::
 
@@ -70,6 +70,7 @@ from parapara.audio.importer import load_all_songs  # noqa: E402
 from parapara.audio.song import Song  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
+from parapara.game.branding import NAME, set_window_icon, wordmark  # noqa: E402
 from parapara.game.dancer_view import REST, block_title, draw_dancer, static_pose  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
@@ -169,8 +170,9 @@ class Game:
         self.config = config
         # Fullscreen, scaled from the WIDTH x HEIGHT layout (letterboxed);
         # F toggles a window. The dummy video driver (tests) gets a plain window.
+        set_window_icon()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), display_flags(args.window))
-        pygame.display.set_caption("parapara")
+        pygame.display.set_caption(NAME)
         load_scale(args.text_scale)
         self.feed = LiveFeed(config)
         self.framing = FramingMonitor()
@@ -500,7 +502,7 @@ class Game:
                     print(f"LAYOUT ({self.scene.name.lower()}, text size {UI.scale}): {issue}", file=sys.stderr)
 
     def draw_menu(self, stage, camera, panel) -> None:
-        y = text(stage, "parapara", (30, 18), 48, ACCENT)
+        y = self.draw_title(stage)
         m = self.menu
         if not m.songs:
             text(stage, "No songs: run parapara-fetch-demo-songs", (30, y + 20), 22, WARN)
@@ -559,6 +561,18 @@ class Game:
         y = text(panel, status("body", "OK" if self.calibration else None, m.redo_body, "B"), (20, 16), 22)
         lat = f"{self.latency_ms:.0f} ms" if self.latency_ms is not None else None
         text(panel, status("latency", lat, m.redo_latency, "L"), (20, y), 22)
+
+    def draw_title(self, stage) -> int:
+        """The ParaParaPy logo (or its name, if the logo file is missing) at the
+        top of the menu; returns the y below it."""
+        logo = wordmark(round(44 * UI.scale))
+        if logo is None:
+            return text(stage, NAME, (30, 18), 48, ACCENT)
+        if logo.get_width() > STAGE_W - 48:  # very large text sizes: keep it on the stage
+            logo = pygame.transform.smoothscale(logo, (STAGE_W - 48, round(logo.get_height() * (STAGE_W - 48) / logo.get_width())))
+        rect = stage.blit(logo, (20, 10))
+        register_box(stage, rect, "[logo]")
+        return rect.bottom + 4
 
     def draw_body(self, stage, camera, panel) -> None:
         titles = {0: "Stand in position", 1: "Neutral pose", 2: "Stand in position", 3: "T-pose", 4: "Calibration"}

@@ -57,6 +57,7 @@ import pygame  # noqa: E402  (must follow the env var above)
 
 from parapara.diagnostics.clips import CLIP_IDS, CLIPS, Clip, ClipTimeline, Phase  # noqa: E402
 from parapara.diagnostics.recorder import environment  # noqa: E402
+from parapara.game.branding import NAME, set_window_icon  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LEFT_COLOUR, RIGHT_COLOUR, TEXT_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.overlay import GuideArm, guide_figure, to_screen  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
@@ -395,8 +396,9 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
         (session_dir / "session.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     pygame.init()
+    set_window_icon()
     screen = pygame.display.set_mode((WIDTH, HEIGHT), display_flags(args.window))
-    pygame.display.set_caption("parapara – guided recorder")
+    pygame.display.set_caption(f"{NAME} – guided recorder")
     load_scale(args.text_scale)
     clock = pygame.time.Clock()
     metronome = Metronome()

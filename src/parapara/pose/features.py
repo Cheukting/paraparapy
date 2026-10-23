@@ -17,6 +17,17 @@
    mid-shoulder point in the body frame (motion checks), and posture (lean, side tilt,
    shoulder tilt, head height; relative to the calibrated neutral pose when a
    :class:`~parapara.pose.calibration.Calibration` is given).
+5. **Timing copy** of the arms and wrist distance from the *unsmoothed*
+   landmarks, in the same (smoothed) body frame. The judge scores *how good*
+   a pose is on the smoothed arms but times *when* it was hit on this copy:
+   through :data:`LANDMARK_FILTER` the error of a pose reached with a
+   decelerating move keeps creeping down long after the arm has stopped (the
+   filter's cut-off drops as the arm slows), so a perfect player's held poses
+   were timed 40-130 ms late. Compared on 2026-10-23 (perfect player, two
+   recording sessions, six game plays): smoothed timing 91-94% for the
+   perfect player, a light 8 Hz filter 98-99%, unsmoothed 100% (hits within
+   ±16 ms) and the best game-play accuracy (75.6% -> 76.2%); camera jitter
+   did not disturb the hit detection.
 
 Mirroring for the on-screen demo is a display concern: features always use
 the dancer's anatomical left/right, the same convention as routine keyframes.
@@ -26,7 +37,7 @@ Pure NumPy (no cv2/mediapipe/pygame), so it runs in the game process.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import numpy.typing as npt
@@ -96,6 +107,19 @@ class PoseFeatures:
     shoulder_tilt_deg: float  # shoulder line vs. horizontal (+ = right shoulder higher)
     head_height: float  # nose above shoulders, in shoulder widths
     hips_visible: bool
+    # Timing copy (unsmoothed, see module docstring step 5); falls back
+    # to the smoothed values when absent (e.g. hand-built features in tests).
+    timing_right: ArmFeatures | None = None
+    timing_left: ArmFeatures | None = None
+    timing_wrist_distance: float | None = None
+
+    def for_timing(self) -> PoseFeatures:
+        """These features with the arms and wrist distance of the timing copy."""
+        if self.timing_right is None or self.timing_left is None:
+            return self
+        return replace(self, right=self.timing_right, left=self.timing_left,
+                       wrist_distance=self.timing_wrist_distance if self.timing_wrist_distance is not None
+                       else self.wrist_distance)  # fmt: skip
 
 
 @dataclass
@@ -137,13 +161,27 @@ class FeatureExtractor:
         up /= np.linalg.norm(up)
         smooth = BodyFrames(right[None], up[None], np.cross(up, right)[None])
         arms = arm_directions(w, smooth)
-        return self._features(sample.captured_ns, world, smooth, arms)
+        features = self._features(sample.captured_ns, world, smooth, arms)
+        # Timing copy: unsmoothed landmarks, same (smoothed) body frame.
+        t_arms = arm_directions(raw[None], smooth)
+
+        def t_arm(side: str) -> ArmFeatures:
+            a = t_arms[side]
+            return ArmFeatures(a.upper[0], a.fore[0], a.hand[0], bool(a.valid[0]))
+
+        t_wrists = np.linalg.norm(raw[P.RIGHT_WRIST, :3] - raw[P.LEFT_WRIST, :3]) / self._shoulder_width(world)
+        return replace(features, timing_right=t_arm("right"), timing_left=t_arm("left"),
+                       timing_wrist_distance=float(t_wrists))
+
+    def _shoulder_width(self, world: np.ndarray) -> float:
+        if self.calibration:
+            return self.calibration.shoulder_width_m
+        return float(np.linalg.norm(world[P.RIGHT_SHOULDER, :3] - world[P.LEFT_SHOULDER, :3]))
 
     def _features(self, t_ns: int, world: np.ndarray, frames: BodyFrames,
                   arms: dict[str, ArmDirections]) -> PoseFeatures:  # fmt: skip
         rs, ls = world[P.RIGHT_SHOULDER, :3], world[P.LEFT_SHOULDER, :3]
-        shoulder_w = (self.calibration.shoulder_width_m if self.calibration
-                      else float(np.linalg.norm(rs - ls)))  # fmt: skip
+        shoulder_w = self._shoulder_width(world)
         wrists = np.linalg.norm(world[P.RIGHT_WRIST, :3] - world[P.LEFT_WRIST, :3]) / shoulder_w
         mid = (rs + ls) / 2
 

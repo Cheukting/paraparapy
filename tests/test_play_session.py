@@ -40,6 +40,22 @@ def test_perfect_player_scores_near_full_marks() -> None:
     assert s["posture_pct"] == 100.0 and s["score"] > 0
 
 
+def test_perfect_player_is_timed_on_the_beat() -> None:
+    """Hits are timed on the unsmoothed arms: the demo dancer, exact on every
+    beat, is graded within ±40 ms on every sharp move (it was 40-130 ms late
+    while timing used the smoothed arms, 2026-10-23)."""
+    from parapara.scoring.judge import Judgment
+
+    session = PlaySession(SONG, ROUTINE, START)
+    judgments = []
+    for sample in routine_play_samples(SONG, ROUTINE, START):
+        judgments += [e.judgment for e in session.add(sample)]
+    judgments += [e.judgment for e in session.finish()]
+    offsets = [j.offset_ms for j in judgments
+               if isinstance(j, Judgment) and j.offset_ms is not None and not j.item.block.is_flowing]  # fmt: skip
+    assert offsets and max(abs(o) for o in offsets) < 40, sorted(offsets)
+
+
 def test_latency_compensation_rescues_a_late_player() -> None:
     late = _play(lag_s=0.2, latency_ms=0).summary()
     compensated = _play(lag_s=0.2, latency_ms=200).summary()

@@ -1,7 +1,7 @@
 [project]
-name = "parapara"
+name = "paraparapy"
 version = "0.1.0"
-description = "Desktop Para Para dance game: webcam pose tracking and rhythm scoring"
+description = "ParaParaPy: desktop Para Para dance game with webcam pose tracking and rhythm scoring"
 readme = "README.md"
 authors = [
     { name = "Cheukting", email = "cheukting.ho@gmail.com" }
@@ -33,6 +33,10 @@ parapara-play = "parapara.game.app:main"
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+# The project is ParaParaPy; the import package keeps the short name.
+module-name = "parapara"
 
 [dependency-groups]
 dev = [

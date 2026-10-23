@@ -1,4 +1,6 @@
-# parapara
+<p align="center"><img src="assets/branding/paraparapy-wordmark.png" alt="ParaParaPy" width="480"></p>
+
+# ParaParaPy
 
 A desktop Para Para dance game: a webcam tracks the player's upper body and
 scores each move against a choreographed routine. See [PLAN.md](PLAN.md) for
@@ -68,7 +70,7 @@ uv run parapara-tune-filters             # re-tune the smoothing filters on a se
 ## Play
 
 ```sh
-uv run parapara-play
+uv run parapara-play                     # or simply: uv run parapara
 ```
 
 Pick a song and routine (Up/Down, Left/Right, Enter). The first time, the

@@ -115,7 +115,7 @@ def run(argv: list[str] | None = None) -> None:
     samples, sr = load_audio(song.audio_path)
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"parapara – preview: {song.title}")
+    pygame.display.set_caption(f"ParaParaPy – preview: {song.title}")
     player = Player(sr)
     if player.sr != sr:
         samples = np.interp(np.arange(int(len(samples) / sr * player.sr)) / player.sr,
