@@ -6,6 +6,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `PLAN.md` §10: pre-release checklist (must do / should do / after
+  shipping) agreed after the sixth test run.
 - `parapara-play` third test-run feedback:
   - **4-bar count-in** (8-count bars) with metronome clicks before the first
     move, counted above the dancer ("3 bars", "last bar!"). Short intros get

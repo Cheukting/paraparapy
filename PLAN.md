@@ -505,6 +505,51 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
 - New players need to see the moves before dancing: "Learn the moves" (`T` in
   the menu) loops each move slowly with clicks. Later: score the practice
   against the camera (a per-move "try it" check).
+- Fifth/sixth runs: stick figures show the calibration poses; the clap
+  calibration counts 4, 3, 2, 1 into the first clap; the next move's timing
+  is a dot sliding into a ring. Play "feels good" (2026-10-23). Accuracy
+  70%, 78%, 79% over the last three plays (12 misses in the best), but the
+  8-clap latency varied 261 / 96 / 122 ms between launches (16 claps:
+  225 ms): see the pre-release checklist.
+
+### Pre-release checklist (agreed with the project owner, 2026-10-23)
+
+Must do before shipping:
+1. **Real-dancer pose check (Step 4b)**: re-record the block clips with the
+   hips in frame and recalibrate `library.py` (see "Deferred recording &
+   recalibration" above); Flick + Clap did not fit, the wrist roll is
+   unverified.
+2. **Beat maps** of the other three demo songs checked by ear
+   (`parapara-beatcheck`, `docs/verify-beat-maps.md`), or ship only verified
+   songs.
+3. **Credits** for the CC BY demo songs in the game (attribution is
+   required); decide whether demo songs are bundled or downloaded by the game.
+4. **Privacy & licences**: MediaPipe model licences; tell players about the
+   MediaPipe usage metrics (images stay on-device); macOS camera usage
+   description for the packaged app; make saving every play as a recording
+   opt-in or self-cleaning.
+5. **Packaging**: choose a tool (PyInstaller / Briefcase), bundle the pose
+   models, handle the spawned capture process in a frozen app, move `logs/`,
+   `recordings/` and the song library from the working directory to the user
+   data folder, app icon, target platforms, test on a clean machine.
+6. **In-game screens** for what is CLI-only today: fetch demo songs, import
+   own songs, generate routines.
+7. **First-run errors** on the packaged app: no camera, camera permission
+   refused, no songs (clear messages).
+
+Should do:
+8. **Consistent latency calibration**: repeat calibrations in one sitting to
+   tell 8-clap noise from clapping on the countdown; if noisy, use 12 claps
+   or compare with the last saved value and warn on large differences.
+9. **Clap detection by sound** (§5.1): needed for the first release?
+10. **Low-light hint** when the camera rate drops (~23 fps seen vs 30).
+11. **Polish**: high scores / results history, a settings screen (text size,
+    mirror, count-in), version 0.1.0 and a release section in the CHANGELOG.
+12. **Player guide** (how to play), separate from the developer README.
+
+After shipping: the "Future" items below, plus scoring the "Learn the moves"
+practice, a clearer flick + clap animation (§7), the avatar demo (Step 8)
+and difficulty tuning from play data (Step 7).
 
 Findings from the first recording session (2026-10-18, `parapara-analyze`):
 - MediaPipe world axes: +x = dancer's left, +y = down, +z = away from the
