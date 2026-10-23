@@ -5,7 +5,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-10-23
+
+The first playable version of ParaParaPy: pose capture with MediaPipe in its
+own process, body-relative pose features, the scoring engine, songs with
+verified beat maps and generated routines, the smooth stick-figure demo
+dancer, the game (calibration, play, results, score board, learn the moves,
+settings, credits, privacy notice), the hands-free recorder and the
+analysis tools. Moves checked against a real dancer (Step 4b); six play
+tests by the project owner shaped the screens. Not packaged yet (PLAN.md
+§10).
+
 ### Added
+- **Settings screen** (`O` in the menu): text size, mirror view, count-in
+  (0 / 2 / 4 / 8 counts) and fullscreen; Up/Down choose, Left/Right change,
+  saved at once in `ui.json` and kept between launches (mirror, count-in and
+  fullscreen used to reset; `M` / `F` now save too). Command-line options
+  (`--count-in`, `--window`, `--text-scale`) still override the saved
+  values. Test: changing and saving, no overlapping text at sizes 1.0 / 2.6.
+- **Version 0.1.0** shown in the menu and on the settings screen
+  (`parapara.__version__`); this release section.
 - `CONTRIBUTING.md`: a guide to the code base: getting started, ground
   rules, the two-process architecture and a frame's journey, every package
   and module, data on disk, commands, how the tests are built (subprocess

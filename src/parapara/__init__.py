@@ -28,6 +28,18 @@ Objective-C class warnings on macOS and possible crashes, so:
 """
 
 
+def _version() -> str:
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        return version("paraparapy")
+    except PackageNotFoundError:  # running from a source tree without installing
+        return "0.1.0"
+
+
+__version__ = _version()
+
+
 def main() -> None:
     """Console entry point (``parapara``): starts the game, like ``parapara-play``."""
     from parapara.game import app  # pygame only on demand (see the process boundary above)

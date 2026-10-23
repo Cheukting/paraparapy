@@ -58,6 +58,10 @@ These come from [AGENTS.md](AGENTS.md) and from how the project has been run:
   boundary guard) without a good, written justification and the project
   owner's agreement.
 - **Commits** only after the project owner has reviewed the change.
+- **Releases**: bump `version` in `pyproject.toml` (shown in the game via
+  `parapara.__version__`), move the `[Unreleased]` entries of the CHANGELOG
+  into a new `## [x.y.z] - YYYY-MM-DD` section with a short summary, and
+  leave `[Unreleased]` empty. 0.1.0 (2026-10-23) is the first release.
 - **Measure, don't guess**: scoring and timing constants come from
   recordings of a real dancer and from the synthetic "perfect player" (§7).
   When you change one, record the before/after numbers in the docstring and
@@ -207,8 +211,8 @@ animates single moves (Learn the moves). Drawing is in `game/dancer_view.py`.
 
 | Module | What it does |
 |---|---|
-| `app.py` | `parapara-play`: a scene state machine (menu, body / latency calibration, play, results, learn, credits, privacy, scores). Calibrates once per launch, plays the song through `beatcheck.Player` (the audio clock drives the beat), keeps everything the player needs around the demo dancer. |
-| `ui.py` | Shared large text: `UI.scale` (+ / -, saved), word wrap that never runs off the surface, `footer()` for bottom-up key hints, fullscreen flags, and the **layout check** (`--check-layout`: records every text rectangle and reports overlaps or cut-off text). |
+| `app.py` | `parapara-play`: a scene state machine (menu, body / latency calibration, play, results, learn, credits, privacy, scores, settings). Calibrates once per launch, plays the song through `beatcheck.Player` (the audio clock drives the beat), keeps everything the player needs around the demo dancer. |
+| `ui.py` | Shared large text: `UI.scale` (+ / -, `change_scale()`, saved), `toggle_fullscreen()`, word wrap that never runs off the surface, `footer()` for bottom-up key hints, fullscreen flags, and the **layout check** (`--check-layout`: records every text rectangle and reports overlaps or cut-off text). |
 | `dancer_view.py`, `overlay.py` | The stick-figure dancer, still poses, the recorder's guide figure. |
 | `notice_screens.py` | Scrollable documents (credits, privacy) and the **privacy gate** shown before the camera starts for the first time. |
 | `branding.py` | Logo → menu wordmark and window icon. |
@@ -240,7 +244,7 @@ best lag, per-keyframe "seen" directions), `score_clips.py`
 | `assets/songs/catalog.json` | the vetted CC BY demo songs (sources, measurements) | yes |
 | `assets/songs/<id>/` | fetched demo songs: audio, `song.json`, `routines/*.json` | no (fetched) |
 | `assets/branding/` | the logo and its derived wordmark / icon | yes |
-| data folder (see `settings.py`) | `calibration.json`, `latency.json`, `ui.json` (text size, privacy notice accepted), `scores.json`, `songs/` (players' imports) | no |
+| data folder (see `settings.py`) | `calibration.json`, `latency.json`, `ui.json` (settings: text size, mirror, count-in, fullscreen; privacy notice accepted), `scores.json`, `songs/` (players' imports) | no |
 | `recordings/` | recorder sessions (`<date-time>/*.npz`, `session.json`, `analysis.json`) and plays (`game-*/play.npz`) | no |
 | `logs/` | `game-*.json` (result of each play), `latency-test-*.json`, capture benchmarks | no |
 

@@ -63,7 +63,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import numpy as np  # noqa: E402
 import pygame  # noqa: E402  (must follow the env var above)
 
-from parapara import scores, settings  # noqa: E402
+from parapara import __version__, scores, settings  # noqa: E402
 from parapara.animation.animator import Animator, DancerPose  # noqa: E402
 from parapara.audio.beatgrid import BeatGrid, render_click_track  # noqa: E402
 from parapara.audio.importer import load_all_songs  # noqa: E402
@@ -79,6 +79,7 @@ from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported for tests)
     UI,
     Drawn,  # noqa: F401
+    change_scale,
     font,
     adjust_scale,
     display_flags,
@@ -88,6 +89,7 @@ from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported 
     register_box,
     text,
     text_height,
+    toggle_fullscreen,
 )
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
@@ -109,6 +111,7 @@ STAGE_W = 600  # demo dancer on the left; camera (640x480) + score panel on the 
 DANCER_X, DANCER_Y, DANCER_SCALE = 210, 190, HEIGHT / 7.6  # mid-shoulder point; px per shoulder width
 NEXT_BOX = pygame.Rect(392, 8, 204, 300)  # "next move" picture, top right of the dancer
 LEARN_SPEEDS = (0.5, 0.75, 1.0)  # fractions of the song's tempo
+COUNT_IN_DEFAULT, COUNT_IN_CHOICES = 4, (0, 2, 4, 8)  # counts before the first move (settings)
 LEARN_REPEATS = 64  # a learnt block is looped this many times before the animation restarts
 BG, PANEL, TEXT, DIM, ACCENT = (18, 18, 28), (30, 30, 44), (235, 235, 245), (120, 120, 140), (255, 220, 80)
 OK, WARN = (90, 220, 120), (255, 150, 60)
@@ -147,6 +150,7 @@ class Scene(Enum):
     CREDITS = auto()
     PRIVACY = auto()
     SCORES = auto()
+    SETTINGS = auto()
 
 
 @dataclasses.dataclass
@@ -201,7 +205,11 @@ class Game:
             self.saved_latency_ms if reuse else None)  # fmt: skip
         self.scene = Scene.MENU
         self.message = ""
-        self.mirrored = True
+        # Settings kept between launches (ui.json; Settings screen, O in the menu).
+        prefs = settings.load_ui()
+        self.mirrored = bool(prefs.get("mirror", True))
+        self.count_in = args.count_in if args.count_in is not None else int(prefs.get("count_in", COUNT_IN_DEFAULT))
+        self.setting_index = 0
         self.learn_blocks = learn_order()
         self.learn_index, self.learn_speed = 0, 0
         self.lead_in_s = 0.0
@@ -285,14 +293,17 @@ class Game:
 
     def handle(self, keys: list[int], samples: list[PoseSample]) -> bool:
         if pygame.K_m in keys:
-            self.mirrored = not self.mirrored
+            self.set_mirrored(not self.mirrored)
         if pygame.K_f in keys:
-            pygame.display.toggle_fullscreen()
+            self.set_fullscreen()
         adjust_scale(keys)
         if self.scene is Scene.MENU:
             return self.handle_menu(keys)
         if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):
             self.go(Scene.MENU)
+            return True
+        if self.scene is Scene.SETTINGS:
+            self.handle_settings(keys)
             return True
         if self.scene in (Scene.CREDITS, Scene.PRIVACY, Scene.SCORES):
             if self.scene is Scene.SCORES and (pygame.K_LEFT in keys or pygame.K_RIGHT in keys):
@@ -332,6 +343,9 @@ class Game:
             return True
         if pygame.K_s in keys:
             self.go(Scene.SCORES)
+            return True
+        if pygame.K_o in keys:
+            self.go(Scene.SETTINGS)
             return True
         if (pygame.K_RETURN in keys or pygame.K_SPACE in keys) and m.routine is not None:
             self.next_after(Scene.MENU)
@@ -431,7 +445,7 @@ class Game:
         samples = load_for_player(self.player, song.audio_path)
         sr = self.player.sr
         first_move_s = song.beat_time_s(song.routine_start_beat)
-        self.lead_in_s = max(0.0, self.args.count_in * song.beat_s - first_move_s)
+        self.lead_in_s = max(0.0, self.count_in * song.beat_s - first_move_s)
         track = np.concatenate([np.zeros(round(self.lead_in_s * sr), np.float32), samples])
         self.player.play(track, 0.0)
         song_start_ns = self.player.start_ns + round(self.lead_in_s * 1e9)
@@ -492,6 +506,71 @@ class Game:
 
     def draw_privacy(self, stage, camera, panel) -> None:
         self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "Esc back")
+
+    # -- settings ---------------------------------------------------------------------
+
+    def set_mirrored(self, on: bool) -> None:
+        self.mirrored = on
+        settings.save_ui(mirror=on)
+
+    def set_fullscreen(self) -> None:
+        if toggle_fullscreen():
+            settings.save_ui(fullscreen=bool(pygame.display.is_fullscreen()))
+
+    def setting_rows(self) -> list[tuple[str, str, str]]:
+        """``(label, value, explanation)`` of each setting, in screen order."""
+        full = pygame.display.is_fullscreen()
+        return [
+            ("Text size", f"{UI.scale:.1f}", "Make it readable from where you dance (also + / -)."),
+            ("Mirror view", "on" if self.mirrored else "off",
+             "On: the dancer and your camera view move like a mirror (also M)."),
+            ("Count-in", f"{self.count_in} counts" if self.count_in else "none",
+             "Counted down above the dancer before the first move."),
+            ("Fullscreen", "on" if full else "off", "Off: play in a window (also F)."),
+        ]  # fmt: skip
+
+    def handle_settings(self, keys: list[int]) -> None:
+        """Up/Down choose, Left/Right change (saved at once), Esc/Enter back."""
+        if pygame.K_ESCAPE in keys or pygame.K_RETURN in keys:
+            self.go(Scene.MENU)
+            return
+        rows = len(self.setting_rows())
+        self.setting_index = (self.setting_index + (pygame.K_DOWN in keys) - (pygame.K_UP in keys)) % rows
+        step = (pygame.K_RIGHT in keys) - (pygame.K_LEFT in keys)
+        if not step:
+            return
+        if self.setting_index == 0:
+            change_scale(step)
+        elif self.setting_index == 1:
+            self.set_mirrored(not self.mirrored)
+        elif self.setting_index == 2:
+            i = COUNT_IN_CHOICES.index(self.count_in) if self.count_in in COUNT_IN_CHOICES else 2
+            self.count_in = COUNT_IN_CHOICES[min(len(COUNT_IN_CHOICES) - 1, max(0, i + step))]
+            settings.save_ui(count_in=self.count_in)
+        else:
+            self.set_fullscreen()
+
+    def draw_settings(self, stage, camera, panel) -> None:
+        y = text(stage, "Settings", (24, 16), 34, ACCENT)
+        bottom = footer(stage, [("Up/Down choose   Left/Right change   Esc back", 16, DIM)])
+        for i, (label, value, help_text) in enumerate(self.setting_rows()):
+            selected = i == self.setting_index
+            box_h = (text_height(stage, label, 22, 36) + text_height(stage, f"<  {value}  >", 24, 36)
+                     + (text_height(stage, help_text, 16, 36) if selected else 0) + 8)  # fmt: skip
+            if y + 8 + box_h > bottom:
+                break
+            rect = pygame.Rect(12, y + 8, STAGE_W - 24, box_h)
+            if selected:
+                pygame.draw.rect(stage, PANEL, rect)
+                pygame.draw.rect(stage, ACCENT, rect, 3)
+                register_box(stage, rect, "[setting]")
+            inner = stage.subsurface(rect.inflate(-8, -8))
+            ly = text(inner, label, (20, 0), 22, TEXT)
+            ly = text(inner, f"<  {value}  >" if selected else value, (20, ly), 24, ACCENT if selected else DIM)
+            if selected:
+                text(inner, help_text, (20, ly), 16, DIM)
+            y = rect.bottom
+        footer(panel, [(f"{NAME} {__version__}", 14, DIM)], x=20)
 
     # -- score board ----------------------------------------------------------------
 
@@ -592,7 +671,7 @@ class Game:
             return
         bottom = footer(stage, [("New? T learn the moves", 18, ACCENT),
                                 ("Up/Down song   Left/Right level   Enter play", 16, DIM),
-                                ("S scores   C credits   P privacy   +/- text size   F fullscreen   Esc quit", 16, DIM)])  # fmt: skip
+                                ("S scores   O settings   C credits   P privacy   Esc quit", 16, DIM)])  # fmt: skip
         # Song list: the selected song is framed with its level and tempo
         # (third test run: it blended into the other titles). If the list is
         # taller than the room above the key hints, it scrolls to keep the
@@ -647,6 +726,7 @@ class Game:
                 return f"{name}: before the first song"
             return f"{name}: {value}" + ("  -> redo" if redo else f"  ({key} redo)")
 
+        footer(panel, [(f"{NAME} {__version__}", 14, DIM)], x=20)
         y = text(panel, status("body", "OK" if self.calibration else None, m.redo_body, "B"), (20, 16), 22)
         lat = f"{self.latency_ms:.0f} ms" if self.latency_ms is not None else None
         text(panel, status("latency", lat, m.redo_latency, "L"), (20, y), 22)
@@ -739,7 +819,7 @@ class Game:
         beat = song.beat_at(pos) - song.routine_start_beat
         pose = self.animator.pose_at(beat)
         draw_dancer(stage, pose, (DANCER_X, DANCER_Y), DANCER_SCALE, self.mirrored)
-        counting_in = -self.args.count_in <= beat < 0
+        counting_in = -self.count_in <= beat < 0
         self.draw_count(stage, pose.count, beat, idle="" if counting_in else "ready")
         # The next move as a still picture of its first pose (a looping
         # animation was too distracting: third test run). Just after a move
@@ -880,7 +960,8 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     parser.add_argument("--model", choices=("lite", "full"), default="full")
     parser.add_argument("--window", action="store_true", help="run in a window instead of fullscreen")
     parser.add_argument("--text-scale", type=float, help="text size (default: saved, or 2.0; +/- in game)")
-    parser.add_argument("--count-in", type=int, default=4, help="counts shown (4, 3, 2, 1) before the first move")
+    parser.add_argument("--count-in", type=int, help="counts shown (4, 3, 2, 1) before the first move "
+                        "(default: the saved setting, or 4)")
     parser.add_argument("--reuse-calibration", action="store_true",
                         help="use the saved calibrations instead of calibrating at launch")  # fmt: skip
     parser.add_argument("--check-layout", action="store_true", help=argparse.SUPPRESS)  # tests: report overlapping text
@@ -892,6 +973,8 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     parser.add_argument("--keys", help=argparse.SUPPRESS)  # tests: "frame:key ..." scripted presses
     parser.add_argument("--results-screenshot", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    # Fullscreen unless --window or the saved setting says window (Settings, F).
+    args.window = args.window or not settings.load_ui().get("fullscreen", True)
     config = CaptureConfig(camera_index=args.camera, pose_model=args.model)
     pygame.init()
     try:

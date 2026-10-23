@@ -115,7 +115,8 @@ counted above the dancer into the first move (`--count-in N`).
 
 The game opens fullscreen with large text so it can be read from where you
 dance: `+` / `-` change the text size (remembered), `F` toggles fullscreen,
-`M` mirrors the camera. `--window` starts in a window and `--text-scale 2.4`
+`M` mirrors the camera; `O` in the menu opens the settings (text size,
+mirror, count-in, fullscreen; all remembered). `--window` starts in a window and `--text-scale 2.4`
 sets the text size from the command line.
 
 ## Watch a routine

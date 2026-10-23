@@ -151,13 +151,28 @@ def layout_issues(drawn: list[Drawn]) -> list[str]:
     return issues
 
 
+def change_scale(steps: int) -> None:
+    """Text size ``steps`` x ``UI.STEP`` larger (clamped, saved for next time)."""
+    if steps:
+        UI.scale = round(min(UI.MAX, max(UI.MIN, UI.scale + steps * UI.STEP)), 2)
+        settings.save_ui(text_scale=UI.scale)
+
+
 def adjust_scale(keys: list[int] | set[int]) -> None:
     """``+`` / ``-`` change the text size (clamped, saved for next time)."""
     bigger = {pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS} & set(keys)
     smaller = {pygame.K_MINUS, pygame.K_KP_MINUS} & set(keys)
-    if bigger or smaller:
-        UI.scale = round(min(UI.MAX, max(UI.MIN, UI.scale + (UI.STEP if bigger else -UI.STEP))), 2)
-        settings.save_ui(text_scale=UI.scale)
+    change_scale(1 if bigger else -1 if smaller else 0)
+
+
+def toggle_fullscreen() -> bool:
+    """Switch between fullscreen and a window; False if the display cannot
+    (e.g. the dummy video driver in tests)."""
+    try:
+        pygame.display.toggle_fullscreen()
+    except pygame.error:
+        return False
+    return True
 
 
 def load_scale(override: float | None) -> None:

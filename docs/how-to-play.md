@@ -22,7 +22,8 @@ uv run parapara-play        # or: uv run parapara
   measures the delay of your setup).
 - **Text size**: press `+` / `-` from where you stand until you can read the
   screen comfortably; it is remembered. `F` switches between fullscreen and
-  a window.
+  a window. All of these, plus the mirror view and the count-in length, are
+  also on the **Settings** screen (`O` in the menu).
 
 ## 2. The first start
 
@@ -41,6 +42,7 @@ and start the camera, or `Esc` to quit. `P` in the menu shows it again.
 | Enter | play |
 | T | **learn the moves** (recommended before your first song) |
 | S | score board of the selected song |
+| O | settings: text size, mirror view, count-in, fullscreen (saved) |
 | C / P | credits / privacy and licences |
 | B / L | redo the body / clap calibration before the next song |
 | + / - , F, M | text size, fullscreen, mirror the camera view |

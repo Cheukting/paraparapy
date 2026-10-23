@@ -580,10 +580,10 @@ Should do:
     on the camera view while the camera delivers < 25 fps for 3 s
     (`LowLightMonitor`); each play logs its camera fps and how long the hint
     was shown.
-11. **Polish**: ~~score board~~ done 2026-10-23 (best 20 plays per song and
-    level in `scores.json`; results screen, menu, `S` screen). Still open: a
-    settings screen (text size, mirror, count-in), version 0.1.0 and a
-    release section in the CHANGELOG.
+11. ~~**Polish**~~ done 2026-10-23: score board (best 20 plays per song and
+    level in `scores.json`; results screen, menu, `S` screen), settings
+    screen (`O`: text size, mirror, count-in, fullscreen; saved), version
+    0.1.0 with its release section in the CHANGELOG.
 12. ~~**Player guide**~~ done 2026-10-23: `docs/how-to-play.md`.
 
 After shipping: the "Future" items below, plus scoring the "Learn the moves"

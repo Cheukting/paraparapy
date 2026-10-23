@@ -287,3 +287,18 @@ def test_score_board(tmp_path) -> None:
         keys = "10:s 30:right 50:left 70:escape 90:escape"
         result = _run_game(tmp_path, ["--check-layout", "--text-scale", scale, "--keys", keys])
         assert "LAYOUT" not in result.stderr, result.stderr
+
+
+@pytest.mark.parametrize("scale", ["1.0", "2.6"])
+def test_settings_screen_changes_and_saves(tmp_path, scale) -> None:
+    """O opens Settings: text size up, mirror off, count-in 4 -> 8, all saved
+    in ui.json at once and kept for the next start; no overlapping text."""
+    keys = "10:o 20:right 30:down 40:right 50:down 60:right 70:down 80:up 90:escape 110:escape"
+    result = _run_game(tmp_path, ["--check-layout", "--text-scale", scale, "--keys", keys])
+    assert "LAYOUT" not in result.stderr, result.stderr
+    ui = json.loads((tmp_path / "data" / "ui.json").read_text())
+    assert ui["text_scale"] == min(2.6, round(float(scale) + 0.2, 2))
+    assert ui["mirror"] is False and ui["count_in"] == 8
+    # the next start reads them back (count-in shown in Settings without saving anew)
+    result = _run_game(tmp_path, ["--keys", "10:o 30:escape 50:escape"])
+    assert json.loads((tmp_path / "data" / "ui.json").read_text())["count_in"] == 8
