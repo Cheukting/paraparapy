@@ -561,6 +561,9 @@ Should do:
 8. **Consistent latency calibration**: repeat calibrations in one sitting to
    tell 8-clap noise from clapping on the countdown; if noisy, use 12 claps
    or compare with the last saved value and warn on large differences.
+   Tool ready (2026-10-23): `uv run parapara-latency-test` (hands-free rounds
+   alternating 8 and 16 claps, logged to `logs/latency-test-*.json`); waiting
+   for a run by the project owner.
 9. **Clap detection by sound** (§5.1): needed for the first release?
 10. **Low-light hint** when the camera rate drops (~23 fps seen vs 30).
 11. **Polish**: high scores / results history, a settings screen (text size,

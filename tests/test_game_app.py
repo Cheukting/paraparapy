@@ -188,3 +188,30 @@ assert branding.wordmark(50, Path("missing.png")) is None and branding.icon(64, 
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env,
                             cwd=tmp_path, timeout=60)  # fmt: skip
     assert result.returncode == 0, result.stderr
+
+
+def test_latency_test_tool_runs_hands_free_and_logs(tmp_path) -> None:
+    """parapara-latency-test: position check, rounds alternating 8 and 16
+    claps (no claps from the fake camera: every round is "not accepted"),
+    a summary, closes by itself; every round is logged with the click times,
+    both estimates and the wrist-distance series; no overlapping text."""
+    script = ("from parapara.game import latency_check\n"
+              "latency_check.run(['--fast', '--bpm', '600', '--rounds', '3', '--check-layout'],"
+              " worker='fake_capture_worker:stream')\n")  # fmt: skip
+    env = os.environ | {
+        "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1",
+        "PARAPARA_DATA_DIR": str(tmp_path / "data"),
+        "PYTHONPATH": os.pathsep.join(filter(None, [str(TESTS), os.environ.get("PYTHONPATH")])),
+    }  # fmt: skip
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
+                            cwd=tmp_path, env=env, timeout=90)  # fmt: skip
+    assert result.returncode == 0, result.stderr
+    assert "LAYOUT" not in result.stderr and "Traceback" not in result.stderr, result.stderr
+    (log,) = glob.glob(str(tmp_path / "logs" / "latency-test-*.json"))
+    data = json.loads(Path(log).read_text())
+    rounds = data["rounds"]
+    assert [r["claps_requested"] for r in rounds] == [8, 16, 8]
+    assert all(len(r["click_ms"]) == r["claps_requested"] and len(r["count_in_ms"]) == 4 for r in rounds)
+    assert all(r["result"]["ok"] is False and r["result_smoothed"] is not None for r in rounds)
+    assert all(len(r["series"]["t_ms"]) == len(r["series"]["wrist_distance_timing"]) > 0 for r in rounds)
+    assert data["summary"]["8"]["rounds"] == 2 and data["summary"]["16"]["accepted"] == 0

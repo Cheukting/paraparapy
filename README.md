@@ -51,6 +51,18 @@ reason shown. Fullscreen with large text (`+` / `-`, `F` window); `S` skips a
 clip, `Esc` quits, `--manual` uses keys instead. Clips are saved (landmarks
 only, no images) to `recordings/<date-time>/`.
 
+## Latency calibration test
+
+```sh
+uv run parapara-latency-test             # --rounds 6 --claps 8,16
+```
+
+Runs the game's "clap to the beat" calibration several times in a row,
+hands-free (stand back; it starts after the position check and closes by
+itself), alternating 8 and 16 claps. Every round, with each clap's timing, is
+logged to `logs/latency-test-<date-time>.json` to check how consistent the
+measurement is.
+
 ## Pose analysis / recalibration
 
 ```sh

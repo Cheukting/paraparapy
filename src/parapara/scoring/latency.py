@@ -1,11 +1,13 @@
 """Latency calibration: "clap to the beat" (PLAN.md §4).
 
 The player claps along to metronome clicks. For each click, the moment the
-wrists come together is found in the **same feature stream the scoring
-uses** (:class:`parapara.pose.features.PoseFeatures`), so the measured offset
-contains everything between the music and the judged movement: audio output
-delay, camera and pose-model delay, the landmark filter (~28 ms) and the
-player's own habit of clapping slightly early or late. That is exactly the
+wrists come together is found in the **same signal the scoring times hits
+on**: the unsmoothed timing copy of the features
+(:meth:`parapara.pose.features.PoseFeatures.for_timing`, as used by the
+judge since 2026-10-23), so the measured offset contains everything between
+the music and the judged movement: audio output delay, camera and pose-model
+delay, and the player's own habit of clapping slightly early or late. (Before
+that change both used the smoothed landmarks, which added ~28 ms.) That is exactly the
 ``latency_ns`` the scoring schedule needs (:class:`~parapara.scoring.schedule.BeatClock`).
 
 Per click, the clap is the minimum of the wrist distance within a window from
@@ -53,7 +55,8 @@ class LatencyResult:
 
 def estimate_latency(features: list[PoseFeatures | None], click_ns: list[int], beat_ns: float) -> LatencyResult:
     """Median clap offset relative to ``click_ns`` (see module docstring)."""
-    samples = [f for f in features if f is not None and np.isfinite(f.wrist_distance)]
+    samples = [f.for_timing() for f in features if f is not None]
+    samples = [f for f in samples if np.isfinite(f.wrist_distance)]
     ts = np.array([f.t_ns for f in samples], dtype=np.float64)
     dist = np.array([f.wrist_distance for f in samples], dtype=np.float64)
     offsets = []

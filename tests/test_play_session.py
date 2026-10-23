@@ -98,7 +98,9 @@ def _clapping(delay_ms: float, clicks_ns: list[int], jitter_ms: float = 0.0, mis
     out = []
     for t in np.arange(clicks_ns[0] - 5e8, clicks_ns[-1] + 5e8, 1e9 / 23):
         d = min(abs(t - c) for c in claps) / 1e9
-        out.append(replace(base, t_ns=int(t), wrist_distance=0.15 + 2.0 * min(1.0, d / 0.12)))
+        dist = 0.15 + 2.0 * min(1.0, d / 0.12)
+        # Both copies: the estimator reads the timing copy (unsmoothed), like the judge.
+        out.append(replace(base, t_ns=int(t), wrist_distance=dist, timing_wrist_distance=dist))
     return out
 
 

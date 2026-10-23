@@ -6,6 +6,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **`parapara-latency-test`**: a separate, hands-free test of the latency
+  calibration (the game is unchanged): position check, then rounds
+  alternating 8 and 16 claps (`--rounds`, `--claps`) with the game's click
+  track, tempo, count-in and estimator, a summary, closes by itself. Logs
+  per round the click times, the result as the game computes it and on the
+  smoothed signal, each clap's offset and the wrist-distance series.
+  Test: headless run and log format.
 - Demo songs: the beat maps of 80s Motivational Chiptune, Onion March and Goa
   Trolls accepted by the project owner (marked verified locally; the
   verification is not yet carried by `catalog.json`, see PLAN.md §10).
@@ -58,6 +65,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- pytest only collects `tests/` (`[tool.pytest] testpaths`): it had also
+  imported `src/` modules named `*_test.py`, which loaded pygame into the
+  test process next to cv2 (caught by the conftest guard).
+- Latency calibration reads the claps from the same unsmoothed timing copy
+  the judge times hits on (it still used the smoothed wrist distance, ~28 ms
+  later, after the timing change). Test helper updated.
 - **Hit timing on the unsmoothed arms** (`PoseFeatures.for_timing`, used by
   the judge for keyframes and claps; poses are still scored on the smoothed
   arms). Through the landmark smoothing a pose's error kept creeping down

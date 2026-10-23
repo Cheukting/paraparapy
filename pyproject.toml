@@ -18,6 +18,7 @@ parapara = "parapara:main"
 parapara-capture-debug = "parapara.game.debug_view:main"
 parapara-capture-bench = "parapara.game.capture_bench:main"
 parapara-record = "parapara.game.recorder:main"
+parapara-latency-test = "parapara.game.latency_check:main"
 parapara-analyze = "parapara.diagnostics.pose_analysis:main"
 parapara-tune-filters = "parapara.diagnostics.filter_tuning:main"
 parapara-score = "parapara.diagnostics.score_clips:main"
@@ -45,6 +46,12 @@ dev = [
 tools = [
     "librosa>=1.0.0",
 ]
+
+[tool.pytest]
+# Only tests/ holds tests: without this, pytest also imports src/ modules
+# matching *_test.py, which pulled pygame into the test process (where cv2 is
+# loaded too; see tests/conftest.py).
+testpaths = ["tests"]
 
 [tool.uv]
 # librosa (beat-map tools) is needed for development and tests, not to play the game.
