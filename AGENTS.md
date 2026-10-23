@@ -9,4 +9,5 @@
 - provide detailed comment and documentation of the design when writing code.
 - include relevant test when generating code.
 - document changes in CHANGELOG.md
+- update Contributing.md if necessary
 
