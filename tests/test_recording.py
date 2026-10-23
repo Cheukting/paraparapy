@@ -210,21 +210,30 @@ RECORD_SCRIPT = textwrap.dedent(
 )
 
 
+def _accept_privacy(data_dir) -> None:
+    from parapara.notices import PRIVACY_VERSION
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "ui.json").write_text(json.dumps({"privacy_notice": PRIVACY_VERSION}))
+
+
 def test_recorder_records_and_saves_clips_headless(tmp_path) -> None:
     tests_dir = os.path.dirname(__file__)
+    _accept_privacy(tmp_path / "data")
     env = os.environ | {
+        "PARAPARA_DATA_DIR": str(tmp_path / "data"),
         "SDL_VIDEODRIVER": "dummy",
         "SDL_AUDIODRIVER": "dummy",
         "PYGAME_HIDE_SUPPORT_PROMPT": "1",
         "PYTHONPATH": os.pathsep.join(filter(None, [tests_dir, os.environ.get("PYTHONPATH")])),
     }
     result = subprocess.run(
-        [sys.executable, "-c", RECORD_SCRIPT, str(tmp_path)],
+        [sys.executable, "-c", RECORD_SCRIPT, str(tmp_path / "rec")],
         capture_output=True, text=True, env=env, timeout=90,
     )  # fmt: skip
     assert result.returncode == 0, result.stderr
     assert "SDL_" not in result.stderr
-    (session,) = tmp_path.iterdir()
+    (session,) = (tmp_path / "rec").iterdir()
     manifest = json.loads((session / "session.json").read_text())
     assert list(manifest["clips"]) == ["t_pose", "block_knock_right"]
 
@@ -244,6 +253,7 @@ def _run_recorder(tmp_path, args: list[str], timeout: float = 90) -> subprocess.
     script = (f"import sys\nfrom parapara.game import recorder\n"
               f"recorder.run({args!r} + ['--out', sys.argv[1]], worker='fake_capture_worker:stream')\n")  # fmt: skip
     tests_dir = os.path.dirname(__file__)
+    _accept_privacy(tmp_path / "data")
     env = os.environ | {
         "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1",
         "PARAPARA_DATA_DIR": str(tmp_path / "data"),

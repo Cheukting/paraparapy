@@ -50,6 +50,7 @@ from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
+from parapara.game.notice_screens import privacy_gate  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.game.ui import UI, adjust_scale, display_flags, footer, layout_issues, load_scale, text  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
@@ -141,10 +142,14 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> dict[
     config = CaptureConfig(camera_index=args.camera, pose_model=args.model)
     intro_s, result_s, summary_s = (0.3, 0.3, 0.3) if args.fast else (INTRO_S, RESULT_S, SUMMARY_S)
     pygame.init()
+    load_scale(args.text_scale)
+    accepted, _ = privacy_gate(args.window, None, args.check_layout)  # before the camera starts
+    if not accepted:
+        pygame.quit()
+        return {}
     set_window_icon()
     screen = pygame.display.set_mode((WIDTH, HEIGHT), display_flags(args.window))
     pygame.display.set_caption(f"{NAME} – latency test")
-    load_scale(args.text_scale)
     clock, player = pygame.time.Clock(), Player(44100)
     feed, framing = LiveFeed(config), FramingMonitor()
     extractor = FeatureExtractor(calibration=settings.load_calibration())

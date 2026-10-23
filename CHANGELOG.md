@@ -6,6 +6,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **Credits** (`C` in the menu of `parapara-play`): demo songs with title,
+  artist, CC BY licence and source; MediaPipe and its pose models (Apache
+  2.0), pygame-ce, NumPy, OpenCV; the dance-move reference; the logo. The
+  selected song's box shows its artist and licence. `CREDITS.md` has the
+  full attributions with links.
+- **Privacy & licence notice** (`parapara.notices`,
+  `parapara.game.notice_screens`): shown full-screen before the camera starts
+  for the first time in the game, the recorder and the latency test (`Enter`
+  accepts and is remembered in `ui.json` per notice version, `Esc` quits
+  without starting the camera), and from the menu (`P`). It says camera
+  images are processed on the computer and never saved or sent, that
+  MediaPipe sends Google usage statistics (no images; cannot be switched
+  off; facts checked against Google's notice of 2026-06-05), what the game
+  saves locally, and the licences. Long texts scroll (Up/Down) and keep
+  headings with their first line.
+- Tests: notice and credits wording, the first-start gate (Esc quits, Enter
+  accepts and is remembered), Credits / Privacy screens without overlapping
+  text at text sizes 1.0 and 2.6. Tests use a temporary data folder.
 - **`parapara-latency-test`**: a separate, hands-free test of the latency
   calibration (the game is unchanged): position check, then rounds
   alternating 8 and 16 claps (`--rounds`, `--claps`) with the game's click

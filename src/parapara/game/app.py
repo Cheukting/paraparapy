@@ -73,6 +73,7 @@ from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon, wordmark  # noqa: E402
 from parapara.game.dancer_view import REST, block_title, draw_dancer, static_pose  # noqa: E402
 from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
+from parapara.game.notice_screens import draw_document, privacy_gate  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported for tests)
     UI,
@@ -88,6 +89,7 @@ from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported 
 )
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
+from parapara.notices import credits_entries, privacy_entries, song_credit  # noqa: E402
 from parapara.pose.calibration import CalibrationError, calibrate  # noqa: E402
 from parapara.pose.features import FeatureExtractor  # noqa: E402
 from parapara.pose.framing import FramingMonitor  # noqa: E402
@@ -140,6 +142,8 @@ class Scene(Enum):
     PLAY = auto()
     RESULTS = auto()
     LEARN = auto()
+    CREDITS = auto()
+    PRIVACY = auto()
 
 
 @dataclasses.dataclass
@@ -213,6 +217,7 @@ class Game:
         self.count_in_ns: list[int] = []
         self.results: dict | None = None
         self.calibration_issues: list[str] = []
+        self.doc_scroll, self.doc_more = 0, False  # Credits / Privacy screens
 
     def go(self, scene: Scene) -> None:
         self.player.pause()  # stop clicks / music from the scene being left
@@ -225,9 +230,11 @@ class Game:
 
     # -- main loop ---------------------------------------------------------
 
-    def run(self) -> None:
+    def run(self, start_frame: int = 0) -> None:
+        """The main loop; ``start_frame`` continues the frame count of the
+        privacy gate (scripted test keys use one counter for both)."""
         clock = pygame.time.Clock()
-        frames = 0
+        frames = start_frame
         running = True
         if self.args.auto:  # tests: straight to play, no calibration
             self.latency_ms = self.latency_ms or 0.0
@@ -275,6 +282,9 @@ class Game:
         if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):
             self.go(Scene.MENU)
             return True
+        if self.scene in (Scene.CREDITS, Scene.PRIVACY):
+            self.handle_document(keys)
+            return True
         {Scene.BODY: self.handle_body, Scene.LATENCY: self.handle_latency, Scene.PLAY: self.handle_play,
          Scene.RESULTS: self.handle_results, Scene.LEARN: self.handle_learn}[self.scene](keys, samples)  # fmt: skip
         return True
@@ -301,6 +311,9 @@ class Game:
             m.redo_latency = not m.redo_latency
         if pygame.K_t in keys:
             self.go(Scene.LEARN)
+            return True
+        if pygame.K_c in keys or pygame.K_p in keys:
+            self.go(Scene.CREDITS if pygame.K_c in keys else Scene.PRIVACY)
             return True
         if (pygame.K_RETURN in keys or pygame.K_SPACE in keys) and m.routine is not None:
             self.next_after(Scene.MENU)
@@ -440,6 +453,23 @@ class Game:
         if pygame.K_RETURN in keys or pygame.K_SPACE in keys:
             self.go(Scene.MENU)
 
+    # -- credits & privacy ------------------------------------------------------------
+
+    def handle_document(self, keys: list[int]) -> None:
+        """Credits / Privacy: Up/Down scroll, Esc or Enter back to the menu."""
+        if pygame.K_ESCAPE in keys or pygame.K_RETURN in keys or pygame.K_SPACE in keys:
+            self.go(Scene.MENU)
+        elif pygame.K_DOWN in keys and self.doc_more:
+            self.doc_scroll += 1
+        elif pygame.K_UP in keys:
+            self.doc_scroll = max(0, self.doc_scroll - 1)
+
+    def draw_credits(self, stage, camera, panel) -> None:
+        self.doc_more = draw_document(stage, credits_entries(self.menu.songs), self.doc_scroll, "Esc back")
+
+    def draw_privacy(self, stage, camera, panel) -> None:
+        self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "Esc back")
+
     # -- learn the moves -----------------------------------------------------------
 
     @property
@@ -509,7 +539,7 @@ class Game:
             return
         bottom = footer(stage, [("New? T learn the moves", 18, ACCENT),
                                 ("Up/Down song   Left/Right level   Enter play", 16, DIM),
-                                ("+/- text size   F fullscreen   Esc quit", 16, DIM)])  # fmt: skip
+                                ("+/- text size   F fullscreen   C credits   P privacy   Esc quit", 16, DIM)])  # fmt: skip
         # Song list: the selected song is framed with its level and tempo
         # (third test run: it blended into the other titles). If the list is
         # taller than the room above the key hints, it scrolls to keep the
@@ -519,9 +549,12 @@ class Game:
 
         def selected_lines(song: Song) -> list[tuple[str, float, tuple[int, int, int]]]:
             r = m.routine
-            lines = [(song.title, 24, ACCENT),
-                     (f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM" if r else "no routines",
-                      20, TEXT)]  # fmt: skip
+            lines = [(song.title, 24, ACCENT)]
+            licence = song_credit(song)[1][1].split(",")[0]  # "CC BY 4.0" / "your own music"
+            if song.artist:  # artist and licence right where the song is chosen, as CC BY asks
+                lines.append((f"by {song.artist}   {licence}", 16, DIM))
+            lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM" if r else "no routines",
+                          20, TEXT))  # fmt: skip
             if not song.beat_map.verified:
                 lines.append(("beat map not checked", 18, WARN))
             return lines
@@ -790,8 +823,13 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     config = CaptureConfig(camera_index=args.camera, pose_model=args.model)
     pygame.init()
     try:
+        # The privacy notice comes before the camera (and MediaPipe) starts.
+        load_scale(args.text_scale)
+        accepted, frames = privacy_gate(args.window, args.keys, args.check_layout)
+        if not accepted:
+            return
         with CaptureClient(config, worker=worker) as capture:
-            Game(args, capture, config).run()
+            Game(args, capture, config).run(start_frame=frames)
     finally:
         pygame.quit()
 

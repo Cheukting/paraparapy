@@ -542,20 +542,31 @@ Must do before shipping:
    `parapara-fetch-demo-songs` would lose it (also for Lets Go To A Rave):
    carry the verified beat maps in `catalog.json` when deciding how demo songs
    ship (item 3).
-3. **Credits** for the CC BY demo songs in the game (attribution is
-   required); decide whether demo songs are bundled or downloaded by the game.
-4. **Privacy & licences**: MediaPipe model licences; tell players about the
-   MediaPipe usage metrics (images stay on-device); macOS camera usage
-   description for the packaged app; make saving every play as a recording
-   opt-in or self-cleaning.
+3. ~~**Credits**~~ done 2026-10-23: Credits screen (`C` in the menu: songs
+   with artist, licence and source; MediaPipe, software, dance reference,
+   logo), artist and licence in the selected song's box, full attributions
+   in `CREDITS.md`.
+4. ~~**Privacy & licences**~~ done 2026-10-23: MediaPipe pose models checked
+   (Apache 2.0); privacy & licence notice shown before the camera starts for
+   the first time (game, recorder, latency test; remembered per notice
+   version) and from the menu (`P`): camera images stay on the computer,
+   MediaPipe usage statistics to Google, what is saved locally. The macOS
+   camera usage description and making play recordings optional moved to
+   the future plans below.
+
+Future plans (project owner, 2026-10-23: not before the first release):
 5. **Packaging**: choose a tool (PyInstaller / Briefcase), bundle the pose
-   models, handle the spawned capture process in a frozen app, move `logs/`,
-   `recordings/` and the song library from the working directory to the user
-   data folder, app icon, target platforms, test on a clean machine.
+   models and the logo, handle the spawned capture process in a frozen app,
+   move `logs/`, `recordings/` and the song library from the working
+   directory to the user data folder, app icon, macOS camera usage
+   description, target platforms, test on a clean machine; decide whether
+   demo songs are bundled or downloaded (and carry verified beat maps).
 6. **In-game screens** for what is CLI-only today: fetch demo songs, import
    own songs, generate routines.
 7. **First-run errors** on the packaged app: no camera, camera permission
    refused, no songs (clear messages).
+- **Play recordings optional**: a setting to stop saving each play to
+  `recordings/` (or clean old ones up automatically).
 
 Should do:
 8. **Consistent latency calibration**: repeat calibrations in one sitting to

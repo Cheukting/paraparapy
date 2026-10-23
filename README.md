@@ -98,6 +98,12 @@ Up/Down speed). While playing, the next move is shown as a small picture
 at the dancer's top right; a dot slides into the ring on its left
 when the move starts.
 
+The first time the game (or the recorder) starts, it shows a privacy and
+licence notice before the camera starts: camera images stay on your computer,
+Google MediaPipe sends usage statistics (no images), and each play is kept
+as body positions (no images) in `recordings/`. `P` in the menu shows it
+again, `C` shows the credits (full attributions: [CREDITS.md](CREDITS.md)).
+
 Both calibrations run before the first song each time the game starts and
 are kept for the songs that follow (`B` / `L` redo them). Don't skip the
 latency one: without it the grades are late and unfair (`S` reuses the last

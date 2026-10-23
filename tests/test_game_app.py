@@ -17,7 +17,19 @@ from parapara.pose.recording import Recording
 TESTS = Path(__file__).resolve().parent
 
 
-def _run_game(tmp_path, args: list[str]) -> subprocess.CompletedProcess:
+def accept_privacy(data_dir: Path) -> None:
+    """The privacy notice was accepted (it is shown before the camera starts)."""
+    from parapara.notices import PRIVACY_VERSION
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    ui = data_dir / "ui.json"
+    prefs = json.loads(ui.read_text()) if ui.exists() else {}
+    ui.write_text(json.dumps(prefs | {"privacy_notice": PRIVACY_VERSION}))
+
+
+def _run_game(tmp_path, args: list[str], privacy_accepted: bool = True) -> subprocess.CompletedProcess:
+    if privacy_accepted:
+        accept_privacy(tmp_path / "data")
     if not (tmp_path / "lib").exists():
         track = render_demo_song()
         write_wav(tmp_path / "t.wav", track.samples, track.sample_rate)
@@ -59,7 +71,7 @@ def test_latency_calibration_then_play_and_results_flow(tmp_path) -> None:
     -> end early -> results -> menu."""
     from parapara.pose.calibration import Calibration
 
-    (tmp_path / "data").mkdir()
+    (tmp_path / "data").mkdir(exist_ok=True)
     cal = Calibration(0.35, 0.62, 0.63, (0.0, -1.0, 0.0), 5.0, 0.5, 3.0, 4.0)
     cal.save(tmp_path / "data" / "calibration.json")
     # The latency clicks + evaluation take ~2.5 s (~150 frames): S is sent twice
@@ -203,6 +215,7 @@ def test_latency_test_tool_runs_hands_free_and_logs(tmp_path) -> None:
         "PARAPARA_DATA_DIR": str(tmp_path / "data"),
         "PYTHONPATH": os.pathsep.join(filter(None, [str(TESTS), os.environ.get("PYTHONPATH")])),
     }  # fmt: skip
+    accept_privacy(tmp_path / "data")
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
                             cwd=tmp_path, env=env, timeout=90)  # fmt: skip
     assert result.returncode == 0, result.stderr
@@ -215,3 +228,26 @@ def test_latency_test_tool_runs_hands_free_and_logs(tmp_path) -> None:
     assert all(r["result"]["ok"] is False and r["result_smoothed"] is not None for r in rounds)
     assert all(len(r["series"]["t_ms"]) == len(r["series"]["wrist_distance_timing"]) > 0 for r in rounds)
     assert data["summary"]["8"]["rounds"] == 2 and data["summary"]["16"]["accepted"] == 0
+
+
+def test_privacy_notice_comes_before_the_camera(tmp_path) -> None:
+    """First start: the privacy notice is shown before the camera starts.
+    Esc quits (nothing accepted, nothing played); Enter accepts, remembers it
+    and goes on to the menu; the next start skips the notice."""
+    _run_game(tmp_path, ["--keys", "10:escape"], privacy_accepted=False)
+    assert not (tmp_path / "data" / "ui.json").exists()
+    _run_game(tmp_path, ["--check-layout", "--keys", "10:down 12:return 40:escape"], privacy_accepted=False)
+    from parapara.notices import PRIVACY_VERSION
+
+    assert json.loads((tmp_path / "data" / "ui.json").read_text())["privacy_notice"] == PRIVACY_VERSION
+    result = _run_game(tmp_path, ["--keys", "10:escape"], privacy_accepted=False)  # straight to the menu
+    assert "Traceback" not in result.stderr
+
+
+@pytest.mark.parametrize("scale", ["1.0", "2.6"])
+def test_credits_and_privacy_screens(tmp_path, scale) -> None:
+    """Menu -> C (credits; scroll down and up) -> back -> P (privacy) -> back
+    -> quit, with no overlapping or cut-off text."""
+    keys = "10:c 30:down 40:down 50:up 70:escape 90:p 110:down 130:escape 150:escape"
+    result = _run_game(tmp_path, ["--check-layout", "--text-scale", scale, "--keys", keys])
+    assert "LAYOUT" not in result.stderr, result.stderr
