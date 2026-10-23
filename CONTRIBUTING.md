@@ -197,7 +197,7 @@ Beat maps must be **verified by ear** (`parapara-beatcheck`, guide in
 | `matching.py` | Pose error: angle between target and measured arm segments, **front-plane weighted** (depth is MediaPipe's weakest axis: `DEPTH_WEIGHT` 0.5); pose score from error and tolerance; clap gate from the wrist distance. |
 | `judge.py` | Streaming judge. Per keyframe, within its timing window: best pose sample → pose score; hit time from the timing copy (held pose: start of the near-minimum stretch; passed-through pose: refined minimum) → Perfect ≤ 60 ms, Great ≤ 120 ms, Good ≤ 190 ms (capped at 0.45 beat), else Miss. Holds graded on pose only; claps by wrists (or sound onsets later); flowing blocks also get a "keeps moving" check. |
 | `scorekeeper.py` | Points (100 × pose score × timing factor × combo multiplier: +0.1 per 10 non-misses, max ×2), flow and posture bonus, accuracy. |
-| `latency.py` | "Clap to the beat": median clap offset from the clicks, in the same signal the judge times hits on; accepted with ≥ 6 claps and spread ≤ 40 ms. |
+| `latency.py` | "Clap to the beat": median clap offset from the clicks, in the same signal the judge times hits on; accepted with ≥ 6 claps and spread ≤ 60 ms (limit from real clapping). |
 | `session.py` | `PlaySession`: one play (features → judge → score keeper), framing warnings, the play as a recording, ending early. |
 
 ### `animation/`: the demo dancer

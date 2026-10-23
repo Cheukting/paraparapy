@@ -6,6 +6,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- Latency calibration accepts a clap spread up to **60 ms** (was 40 ms). The
+  project owner's `parapara-latency-test` run (six rounds, 8 and 16 claps)
+  had spreads of 18-70 ms from claps drifting within a round; 40 ms rejected
+  4 of 6 rounds although every median was within 25 ms of the true ~166 ms.
+  The game keeps 8 claps (16 were not more consistent). Tests: ±160 ms
+  scatter still rejected, ±120 ms accepted.
 - `PLAN.md`: clap detection by sound moved to the future plans (not for the
   first release; claps stay vision-only).
 

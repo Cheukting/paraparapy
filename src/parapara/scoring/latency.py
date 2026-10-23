@@ -18,11 +18,21 @@ wrists really met (below 1.3 × the clap distance).
 The result is the **median** offset of the claps found; the spread is the
 scaled median absolute deviation. Because each clap is searched only within
 its click's window, wild claps are clipped and the spread *underestimates*
-large jitter (synthetic test: true ±40 ms → 22 ms, ±120 ms → 50 ms), so the
-limit is set in measured units: 40 ms accepts careful clapping and rejects
-claps scattered by about ±100 ms or more. A calibration is accepted with at least
-:data:`MIN_CLAPS` claps (and half of the clicks) and a spread of at most
-:data:`MAX_SPREAD_MS`; otherwise the player is asked to try again.
+large jitter (synthetic test: true ±40 ms → 22 ms, ±120 ms → 50 ms, ±160 ms
+→ 66 ms), so the limit is in measured units. A calibration is accepted with
+at least :data:`MIN_CLAPS` claps (and half of the clicks) and a spread of at
+most :data:`MAX_SPREAD_MS`; otherwise the player is asked to try again.
+
+Real clapping (``parapara-latency-test``, project owner, 2026-10-23, six
+rounds alternating 8 and 16 claps): spreads of 18-70 ms, because players
+drift within a round (reacting to the first clicks, then anticipating
+them: the second half of a 16-clap round came 45-90 ms earlier). The
+first limit, 40 ms (set from synthetic claps), rejected 4 of 6 rounds,
+yet every round's median was within 25 ms of the overall 166 ms, well
+inside the 60 ms Perfect window. So the limit is **60 ms** (5 of 6 rounds
+accepted; synthetic ±160 ms scatter still rejected), and the game keeps
+**8 claps**: 16 claps were not more consistent (round medians 132-167 ms
+vs 166-190 ms with 8), they only add more drift.
 
 Clap detection by sound (PLAN.md §5.1) can later replace the vision timing.
 """
@@ -38,7 +48,7 @@ from parapara.scoring.judge import refine_time
 from parapara.scoring.matching import CLAP_DISTANCE
 
 MIN_CLAPS = 6
-MAX_SPREAD_MS = 40.0
+MAX_SPREAD_MS = 60.0  # measured spread; see the module docstring (2026-10-23 test)
 CLAP_GATE = 1.3  # wrists closer than CLAP_GATE x CLAP_DISTANCE count as a clap
 
 

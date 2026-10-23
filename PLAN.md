@@ -573,12 +573,15 @@ Future plans (project owner, 2026-10-23: not before the first release):
   contain claps/snares (`Judge.add_clap_onset` is ready for it).
 
 Should do:
-8. **Consistent latency calibration**: repeat calibrations in one sitting to
-   tell 8-clap noise from clapping on the countdown; if noisy, use 12 claps
-   or compare with the last saved value and warn on large differences.
-   Tool ready (2026-10-23): `uv run parapara-latency-test` (hands-free rounds
-   alternating 8 and 16 claps, logged to `logs/latency-test-*.json`); waiting
-   for a run by the project owner.
+8. ~~**Consistent latency calibration**~~ done 2026-10-23
+   (`parapara-latency-test`, six rounds alternating 8 and 16 claps): the
+   player's latency is ~166 ms; round medians 132-190 ms; 16 claps were not
+   more consistent (claps drift earlier within a round as the player starts
+   anticipating), so the game keeps 8. The 40 ms spread limit rejected 4 of
+   6 real rounds although every median was within 25 ms of 166 ms: raised to
+   60 ms (project owner). Timing on the unsmoothed copy measured 26-76 ms
+   (mean 45 ms) less than the smoothed signal, confirming that fix. The
+   earlier launches' 261 / 96 / 122 ms were measured on the smoothed signal.
 9. **Clap detection by sound**: moved to the future plans (project owner,
    2026-10-23).
 10. ~~**Low-light hint**~~ done 2026-10-23: "Camera N fps: more light helps"

@@ -124,13 +124,16 @@ def test_latency_from_8_claps() -> None:
     assert r.latency_ms == pytest.approx(200, abs=25)
     few = estimate_latency(_clapping(200, clicks, miss={0, 2, 4}), clicks, BEAT_NS)
     assert not few.ok  # 5 of 8 is below MIN_CLAPS
-    assert not estimate_latency(_clapping(200, clicks, jitter_ms=120), clicks, BEAT_NS).ok
+    assert not estimate_latency(_clapping(200, clicks, jitter_ms=160), clicks, BEAT_NS).ok
+    # Real-looking clapping that drifts within the round (spread ~50 ms) is accepted.
+    assert estimate_latency(_clapping(100, clicks, jitter_ms=120), clicks, BEAT_NS).ok
 
 
 def test_latency_rejects_too_few_or_uneven_claps() -> None:
     few = estimate_latency(_clapping(100, CLICKS, miss=set(range(12))), CLICKS, BEAT_NS)
     assert not few.ok and "of 16 claps" in few.reason
-    uneven = estimate_latency(_clapping(100, CLICKS, jitter_ms=120), CLICKS, BEAT_NS)
+    # ±160 ms scatter (measured spread ~66 ms) is beyond the 60 ms limit.
+    uneven = estimate_latency(_clapping(100, CLICKS, jitter_ms=160), CLICKS, BEAT_NS)
     assert not uneven.ok and ("uneven" in uneven.reason or "of 16" in uneven.reason)
     none = estimate_latency([], CLICKS, BEAT_NS)
     assert not none.ok and none.claps_found == 0
