@@ -6,6 +6,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `CONTRIBUTING.md`: a guide to the code base: getting started, ground
+  rules, the two-process architecture and a frame's journey, every package
+  and module, data on disk, commands, how the tests are built (subprocess
+  pygame tests, fake cameras, the perfect player, the layout check), common
+  tasks (recalibrating a move, adding a block, a song or a screen) and a
+  glossary. Linked from the README.
 - **Low-light hint** (`LowLightMonitor`): "Camera N fps: more light helps"
   on a dark band at the bottom of the camera view while the camera delivers
   under 25 fps for 3 s (webcams slow down in dim light; ~23 fps was seen
