@@ -35,12 +35,12 @@ from parapara.audio.importer import load_all_songs  # noqa: E402
 from parapara.audio.song import Song  # noqa: E402
 from parapara.game.beatcheck import Player, load_audio  # noqa: E402
 from parapara.game.dancer_view import block_title, draw_dancer, static_pose  # noqa: E402
+from parapara.game.theme import ACCENT, BG, CARD, DIM, PANEL, TEXT  # noqa: E402
 from parapara.routine.model import COUNTS_PER_BAR, Routine  # noqa: E402
 from parapara.routine.store import routines_for  # noqa: E402
 
 WIDTH, HEIGHT = 1000, 620
 STAGE_WIDTH = 600
-BG, PANEL, TEXT, DIM, ACCENT = (18, 18, 28), (30, 30, 44), (235, 235, 245), (120, 120, 140), (255, 220, 80)
 
 
 def _text(screen, text, pos, size=24, colour=TEXT) -> int:
@@ -79,13 +79,13 @@ def draw_frame(screen: pygame.Surface, song: Song, routine: Routine, animator: A
     if pose.next_block is not None and pose.next_block_beat is not None:
         counts = int(np.ceil(pose.next_block_beat - beat))
         card = panel.subsurface((20, y + 10, panel.get_width() - 40, 260))
-        card.fill((44, 44, 64))
+        card.fill(CARD)
         _text(card, f"next: {block_title(pose.next_block)}", (12, 8), 26, ACCENT)
         _text(card, f"in {counts} count{'s' if counts != 1 else ''}", (12, 34), 22, DIM)
         draw_dancer(card, static_pose(pose.next_block.keyframes[0]), (card.get_width() // 2, 110),
                     36, mirrored)  # fmt: skip
     footer = (f"{'PAUSED  ' if paused else ''}clicks {'on' if clicks else 'off'}  mirror {'on' if mirrored else 'off'}"
-              "   Space pause  Left/Right bar  R routine  C clicks  M mirror  Esc quit")  # fmt: skip
+              "   [Space] pause  [Left/Right] bar  [R] routine  [C] clicks  [M] mirror  [Esc] quit")  # fmt: skip
     _text(screen, footer, (16, HEIGHT - 26), 19, DIM)
 
 

@@ -58,14 +58,21 @@ import pygame  # noqa: E402  (must follow the env var above)
 from parapara.diagnostics.clips import CLIP_IDS, CLIPS, Clip, ClipTimeline, Phase  # noqa: E402
 from parapara.diagnostics.recorder import environment  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon  # noqa: E402
+from parapara.game.debug_view import LiveFeed  # noqa: E402
 from parapara.game.notice_screens import privacy_gate  # noqa: E402
-from parapara.game.debug_view import ERROR_COLOUR, LEFT_COLOUR, RIGHT_COLOUR, TEXT_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.overlay import GuideArm, guide_figure, to_screen  # noqa: E402
-from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
-from parapara.ipc.messages import CaptureConfig  # noqa: E402
-from parapara.pose.framing import FramingMonitor, FramingResult  # noqa: E402
-from parapara.pose.landmarks import PoseSample  # noqa: E402
-from parapara.pose.recording import Recording  # noqa: E402
+from parapara.game.theme import (  # noqa: E402
+    ACCENT,
+    DIM,
+    ERROR,
+    LEFT_COLOUR,
+    OK,
+    PANEL,
+    RECORD,
+    RIGHT_COLOUR,
+    TEXT_COLOUR,
+    WARN,
+)
 from parapara.game.ui import (  # noqa: E402
     UI,
     adjust_scale,
@@ -76,14 +83,14 @@ from parapara.game.ui import (  # noqa: E402
     text,
     text_height,
 )
+from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
+from parapara.ipc.messages import CaptureConfig  # noqa: E402
+from parapara.pose.framing import FramingMonitor, FramingResult  # noqa: E402
+from parapara.pose.landmarks import PoseSample  # noqa: E402
+from parapara.pose.recording import Recording  # noqa: E402
 from parapara.routine.model import COUNTS_PER_BAR, ArmPose  # noqa: E402
 
-PANEL_BG = (28, 28, 40)
-DIM = (90, 90, 110)
-ACCENT = (255, 220, 80)
 DEFAULT_OUT = Path("recordings")
-OK_COLOUR = (90, 220, 120)
-WARN_COLOUR = (255, 150, 60)
 
 
 # --- metronome ---------------------------------------------------------------
@@ -258,7 +265,7 @@ def draw_framing_box(surface: pygame.Surface, framing: FramingResult | None, mir
     corners = to_screen([(x0, y0), (x1, y1)], surface.get_size(), mirrored)
     (ax, ay), (bx, by) = corners
     rect = pygame.Rect(min(ax, bx), min(ay, by), abs(bx - ax), abs(by - ay))
-    pygame.draw.rect(surface, OK_COLOUR if framing.ok else WARN_COLOUR, rect, 2)
+    pygame.draw.rect(surface, OK if framing.ok else WARN, rect, 2)
 
 
 def status_line(*, clip: Clip | None, stage: Stage, phase: Phase | None, framing: FramingResult | None,
@@ -266,15 +273,15 @@ def status_line(*, clip: Clip | None, stage: Stage, phase: Phase | None, framing
                 manual: bool) -> tuple[str, tuple[int, int, int]]:  # fmt: skip
     """The one sentence telling the player what is happening / what to do."""
     if clip is None:
-        return ("All done - thank you!", OK_COLOUR)
+        return ("All done - thank you!", OK)
     if stage is Stage.REVIEW and result is not None:
         return result
     if stage is Stage.READY:
         if not framed:
             issue = framing.issues[0].message if framing is not None and framing.issues else "Step into the picture"
-            return (issue, WARN_COLOUR)
+            return (issue, WARN)
         if manual:
-            return ("Press Space to start", ACCENT)
+            return ("Press [Space] to start", ACCENT)
         return ("Watch the move" if clip.kind == "block" else "Get into this pose", ACCENT)
     if stage is Stage.RUNNING and phase is not None:
         if phase.name == "preview":
@@ -282,8 +289,8 @@ def status_line(*, clip: Clip | None, stage: Stage, phase: Phase | None, framing
         if phase.name in ("countdown", "count_in"):
             return ("Get ready ...", ACCENT)
         if framing is not None and framing.codes & {"no_person", "no_shoulders", "no_hips"}:
-            return (framing.issues[0].message, WARN_COLOUR)
-        return ("Recording - dance!" if clip.kind == "block" else "Recording - hold still", (255, 90, 90))
+            return (framing.issues[0].message, WARN)
+        return ("Recording - dance!" if clip.kind == "block" else "Recording - hold still", ERROR)
     return ("", TEXT_COLOUR)
 
 
@@ -291,7 +298,7 @@ def draw_stage(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
                phase: Phase | None, status: tuple[str, tuple[int, int, int]]) -> None:  # fmt: skip
     """The guide side: clip, instructions, a big guide figure, the status
     sentence and the big count."""
-    surface.fill(PANEL_BG)
+    surface.fill(PANEL)
     if clip is None:
         text(surface, "All clips done!", (24, 30), 40, ACCENT)
         text(surface, status[0], (24, 140), 26, status[1])
@@ -306,13 +313,13 @@ def draw_stage(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
     label_h = text_height(surface, "8", 64, STAGE_W // 2)
     label_top = HEIGHT - 10 - label_h
     if big:
-        colour = (255, 80, 80) if big == "REC" else ACCENT
+        colour = RECORD if big == "REC" else ACCENT
         text(surface, big, (STAGE_W // 2, label_top), 64, colour, centre=True)
     status_top = label_top - text_height(surface, status[0], 26, 24) - 4
     text(surface, status[0], (24, status_top), 26, status[1])
     if stage is Stage.RUNNING and phase is not None and phase.name == "recording":
         pygame.draw.rect(surface, DIM, (24, status_top - 18, STAGE_W - 48, 10), 1)
-        pygame.draw.rect(surface, (255, 80, 80), (24, status_top - 18, round((STAGE_W - 48) * phase.progress), 10))
+        pygame.draw.rect(surface, RECORD, (24, status_top - 18, round((STAGE_W - 48) * phase.progress), 10))
     # The guide figure fills the room between the instructions and the status:
     # from a raised hand (~2.3 shoulder widths above the shoulders) to the hips
     # and hanging hands (~1.6 below).
@@ -323,15 +330,15 @@ def draw_stage(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
 
 def draw_info(surface: pygame.Surface, *, clip: Clip | None, bpm: float, manual: bool, attempt: int) -> None:
     """The panel under the camera: tempo, attempt, and the few keys."""
-    surface.fill(PANEL_BG)
+    surface.fill(PANEL)
     y = 12
     if clip is not None and clip.kind == "block":
         y = text(surface, f"{clip.bars} bars at {bpm:.0f} BPM", (20, y), 18)
     if attempt > 1:
-        y = text(surface, f"attempt {attempt} of {MAX_ATTEMPTS}", (20, y), 18, WARN_COLOUR)
-    keys = ("Space start   Enter keep   R redo   S skip   Esc quit" if manual
-            else "Hands-free: nothing to press.   S skip   Esc quit")  # fmt: skip
-    footer(surface, [(keys, 14, DIM), ("+/- text size   F fullscreen   M mirror", 14, DIM)], x=20)
+        y = text(surface, f"attempt {attempt} of {MAX_ATTEMPTS}", (20, y), 18, WARN)
+    keys = ("[Space] start   [Enter] keep   [R] redo   [S] skip   [Esc] quit" if manual
+            else "Hands-free: nothing to press.   [S] skip   [Esc] quit")  # fmt: skip
+    footer(surface, [(keys, 14, DIM), ("[+]/[-] text size   [F] fullscreen   [M] mirror", 14, DIM)], x=20)
 
 
 # --- app -----------------------------------------------------------------------
@@ -549,20 +556,20 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                     rec = run.recording(args.bpm, feed.camera_details)
                     issue = run.quality_issue(rec)
                     if issue is None:
-                        result = ("Saved - next clip coming" if not manual else "Good - Enter keeps it", OK_COLOUR)
+                        result = ("Saved - next clip coming" if not manual else "Good - Enter keeps it", OK)
                     elif attempt < MAX_ATTEMPTS and not manual:
-                        result = (f"Again: {issue}", WARN_COLOUR)
+                        result = (f"Again: {issue}", WARN)
                     else:
-                        result = (f"Kept, but {issue}", WARN_COLOUR)
+                        result = (f"Kept, but {issue}", WARN)
                     pending, result_at, stage = (rec, issue is None), now, Stage.REVIEW
 
             # --- draw ---
             UI.drawn = [] if args.check_layout else None
-            screen.fill(PANEL_BG)
+            screen.fill(PANEL)
             camera = screen.subsurface((STAGE_W, 0, config.width, config.height))
             feed.draw(camera, mirrored)
             if failure:
-                text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR_COLOUR)
+                text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR)
             elif not ready:
                 text(camera, "starting camera ...", (camera.get_width() // 2, camera.get_height() // 3), 24, DIM,
                      centre=True)  # fmt: skip

@@ -216,6 +216,7 @@ animates single moves (Learn the moves). Drawing is in `game/dancer_view.py`.
 | `dancer_view.py`, `overlay.py` | The stick-figure dancer, still poses, the recorder's guide figure. |
 | `notice_screens.py` | Scrollable documents (credits, privacy) and the **privacy gate** shown before the camera starts for the first time. |
 | `branding.py` | Logo → menu wordmark and window icon. |
+| `theme.py` | The five brand colours from `assets/branding/PALETTE.md` and the semantic UI names derived from them (`BG`, `PANEL`, `TEXT`, `DIM`, `ACCENT`, status, dancer and grade colours). Use these names in new screens, not raw RGB tuples. |
 | `recorder.py` | `parapara-record`: hands-free guided recording of calibration and move clips with a quality check. |
 | `latency_check.py` | `parapara-latency-test`: repeated latency calibrations, logged (named `latency_check` because pytest collects `*_test.py`). |
 | `beatcheck.py`, `preview.py` | Beat-map check by ear; watching a routine. |

@@ -22,8 +22,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402
 
 from parapara import settings  # noqa: E402
-
-TEXT = (235, 235, 245)
+from parapara.game.theme import TEXT  # noqa: E402
 
 
 class UI:

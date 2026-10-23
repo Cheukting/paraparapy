@@ -44,14 +44,18 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import numpy as np  # noqa: E402
 import pygame  # noqa: E402  (must follow the env var above)
 
-from parapara.audio.beatgrid import COUNTS_PER_BAR, BeatGrid, low_band_envelope, render_click_track  # noqa: E402
+from parapara.audio.beatgrid import (  # noqa: E402
+    COUNTS_PER_BAR,
+    BeatGrid,
+    low_band_envelope,
+    render_click_track,
+)
 from parapara.audio.synth import read_wav  # noqa: E402
+from parapara.game.theme import ACCENT, BAR_LINE, BG, DIM, ENERGY, LINE, NOW, TEXT  # noqa: E402
 
 WIDTH, HEIGHT = 900, 520
 STRIP_PAST_S, STRIP_AHEAD_S = 1.0, 2.0
 ENVELOPE_HOP_S = 0.005
-BG, TEXT, DIM = (20, 20, 30), (235, 235, 235), (110, 110, 130)
-ACCENT, ENERGY, LINE, BAR_LINE, NOW = (255, 220, 80), (70, 140, 220), (200, 200, 200), (255, 120, 80), (255, 255, 255)
 
 
 def load_audio(path: Path) -> tuple[np.ndarray, int]:
@@ -161,8 +165,8 @@ def draw(screen: pygame.Surface, grid: BeatGrid, env: np.ndarray, pos: float, du
         f"verified {info.get('verified')}{'   (UNSAVED CHANGES)' if dirty else ''}",
         f"{pos:6.1f} / {duration:.1f} s{'   PAUSED' if paused else ''}",
         # Key names spelled out: pygame's default font has no arrow glyphs.
-        "Left/Right offset 5 ms (Shift 1)   Down/Up tempo 0.01 (Shift 0.1)   [ ] count 1   "
-        ", . phrase back/fwd   End last 15 s   Space pause   Home restart   S save   Esc quit",
+        "[Left/Right] offset 5 ms ([Shift] 1)   [Down/Up] tempo 0.01 ([Shift] 0.1)   [ ] count 1   "
+        "[,] [.] phrase back/fwd   [End] last 15 s   [Space] pause   [Home] restart   [S] save   [Esc] quit",
     ]
     for k, line in enumerate(lines):
         _text(screen, line, (16, HEIGHT - 110 + k * 24), 21, TEXT if k < 3 else DIM)

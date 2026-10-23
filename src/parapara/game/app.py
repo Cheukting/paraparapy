@@ -73,16 +73,31 @@ from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon, wordmark  # noqa: E402
 from parapara.game.dancer_view import REST, block_title, draw_dancer, static_pose  # noqa: E402
-from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
+from parapara.game.debug_view import LiveFeed  # noqa: E402
 from parapara.game.notice_screens import draw_document, privacy_gate  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
+from parapara.game.theme import (  # noqa: E402
+    ACCENT,
+    BG,
+    DIM,
+    ERROR,
+    GOOD,
+    GREAT,
+    HOLD,
+    MISS,
+    OK,
+    PANEL,
+    PERFECT,
+    TEXT,
+    WARN,
+)
 from parapara.game.ui import (  # noqa: E402  (Drawn, layout_issues re-exported for tests)
     UI,
     Drawn,  # noqa: F401
-    change_scale,
-    font,
     adjust_scale,
+    change_scale,
     display_flags,
+    font,
     footer,
     layout_issues,
     load_scale,
@@ -113,10 +128,8 @@ NEXT_BOX = pygame.Rect(392, 8, 204, 300)  # "next move" picture, top right of th
 LEARN_SPEEDS = (0.5, 0.75, 1.0)  # fractions of the song's tempo
 COUNT_IN_DEFAULT, COUNT_IN_CHOICES = 4, (0, 2, 4, 8)  # counts before the first move (settings)
 LEARN_REPEATS = 64  # a learnt block is looped this many times before the animation restarts
-BG, PANEL, TEXT, DIM, ACCENT = (18, 18, 28), (30, 30, 44), (235, 235, 245), (120, 120, 140), (255, 220, 80)
-OK, WARN = (90, 220, 120), (255, 150, 60)
-GRADE_COLOUR = {Grade.PERFECT: (255, 220, 80), Grade.GREAT: (90, 220, 120), Grade.GOOD: (110, 170, 255),
-                Grade.HOLD: (90, 220, 120), Grade.MISS: (255, 90, 90)}  # fmt: skip
+GRADE_COLOUR = {Grade.PERFECT: PERFECT, Grade.GREAT: GREAT, Grade.GOOD: GOOD,
+                Grade.HOLD: HOLD, Grade.MISS: MISS}  # fmt: skip
 POPUP_S = 0.7
 CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
 # 8 claps (fourth test run: 16 felt too long); estimate_latency needs MIN_CLAPS (6) of them.
@@ -493,7 +506,7 @@ class Game:
     # -- credits & privacy ------------------------------------------------------------
 
     def handle_document(self, keys: list[int]) -> None:
-        """Credits / Privacy: Up/Down scroll, Esc or Enter back to the menu."""
+        """Credits / Privacy: [Up/Down] scroll, [Esc]/[Enter] back to the menu."""
         if pygame.K_ESCAPE in keys or pygame.K_RETURN in keys or pygame.K_SPACE in keys:
             self.go(Scene.MENU)
         elif pygame.K_DOWN in keys and self.doc_more:
@@ -502,10 +515,10 @@ class Game:
             self.doc_scroll = max(0, self.doc_scroll - 1)
 
     def draw_credits(self, stage, camera, panel) -> None:
-        self.doc_more = draw_document(stage, credits_entries(self.menu.songs), self.doc_scroll, "Esc back")
+        self.doc_more = draw_document(stage, credits_entries(self.menu.songs), self.doc_scroll, "[Esc] back")
 
     def draw_privacy(self, stage, camera, panel) -> None:
-        self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "Esc back")
+        self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "[Esc] back")
 
     # -- settings ---------------------------------------------------------------------
 
@@ -530,7 +543,7 @@ class Game:
         ]  # fmt: skip
 
     def handle_settings(self, keys: list[int]) -> None:
-        """Up/Down choose, Left/Right change (saved at once), Esc/Enter back."""
+        """[Up/Down] choose, [Left/Right] change (saved at once), [Esc]/[Enter] back."""
         if pygame.K_ESCAPE in keys or pygame.K_RETURN in keys:
             self.go(Scene.MENU)
             return
@@ -552,7 +565,7 @@ class Game:
 
     def draw_settings(self, stage, camera, panel) -> None:
         y = text(stage, "Settings", (24, 16), 34, ACCENT)
-        bottom = footer(stage, [("Up/Down choose   Left/Right change   Esc back", 16, DIM)])
+        bottom = footer(stage, [("[Up/Down] choose   [Left/Right] change   [Esc] back", 16, DIM)])
         for i, (label, value, help_text) in enumerate(self.setting_rows()):
             selected = i == self.setting_index
             box_h = (text_height(stage, label, 22, 36) + text_height(stage, f"<  {value}  >", 24, 36)
@@ -590,7 +603,7 @@ class Game:
             board = scores.top(song.id, routine.id, 10)
             entries += [("text", self.board_line(i + 1, e)) for i, e in enumerate(board)] or [
                 ("small", "No plays yet: finish a song to get on the board.")]
-        self.doc_more = draw_document(stage, entries, self.doc_scroll, "Left/Right level   Esc back")
+        self.doc_more = draw_document(stage, entries, self.doc_scroll, "[Left/Right] level   [Esc] back")
 
     # -- learn the moves -----------------------------------------------------------
 
@@ -639,8 +652,8 @@ class Game:
         self.feed.draw(camera, self.mirrored)
         failure = self.feed.failure(self.capture)
         if failure:
-            y = text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR_COLOUR)
-            text(camera, failure, (20, y), 18, ERROR_COLOUR)
+            y = text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR)
+            text(camera, failure, (20, y), 18, ERROR)
         elif self.feed.ready_at is None:
             text(camera, "starting camera ...", (camera.get_width() // 2, 200), 28, DIM, centre=True)
         stage = self.screen.subsurface((0, 0, STAGE_W, HEIGHT))
@@ -669,9 +682,9 @@ class Game:
         if not m.songs:
             text(stage, "No songs: run parapara-fetch-demo-songs", (30, y + 20), 22, WARN)
             return
-        bottom = footer(stage, [("New? T learn the moves", 18, ACCENT),
-                                ("Up/Down song   Left/Right level   Enter play", 16, DIM),
-                                ("S scores   O settings   C credits   P privacy   Esc quit", 16, DIM)])  # fmt: skip
+        bottom = footer(stage, [("New? [T] learn the moves", 18, ACCENT),
+                                ("[Up/Down] song   [Left/Right] level   [Enter] play", 16, DIM),
+                                ("[S] scores   [O] settings   [C] credits   [P] privacy   [Esc] quit", 16, DIM)])  # fmt: skip
         # Song list: the selected song is framed with its level and tempo
         # (third test run: it blended into the other titles). If the list is
         # taller than the room above the key hints, it scrolls to keep the
@@ -770,19 +783,19 @@ class Game:
             pose = static_pose(CALIBRATION_POSES["neutral" if self.step == 1 else "t_pose"])
             draw_dancer(stage, pose, (STAGE_W // 2, round(y + 10 + 0.8 * scale)), scale, self.mirrored)
         elif self.calibration_issues:
-            bottom = footer(stage, [("R retry   Esc menu", 20, DIM)])
+            bottom = footer(stage, [("[R] retry   [Esc] menu", 20, DIM)])
             y = text(stage, "Try again:", (24, y + 10), 28, WARN)
             if y < bottom:
                 text(stage, self.calibration_issues[0], (24, y), 22, WARN)
         else:
-            footer(stage, [("Enter continue", 22, DIM)])
+            footer(stage, [("[Enter] continue", 22, DIM)])
             text(stage, "Done!", (24, y + 20), 40, OK)
 
     def draw_latency(self, stage, camera, panel) -> None:
         y = text(stage, "Clap to the beat", (24, 20), 34, ACCENT)
         last = f" (last: {self.saved_latency_ms:.0f} ms)" if self.saved_latency_ms is not None else ""
         if self.step == 0:
-            footer(stage, [("Space start", 24, ACCENT), (f"S skip{last}", 18, DIM)])
+            footer(stage, [("[Space] start", 24, ACCENT), (f"[S] skip{last}", 18, DIM)])
             y = text(stage, f"Listen to {LATENCY_COUNT_IN} clicks, then clap on the next {LATENCY_CLAPS}.",
                      (24, y + 10), 24)  # fmt: skip
             y = text(stage, "Hands in view.", (24, y), 24)
@@ -803,11 +816,11 @@ class Game:
         else:
             r = self.latency_result
             if r and r.ok:
-                footer(stage, [("Enter accept   R retry", 22, DIM)])
+                footer(stage, [("[Enter] accept   [R] retry", 22, DIM)])
                 y = text(stage, f"{r.latency_ms:.0f} ms", (STAGE_W // 2, max(y + 40, 220)), 72, OK, centre=True)
                 text(stage, f"{r.claps_found} claps heard", (STAGE_W // 2, y + 10), 22, DIM, centre=True)
             else:
-                bottom = footer(stage, [(f"R retry   S skip{last}", 22, DIM)])
+                bottom = footer(stage, [(f"[R] retry   [S] skip{last}", 22, DIM)])
                 y = text(stage, "Try again:", (24, y + 10), 28, WARN)
                 if y < bottom:
                     text(stage, r.reason if r else "no result", (24, y), 22, WARN)
@@ -914,7 +927,7 @@ class Game:
         # (1.7 shoulder widths above the shoulders) to the feet (3.3 below).
         scale = min(DANCER_SCALE, (count_top - top - 10) / 5.0)
         draw_dancer(stage, pose, (DANCER_X, round(top + 1.7 * scale)), scale, self.mirrored)
-        bottom = footer(panel, [("Left/Right move   Up/Down speed   Esc menu", 14, DIM)], x=20)
+        bottom = footer(panel, [("[Left/Right] move   [Up/Down] speed   [Esc] menu", 14, DIM)], x=20)
         y = text(panel, f"move {self.learn_index + 1} / {len(self.learn_blocks)}   "
                         f"speed {LEARN_SPEEDS[self.learn_speed]:.0%}", (20, 10), 16, DIM)  # fmt: skip
         description = panel.subsurface((0, y, panel.get_width(), max(1, bottom - y)))
@@ -922,7 +935,7 @@ class Game:
 
     def draw_results(self, stage, camera, panel) -> None:
         r = self.results or {}
-        footer(stage, [("Enter menu", 22, DIM)])
+        footer(stage, [("[Enter] menu", 22, DIM)])
         y = text(stage, "Results", (24, 18), 40, ACCENT)
         y = text(stage, f"{r.get('score', 0):,}", (24, y), 56)
         y = text(stage, f"accuracy {r.get('accuracy_pct', 0):.0f}%", (24, y + 6), 28)

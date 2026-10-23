@@ -27,12 +27,8 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402  (must follow the env var above)
 
 from parapara.diagnostics.bench import build_parser, finish, parse_configs  # noqa: E402
-from parapara.game.debug_view import (  # noqa: E402
-    TEXT_COLOUR,
-    draw_hud,
-    poll_quit_and_mirror,
-    run_session,
-)
+from parapara.game.debug_view import draw_hud, poll_quit_and_mirror, run_session  # noqa: E402
+from parapara.game.theme import BG, TEXT_COLOUR  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER  # noqa: E402
 
 
@@ -45,7 +41,7 @@ def _between_configs(
         quit_requested, mirrored = poll_quit_and_mirror(mirrored)
         if quit_requested:
             return True, mirrored
-        screen.fill((20, 20, 30))
+        screen.fill(BG)
         draw_hud(screen, [*lines, f"starting in {end - time.monotonic():.0f} s"], TEXT_COLOUR)
         pygame.display.flip()
         clock.tick(30)

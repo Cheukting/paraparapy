@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- **Key hints in the UI**: player keys are now shown in brackets (e.g.
+  `[Esc]`, `[Space]`, `[Up/Down]`) across the game, recorder, latency test,
+  preview, beat check and document screens.
+- **Brand colours in the UI**: every game screen now uses the five-colour
+  palette in `assets/branding/PALETTE.md` (vibrant magenta, bright gold,
+  midnight plum, electric violet, cool off-white). The new
+  `parapara.game.theme` module is the single source for surfaces, text,
+  accents, status colours, dancer/guide colours and grades; panels, muted
+  text and status shades are explicit mixes of palette colours. A pure test
+  (`tests/test_theme.py`) checks the constants against the palette file and
+  the WCAG contrast of text/status shades on the plum background.
 - Latency calibration accepts a clap spread up to **60 ms** (was 40 ms). The
   project owner's `parapara-latency-test` run (six rounds, 8 and 16 claps)
   had spreads of 18-70 ms from claps drifting within a round; 40 ms rejected
@@ -14,6 +25,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   scatter still rejected, ±120 ms accepted.
 - `PLAN.md`: clap detection by sound moved to the future plans (not for the
   first release; claps stay vision-only).
+
+### Fixed
+- `tests/test_game_overlay.py::test_debug_view_main_loop_runs_headless_with_fake_worker`
+  was flaky: it stopped the debug loop after 40 display frames, but the
+  spawned fake worker sometimes needed longer than 40 frames at 60 fps
+  (~0.7 s) to report READY, so the log had no camera details. `max_frames`
+  now counts frames after READY (with a five-times start-up grace so a
+  broken worker cannot hang an automated run).
 
 ## [0.1.0] - 2026-10-23
 

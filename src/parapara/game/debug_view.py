@@ -38,6 +38,14 @@ import pygame  # noqa: E402  (must follow the env var above)
 from parapara.diagnostics.live_stats import CaptureStats  # noqa: E402
 from parapara.diagnostics.recorder import DEFAULT_LOG_DIR, RunRecorder, write_log  # noqa: E402
 from parapara.game.overlay import to_screen, visible  # noqa: E402
+from parapara.game.theme import (  # noqa: E402
+    BG,
+    CENTRE_COLOUR,
+    ERROR,
+    LEFT_COLOUR,
+    RIGHT_COLOUR,
+    TEXT_COLOUR,
+)
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig, CaptureStatus, StatusKind  # noqa: E402
 from parapara.pose.landmarks import (  # noqa: E402
@@ -46,11 +54,7 @@ from parapara.pose.landmarks import (  # noqa: E402
     PoseSample,
 )
 
-LEFT_COLOUR = (0, 220, 255)  # cyan: dancer's left
-RIGHT_COLOUR = (255, 150, 0)  # orange: dancer's right
-CENTRE_COLOUR = (230, 230, 230)
-TEXT_COLOUR = (255, 255, 255)
-ERROR_COLOUR = (255, 90, 90)
+ERROR_COLOUR = ERROR  # public name kept for the capture-error colour
 
 _LEFT_POINTS = {p for p in PoseLandmark if p.name.startswith("LEFT_")}
 _RIGHT_POINTS = {p for p in PoseLandmark if p.name.startswith("RIGHT_")}
@@ -81,7 +85,7 @@ def draw_pose(surface: pygame.Surface, sample: PoseSample, mirrored: bool) -> No
             if visible(pose, index):
                 x, y = points[index]
                 pygame.draw.circle(surface, colour, (x, y), 7)
-                surface.blit(font.render(label, True, colour), (x + 9, y - 9))
+                surface.blit(font.render(label, True, TEXT_COLOUR), (x + 9, y - 9))
 
 
 def draw_hud(surface: pygame.Surface, lines: list[str], colour=TEXT_COLOUR) -> None:
@@ -209,7 +213,7 @@ class LiveFeed:
         """Paint the camera picture and skeleton into the top-left
         ``width × height`` area of ``screen``."""
         area = screen.subsurface((0, 0, self.config.width, self.config.height))
-        area.fill((20, 20, 30))
+        area.fill(BG)
         if self._frame_surface is None:
             return
         frame = self._frame_surface
@@ -264,12 +268,17 @@ def run_session(
         banner: extra HUD lines shown first (e.g. the benchmark step).
         stop_on_error: end the session on a capture error instead of
             showing it until the user quits.
-        max_frames: end after this many display frames (automated tests).
+        max_frames: end after this many display frames once the capture is
+            ``READY`` (automated tests). A worker that never becomes ready is
+            stopped after five times as many frames, so a broken spawn cannot
+            hang an automated run during process start-up.
     """
     feed = LiveFeed(config, warmup_s=warmup_s)
     quit_requested = False
     with CaptureClient(config, worker=worker) as capture:
         drawn = 0
+        ready_frames = 0
+        startup_grace = max_frames * 5 if max_frames is not None else None
         while True:
             quit_requested, mirrored = poll_quit_and_mirror(mirrored)
             if quit_requested:
@@ -300,11 +309,12 @@ def run_session(
             feed.after_flip()
             clock.tick(60)
             drawn += 1
+            ready_frames += feed.ready_at is not None
             if stop_on_error and failure:
                 if feed.status.kind is not StatusKind.ERROR:
                     feed.status = CaptureStatus(StatusKind.ERROR, failure)
                 break
-            if max_frames is not None and drawn >= max_frames:
+            if max_frames is not None and (ready_frames >= max_frames or drawn >= startup_grace):
                 break
 
     return SessionResult(

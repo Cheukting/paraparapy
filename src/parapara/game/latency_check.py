@@ -49,10 +49,19 @@ from parapara.audio.beatgrid import BeatGrid, render_click_track  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon  # noqa: E402
-from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
+from parapara.game.debug_view import LiveFeed  # noqa: E402
 from parapara.game.notice_screens import privacy_gate  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
-from parapara.game.ui import UI, adjust_scale, display_flags, footer, layout_issues, load_scale, text  # noqa: E402
+from parapara.game.theme import ACCENT, BG, DIM, ERROR, OK, PANEL, TEXT, WARN  # noqa: E402
+from parapara.game.ui import (  # noqa: E402
+    UI,
+    adjust_scale,
+    display_flags,
+    footer,
+    layout_issues,
+    load_scale,
+    text,
+)
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
 from parapara.pose.features import FeatureExtractor, PoseFeatures  # noqa: E402
@@ -60,8 +69,6 @@ from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.scoring.latency import LatencyResult, estimate_latency  # noqa: E402
 
 WIDTH, HEIGHT, STAGE_W = 1240, 720, 600  # same layout as the game
-BG, PANEL, TEXT, DIM, ACCENT = (18, 18, 28), (30, 30, 44), (235, 235, 245), (120, 120, 140), (255, 220, 80)
-OK, WARN = (90, 220, 120), (255, 150, 60)
 GAME_BPM, COUNT_IN = 100.0, 4  # the game's latency calibration (parapara.game.app)
 INTRO_S, RESULT_S, SUMMARY_S = 2.5, 3.5, 8.0
 
@@ -213,7 +220,7 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> dict[
             feed.draw(camera, True)
             failure = feed.failure(capture)
             if failure:
-                text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR_COLOUR)
+                text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR)
             elif step is Step.POSITION:
                 draw_framing_box(camera, framing.latest, True)
             stage = screen.subsurface((0, 0, STAGE_W, HEIGHT))
@@ -272,7 +279,7 @@ def draw_stage(stage, step: Step, current: Round | None, rounds: list[Round], ar
     y = text(stage, line, (24, y + 10), 24, colour if step is Step.POSITION else TEXT)
     if big:
         text(stage, big, (STAGE_W // 2, max(y + 40, 230)), 72 if len(big) < 8 else 44, colour, centre=True)
-    footer(stage, [("Hands-free: nothing to press.   Esc quit", 16, DIM)])
+    footer(stage, [("Hands-free: nothing to press.   [Esc] quit", 16, DIM)])
 
 
 def draw_panel(panel, rounds: list[Round]) -> None:

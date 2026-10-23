@@ -22,12 +22,8 @@ import math
 import pygame
 
 from parapara.animation.animator import CLAP, REST, ArmState, DancerPose, block_title  # noqa: F401 (re-export)
+from parapara.game.theme import BODY_COLOUR, FLASH_COLOUR, LEFT_COLOUR, RIGHT_COLOUR
 from parapara.routine.model import ArmPose, Keyframe
-
-RIGHT_COLOUR = (255, 150, 0)
-LEFT_COLOUR = (0, 220, 255)
-BODY_COLOUR = (235, 235, 245)
-FLASH_COLOUR = (255, 230, 120)
 
 # Proportions in shoulder widths.
 SHOULDER_HALF, HIP_HALF = 0.5, 0.28

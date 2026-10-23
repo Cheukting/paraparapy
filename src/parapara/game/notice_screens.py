@@ -21,10 +21,18 @@ import pygame  # noqa: E402
 
 from parapara import settings  # noqa: E402
 from parapara.game.branding import NAME, set_window_icon, wordmark  # noqa: E402
-from parapara.game.ui import UI, display_flags, footer, layout_issues, register_box, text, text_height  # noqa: E402
+from parapara.game.theme import ACCENT, BG, DIM, TEXT  # noqa: E402
+from parapara.game.ui import (  # noqa: E402
+    UI,
+    display_flags,
+    footer,
+    layout_issues,
+    register_box,
+    text,
+    text_height,
+)
 from parapara.notices import PRIVACY_VERSION, Entry, privacy_entries  # noqa: E402
 
-BG, TEXT, DIM, ACCENT = (18, 18, 28), (235, 235, 245), (120, 120, 140), (255, 220, 80)
 STYLES = {"title": (34, ACCENT), "heading": (24, ACCENT), "text": (20, TEXT), "small": (16, DIM)}
 WIDTH, HEIGHT = 1240, 720
 
@@ -32,8 +40,8 @@ WIDTH, HEIGHT = 1240, 720
 def draw_document(surface: pygame.Surface, entries: list[Entry], scroll: int,
                   keys: str, x: int = 24, top: int = 16) -> bool:  # fmt: skip
     """Draw ``entries[scroll:]`` from ``top`` down to the key hints; returns
-    whether entries were left out at the bottom (then "Down: more" is shown)."""
-    hint_h = text_height(surface, keys, 16, x) + text_height(surface, "Down: more", 16, x) + 10
+    whether entries were left out at the bottom (then "[Down] more" is shown)."""
+    hint_h = text_height(surface, keys, 16, x) + text_height(surface, "[Down] more", 16, x) + 10
     bottom = surface.get_height() - hint_h
     y, more = top, False
     shown = entries[scroll:]
@@ -50,7 +58,7 @@ def draw_document(surface: pygame.Surface, entries: list[Entry], scroll: int,
         y = text(surface, s, (x, y + gap), size, colour)
     lines = [(keys, 16, DIM)]
     if more or scroll:
-        lines.insert(0, ("Down: more" if more else "Up: back to the top", 16, ACCENT))
+        lines.insert(0, ("[Down] more" if more else "[Up] back to the top", 16, ACCENT))
     footer(surface, lines, x=x)
     return more
 
@@ -96,7 +104,7 @@ def privacy_gate(window: bool = False, keys_spec: str | None = None,
             rect = column.blit(logo, (24, 12))
             register_box(column, rect, "[logo]")
             top = rect.bottom + 8
-        more = draw_document(column, entries, scroll, "Enter: OK, start the camera    Esc: quit", top=top)
+        more = draw_document(column, entries, scroll, "[Enter] OK, start the camera    [Esc] quit", top=top)
         if pygame.K_DOWN in keys and more:
             scroll += 1
         if pygame.K_UP in keys:
