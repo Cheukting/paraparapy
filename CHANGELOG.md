@@ -28,6 +28,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- `parapara-play` sixth test-run feedback:
+  - Latency calibration: the 4 count-in clicks are counted down on screen
+    (4, 3, 2, 1, flashing on each click), then CLAP!.
+  - "next" box: the four counting dots are replaced by a **timing dot** that
+    slides at constant speed along a track into a ring on the left during
+    the last 4 counts, arriving exactly when the move starts; the ring then
+    lights up for a moment before the box shows the following move.
 - `parapara-play` fifth test-run feedback: the body calibration shows the
   pose to hold (neutral pose, T-pose) as a stick figure between the
   instructions and the countdown.

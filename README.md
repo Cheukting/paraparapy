@@ -77,7 +77,8 @@ play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
 New to Para Para? Press `T` in the menu to **learn the moves**: the demo
 dancer shows each move slowly with metronome clicks (Left/Right next move,
 Up/Down speed). While playing, the next move is shown as a small picture
-at the dancer's top right; its dots go out one per count until it starts.
+at the dancer's top right; a dot slides into the ring on its left
+when the move starts.
 
 Both calibrations run before the first song each time the game starts and
 are kept for the songs that follow (`B` / `L` redo them). Don't skip the

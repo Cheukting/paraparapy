@@ -31,7 +31,7 @@ Flow (one capture process for the whole session)::
   test run, 2026-10-23): the grade pop-up above its head, the next move as a
   still stick figure at its top right (pictures, not text: a move name is
   hard to read from the dancing spot; still, because an animation was
-  distracting) with dots counting down to its start, and the count below its
+  distracting) with a dot sliding into a ring when it starts, and the count below its
   feet. The music starts as soon as a song is chosen; a **4-count count-in**
   (4, 3, 2, 1 above the dancer) leads into the first move (``--count-in``).
   Score, combo and
@@ -102,7 +102,8 @@ POPUP_S = 0.7
 CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
 # 8 claps (fourth test run: 16 felt too long); estimate_latency needs MIN_CLAPS (6) of them.
 LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 8
-NEXT_DOTS = 4  # dots in the "next" box: one per count still to go before the move
+NEXT_LEAD_BEATS = 4  # the "next" box's timing dot travels during the last 4 counts
+NEXT_HIT_BEATS = 0.35  # after a move starts, its picture stays with the ring lit for this long
 
 
 # Stick-figure demonstrations of the body calibration poses.
@@ -321,6 +322,7 @@ class Game:
         self.popups: list[tuple[float, Grade, int]] = []
         self.latency_result: LatencyResult | None = None
         self.click_ns: list[int] = []
+        self.count_in_ns: list[int] = []
         self.results: dict | None = None
         self.calibration_issues: list[str] = []
 
@@ -479,6 +481,7 @@ class Game:
             self.player.play(render_click_track(silence, self.player.sr, grid, music_gain=0.0, click_gain=0.9), 0.0)
             start = self.player.start_ns
             self.click_ns = [start + int(grid.time_of(b) * 1e9) for b in range(count_in, beats)]
+            self.count_in_ns = [start + int(grid.time_of(b) * 1e9) for b in range(count_in)]
             self.latency_beat_ns = grid.beat_s * 1e9
             self.collected, self.step = [], 1
         elif self.step == 1 and time.monotonic_ns() > self.click_ns[-1] + 1e9:
@@ -720,10 +723,16 @@ class Game:
             y = text(stage, "Hands in view.", (24, y), 24)
             text(stage, "Once per game start: the next songs use it too.", (24, y + 16), 18, DIM)
         elif self.step == 1:
+            # 4, 3, 2, 1 on the count-in clicks (sixth test run), then CLAP!
+            # with the number of claps so far.
             now = time.monotonic_ns()
             done = sum(c <= now for c in self.click_ns)
-            y = text(stage, "listen ..." if done == 0 else "CLAP!", (STAGE_W // 2, max(y + 40, 230)), 64, ACCENT,
-                     centre=True)  # fmt: skip
+            heard = sum(c <= now for c in self.count_in_ns)
+            label = "CLAP!" if done else (str(len(self.count_in_ns) - heard + 1) if heard else "ready")
+            beat_ns = self.latency_beat_ns
+            on_click = any(0 <= now - c < 0.3 * beat_ns for c in self.count_in_ns + self.click_ns)
+            y = text(stage, label, (STAGE_W // 2, max(y + 40, 230)), 64 if done or not heard else 90,
+                     ACCENT if on_click or done else TEXT, centre=True)  # fmt: skip
             if done:
                 text(stage, f"{done} / {len(self.click_ns)}", (STAGE_W // 2, y + 20), 40, TEXT, centre=True)
         else:
@@ -747,9 +756,14 @@ class Game:
         draw_dancer(stage, pose, (DANCER_X, DANCER_Y), DANCER_SCALE, self.mirrored)
         counting_in = -self.args.count_in <= beat < 0
         self.draw_count(stage, pose.count, beat, idle="" if counting_in else "ready")
-        if pose.next_block is not None and pose.next_block_beat is not None:
-            # The next move as a still picture of its first pose (a looping
-            # animation was too distracting: third test run).
+        # The next move as a still picture of its first pose (a looping
+        # animation was too distracting: third test run). Just after a move
+        # starts, its picture stays a moment with the ring lit (the dot has
+        # arrived), then the box moves on to the following move.
+        current = self.animator.block_at(beat)
+        if current is not None and beat - current.start < NEXT_HIT_BEATS:
+            self.draw_next(stage, static_pose(current.block.keyframes[0]), current.start - beat)
+        elif pose.next_block is not None and pose.next_block_beat is not None:
             self.draw_next(stage, static_pose(pose.next_block.keyframes[0]), pose.next_block_beat - beat)
         # Above the dancer's head (players watch the dancer, not their camera
         # view): the count-in, then the grade pop-ups. The area ends at the
@@ -787,12 +801,15 @@ class Game:
 
     def draw_next(self, stage, pose: DancerPose, beats_to_go: float) -> None:
         """Small "next move" picture at the dancer's top right: a framed still
-        stick figure in the move's first pose, and dots saying when it starts.
+        stick figure in the move's first pose, and a moving dot for its timing.
 
-        **Dots** (fourth test run: "in 3" text was not obvious): NEXT_DOTS
-        dots under the picture. Further away than that they are empty rings;
-        in the last NEXT_DOTS counts one filled dot per count still to go,
-        so they go out one by one, and the move starts when the last goes.
+        **Timing dot** (sixth test run: counting dots were hard to read): a
+        ring on the left of a track under the picture is the move's start. In
+        the last NEXT_LEAD_BEATS counts a dot slides at constant speed from the
+        right end of the track into the ring, arriving exactly when the move
+        starts (``beats_to_go`` = 0); further away it waits, dimmed, at the
+        right end. At 0 or just after it (``beats_to_go`` <= 0, see
+        draw_play) the ring lights up: "now".
 
         Only the upper body is shown (moves are arms only), so the figure can
         be drawn large: the drawing is clipped to a window from above raised
@@ -803,21 +820,22 @@ class Game:
         pygame.draw.rect(box, ACCENT, box.get_rect(), 3)
         register_box(stage, NEXT_BOX, "[next box]")
         y = text(box, "next", (box.get_width() // 2, 4), 16, ACCENT, centre=True)
-        dot_r = 18
-        dots_y = box.get_height() - dot_r - 12
-        label_y = dots_y - dot_r - 6
+        ring_r, dot_r = 19, 13
+        track_y = box.get_height() - ring_r - 12
+        label_y = track_y - ring_r - 6
         scale = 52  # px per shoulder width
         window_h = max(10, min(round(3.6 * scale), label_y - y))
         window = box.subsurface((3, y, box.get_width() - 6, window_h))
         draw_dancer(window, pose, (window.get_width() // 2, round(1.7 * scale)), scale, self.mirrored)
-        counts = int(np.ceil(beats_to_go - 1e-9))
-        gap = (box.get_width() - 2 * 14) / NEXT_DOTS
-        for i in range(NEXT_DOTS):
-            centre = (round(14 + gap * (i + 0.5)), dots_y)
-            if counts <= NEXT_DOTS and i < counts:
-                pygame.draw.circle(box, ACCENT, centre, dot_r)
-            else:
-                pygame.draw.circle(box, DIM, centre, dot_r, 3)
+        ring_x, end_x = 14 + ring_r, box.get_width() - 14 - dot_r
+        pygame.draw.line(box, DIM, (ring_x, track_y), (end_x, track_y), 3)
+        if beats_to_go <= 0:  # the move starts now
+            pygame.draw.circle(box, ACCENT, (ring_x, track_y), ring_r)
+            return
+        pygame.draw.circle(box, ACCENT, (ring_x, track_y), ring_r, 4)
+        u = min(1.0, beats_to_go / NEXT_LEAD_BEATS)  # 1 = waiting at the right end, 0 = in the ring
+        colour = ACCENT if beats_to_go <= NEXT_LEAD_BEATS else DIM
+        pygame.draw.circle(box, colour, (round(ring_x + (end_x - ring_x) * u), track_y), dot_r)
 
     def draw_learn(self, stage, camera, panel) -> None:
         block = self.learn_blocks[self.learn_index]
