@@ -10,4 +10,5 @@
 - include relevant test when generating code.
 - document changes in CHANGELOG.md
 - update Contributing.md if necessary
+- commit using the user's git credential
 
