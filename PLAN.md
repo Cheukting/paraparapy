@@ -494,6 +494,10 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
 - Players look at the demo dancer, not their camera view: grade pop-up,
   next move and count now sit around the dancer. The next move is a small
   looping stick figure (text was hard to read while dancing).
+- Third run: calibrate once per launch (not per song); a 4-bar count-in
+  before the first move; the next-move picture must be still (animation
+  distracts); the selected song needs a frame; overlapping texts are now
+  caught automatically (`--check-layout`, run by the tests).
 - New players need to see the moves before dancing: "Learn the moves" (`T` in
   the menu) loops each move slowly with clicks. Later: score the practice
   against the camera (a per-move "try it" check).

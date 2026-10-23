@@ -76,12 +76,13 @@ play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
 
 New to Para Para? Press `T` in the menu to **learn the moves**: the demo
 dancer shows each move slowly with metronome clicks (Left/Right next move,
-Up/Down speed). While playing, the next move is shown as a small dancing
-figure at the dancer's top right.
+Up/Down speed). While playing, the next move is shown as a small picture
+at the dancer's top right.
 
-The latency calibration is needed only once (it is saved); redo it with `L`
-after changing camera, speakers or headphones. Skipping it makes the grades
-late and unfair.
+Both calibrations run before the first song each time the game starts and
+are kept for the songs that follow (`B` / `L` redo them). Don't skip the
+latency one: without it the grades are late and unfair (`S` reuses the last
+saved value). Each song starts with a 4-bar count-in (`--countdown-bars N`).
 
 The game opens fullscreen with large text so it can be read from where you
 dance: `+` / `-` change the text size (remembered), `F` toggles fullscreen,

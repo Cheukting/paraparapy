@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- `parapara-play` third test-run feedback:
+  - **4-bar count-in** (8-count bars) with metronome clicks before the first
+    move, counted above the dancer ("3 bars", "last bar!"). Short intros get
+    silence in front so the count-in always fits; `--countdown-bars N`
+    changes it (0 = none).
+  - **Layout check**: `text()` records what it draws and `layout_issues()`
+    reports overlapping or cut-off text (`--check-layout`, hidden). Tests run
+    every screen at text sizes 1.0, 2.0 and 2.6 with a long song list and a
+    long title, and check that the checker itself catches overlaps.
+  - `--reuse-calibration`: use the saved calibrations instead of calibrating
+    at launch (tests, development).
 - **Learn the moves** (`T` in the `parapara-play` menu, for new players): the
   demo dancer loops one move at a time with metronome clicks at 50 / 75 /
   100 % of the selected song's tempo (Up/Down), with its name and
@@ -17,6 +28,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- `parapara-play` third test-run feedback:
+  - **Calibrate at every launch**, not between songs of the same session
+    (body and latency); `S` on the latency screen reuses the last saved
+    latency.
+  - The "next" box shows a **still picture** of the move's first pose (the
+    looping animation was distracting).
+  - The **selected song is framed** with its level, tempo and beat-map note;
+    the song list scrolls when it is taller than the screen.
+  - **Text placement**: text flows from the top, key hints stack from the
+    bottom, big labels move down when needed, too-wide words shrink, and
+    the grade pop-up stays left of the "next" box. Fixed the overlaps found
+    by the new layout check (e.g. score and combo at large text sizes).
 - **Game screens readable from the dancing spot** (first test run, 2026-10-23:
   the text was too small to read from 1.5-2 m away).
   - `parapara-play` opens **fullscreen** (`pygame.SCALED`, the 1240x720
