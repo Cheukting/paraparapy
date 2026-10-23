@@ -74,6 +74,11 @@ them). Dance with the demo dancer on the left while your mirrored camera view
 is on the right. Esc ends a song early. Results are saved to `logs/` and the
 play to `recordings/` (inspect with `parapara-score` / `parapara-analyze`).
 
+The game opens fullscreen with large text so it can be read from where you
+dance: `+` / `-` change the text size (remembered), `F` toggles fullscreen,
+`M` mirrors the camera. `--window` starts in a window and `--text-scale 2.4`
+sets the text size from the command line.
+
 ## Watch a routine
 
 ```sh

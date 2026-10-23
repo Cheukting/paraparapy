@@ -119,6 +119,12 @@ def test_settings_round_trip(tmp_path, monkeypatch) -> None:
     assert settings.load_calibration() == cal
     (tmp_path / "calibration.json").write_text("{}")
     assert settings.load_calibration() is None  # broken file: calibrate again
+    assert settings.load_ui() == {}
+    settings.save_ui(text_scale=2.2)
+    settings.save_ui(other=1)  # merged, not replaced
+    assert settings.load_ui() == {"text_scale": 2.2, "other": 1}
+    (tmp_path / "ui.json").write_text("not json")
+    assert settings.load_ui() == {}  # broken file: defaults
 
 
 def test_ending_early_drops_moves_not_yet_due() -> None:

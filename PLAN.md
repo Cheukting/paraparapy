@@ -482,6 +482,16 @@ Open items (to resolve before the step named):
   players that the MediaPipe Tasks API sends usage metrics to Google
   (images are processed on-device).
 
+Findings from the first game test run (2026-10-23, `parapara-play`):
+- Body calibration worked; the latency calibration was skipped (0 ms).
+  Result: 54% accuracy, 68 misses out of 352 moves.
+- Replaying the saved play (`recordings/game-20261023-140252`) with a latency
+  offset: 200 ms gives 74% (14 misses), 250 ms 75% (8 misses), 300 ms 73%.
+  The player's total delay is ~200-250 ms, so **the latency calibration must
+  not be skipped**.
+- The text was too small to read from the dancing spot: the game is now
+  fullscreen with a text size (default 2.0, `+` / `-`, saved).
+
 Findings from the first recording session (2026-10-18, `parapara-analyze`):
 - MediaPipe world axes: +x = dancer's left, +y = down, +z = away from the
   camera (opposite to the body frame on every axis).

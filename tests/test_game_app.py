@@ -66,3 +66,12 @@ def test_latency_calibration_then_play_and_results_flow(tmp_path) -> None:
     result = json.loads(Path(log).read_text())["result"]
     assert result["ended_early"] and result["calibrated"] and result["latency_ms"] == 0.0
     assert not (tmp_path / "data" / "latency.json").exists()  # skipped, nothing saved
+
+
+def test_text_size_keys_change_and_save_the_scale(tmp_path) -> None:
+    """+ / - resize the text from the dancing spot; the choice is kept in
+    ui.json and clamped to UI.MIN..UI.MAX (the first test run: text too small)."""
+    _run_game(tmp_path, ["--fast", "--keys", "10:= 12:= 14:- 30:escape"])
+    assert json.loads((tmp_path / "data" / "ui.json").read_text())["text_scale"] == 2.2
+    _run_game(tmp_path, ["--fast", "--text-scale", "2.6", "--keys", "10:= 30:escape"])
+    assert json.loads((tmp_path / "data" / "ui.json").read_text())["text_scale"] == 2.6  # clamped

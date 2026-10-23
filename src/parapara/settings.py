@@ -6,7 +6,8 @@ macOS, else ``$XDG_DATA_HOME/parapara`` (``~/.local/share``).
 
 - ``latency.json``: the last accepted latency calibration (depends on this
   machine's speakers/camera and the player, so it is offered for reuse);
-- ``calibration.json``: the last player calibration (neutral pose + T-pose).
+- ``calibration.json``: the last player calibration (neutral pose + T-pose);
+- ``ui.json``: display preferences (text size, chosen from the dancing spot).
 
 Pure Python (no cv2/mediapipe/pygame).
 """
@@ -58,3 +59,17 @@ def load_calibration() -> Calibration | None:
         return Calibration.load(path) if path.exists() else None
     except (ValueError, KeyError, TypeError):
         return None  # an old or broken file: calibrate again
+
+
+def save_ui(**prefs: Any) -> None:
+    current = load_ui()
+    _path("ui.json").parent.mkdir(parents=True, exist_ok=True)
+    _path("ui.json").write_text(json.dumps(current | prefs, indent=2) + "\n")
+
+
+def load_ui() -> dict[str, Any]:
+    path = _path("ui.json")
+    try:
+        return json.loads(path.read_text()) if path.exists() else {}
+    except json.JSONDecodeError:
+        return {}

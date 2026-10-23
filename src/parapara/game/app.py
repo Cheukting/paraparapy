@@ -52,7 +52,7 @@ from parapara.audio.song import Song  # noqa: E402
 from parapara.diagnostics.recorder import write_log  # noqa: E402
 from parapara.game.beatcheck import Player, load_for_player  # noqa: E402
 from parapara.game.dancer_view import block_title, draw_dancer, static_pose  # noqa: E402
-from parapara.game.debug_view import ERROR_COLOUR, LiveFeed, draw_hud  # noqa: E402
+from parapara.game.debug_view import ERROR_COLOUR, LiveFeed  # noqa: E402
 from parapara.game.recorder import draw_framing_box  # noqa: E402
 from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
@@ -86,13 +86,43 @@ class Scene(Enum):
     RESULTS = auto()
 
 
-def text(surface, s, pos, size=24, colour=TEXT, centre=False) -> int:
-    r = pygame.font.Font(None, size).render(s, True, colour)
+class UI:
+    """Text size, readable from the dancing spot (1.5-2 m away).
+
+    Every font size in this module is multiplied by ``UI.scale``; ``+`` / ``-``
+    change it during the game and the choice is saved (``settings.save_ui``).
+    The first test run showed desktop-sized text was unreadable from there.
+    """
+
+    scale = 2.0
+    MIN, MAX, STEP = 1.0, 2.6, 0.2
+
+
+def font(size: float) -> pygame.font.Font:
+    return pygame.font.Font(None, max(8, round(size * UI.scale)))
+
+
+def text(surface, s, pos, size=24, colour=TEXT, centre=False, right=False) -> int:
+    """Draw ``s`` (scaled by ``UI.scale``, word-wrapped to the surface width);
+    returns the y below it."""
+    f = font(size)
     x, y = pos
-    if centre:
-        x -= r.get_width() // 2
-    surface.blit(r, (x, y))
-    return y + r.get_height() + 4
+    max_w = surface.get_width() - (16 if centre else x + 16)
+    lines, line = [], ""
+    for word in s.split(" "):
+        trial = f"{line} {word}".strip()
+        if line and f.size(trial)[0] > max_w:
+            lines.append(line)
+            line = word
+        else:
+            line = trial
+    lines.append(line)
+    for ln in lines:
+        r = f.render(ln, True, colour)
+        lx = x - r.get_width() // 2 if centre else (x - r.get_width() if right else x)
+        surface.blit(r, (lx, y))
+        y += r.get_height() + 2
+    return y + 4
 
 
 @dataclasses.dataclass
@@ -121,8 +151,13 @@ class Game:
         self.args = args
         self.capture = capture
         self.config = config
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        # Fullscreen, scaled from the WIDTH x HEIGHT layout (letterboxed);
+        # F toggles a window. The dummy video driver (tests) gets a plain window.
+        headless = os.environ.get("SDL_VIDEODRIVER") == "dummy"
+        flags = 0 if headless or args.window else pygame.SCALED | pygame.FULLSCREEN
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), flags)
         pygame.display.set_caption("parapara")
+        UI.scale = float(args.text_scale or settings.load_ui().get("text_scale", UI.scale))
         self.feed = LiveFeed(config)
         self.framing = FramingMonitor()
         self.player = Player(44100)
@@ -186,6 +221,8 @@ class Game:
             self.feed.after_flip()
             clock.tick(60)
             frames += 1
+            if self.args.shots and frames % 40 == 0:  # reviews: periodic screenshots
+                pygame.image.save(self.screen, f"{self.args.shots}/{frames:05d}-{self.scene.name.lower()}.png")
             shot = self.args.screenshot
             if shot and self.scene is Scene.PLAY and self.player.position() > self.args.auto_seconds * 0.8:
                 pygame.image.save(self.screen, shot)
@@ -199,6 +236,13 @@ class Game:
     def handle(self, keys: list[int], samples: list[PoseSample]) -> bool:
         if pygame.K_m in keys:
             self.mirrored = not self.mirrored
+        if pygame.K_f in keys:
+            pygame.display.toggle_fullscreen()
+        bigger = {pygame.K_PLUS, pygame.K_EQUALS, pygame.K_KP_PLUS} & set(keys)
+        smaller = {pygame.K_MINUS, pygame.K_KP_MINUS} & set(keys)
+        if bigger or smaller:
+            UI.scale = round(min(UI.MAX, max(UI.MIN, UI.scale + (UI.STEP if bigger else -UI.STEP))), 2)
+            settings.save_ui(text_scale=UI.scale)
         if self.scene is Scene.MENU:
             return self.handle_menu(keys)
         if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS):
@@ -350,6 +394,8 @@ class Game:
             self.go(Scene.MENU)
 
     # -- drawing -----------------------------------------------------------------
+    # Sizes below are *base* sizes, multiplied by UI.scale (default 1.6) in
+    # text(). Screens show few, short lines: they are read from 1.5-2 m away.
 
     def draw(self) -> None:
         self.screen.fill(BG)
@@ -357,85 +403,91 @@ class Game:
         self.feed.draw(camera, self.mirrored)
         failure = self.feed.failure(self.capture)
         if failure:
-            draw_hud(camera, ["CAPTURE ERROR", failure], ERROR_COLOUR)
+            text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR_COLOUR)
+            text(camera, failure, (20, 70), 18, ERROR_COLOUR)
+        elif self.feed.ready_at is None:
+            text(camera, "starting camera ...", (camera.get_width() // 2, 200), 28, DIM, centre=True)
         stage = self.screen.subsurface((0, 0, STAGE_W, HEIGHT))
         panel = self.screen.subsurface((STAGE_W, self.config.height, WIDTH - STAGE_W, HEIGHT - self.config.height))
         panel.fill(PANEL)
         getattr(self, f"draw_{self.scene.name.lower()}")(stage, camera, panel)
 
     def draw_menu(self, stage, camera, panel) -> None:
-        y = text(stage, "parapara", (30, 24), 64, ACCENT)
-        y = text(stage, "Up/Down song   Left/Right routine   Enter play   M mirror   Esc quit", (30, y), 20, DIM)
+        y = text(stage, "parapara", (30, 18), 48, ACCENT)
         m = self.menu
         if not m.songs:
-            text(stage, "No songs: run `uv run parapara-fetch-demo-songs`", (30, y + 20), 24, WARN)
+            text(stage, "No songs: run parapara-fetch-demo-songs", (30, y + 20), 22, WARN)
             return
-        y += 16
+        y += 10
         for i, song in enumerate(m.songs):
             selected = i == m.song_index
-            flag = "" if song.beat_map.verified else "  (beat map unverified)"
-            y = text(stage, f"{'▶ ' if selected else '  '}{song.title} · {song.bpm:.0f} BPM{flag}", (30, y),
-                     28 if selected else 24, ACCENT if selected else TEXT)  # fmt: skip
+            colour = ACCENT if selected else (TEXT if song.beat_map.verified else DIM)
+            y = text(stage, f"{'> ' if selected else '  '}{song.title}", (24, y), 24 if selected else 20, colour)
             if selected:
                 r = m.routine
-                label = (f"routine: {r.id.removeprefix(song.id + '-')} ({r.difficulty.value}, "
-                         f"{len(r.phrases)} phrases)") if r else "no routines: run `parapara-routines generate`"  # fmt: skip
-                y = text(stage, "      " + label, (30, y), 22, DIM)
-        cal = "saved" if self.calibration else "needed"
+                label = f"< {r.difficulty.value} >  {len(r.phrases)} phrases" if r else "no routines"
+                y = text(stage, f"     {label}   {song.bpm:.0f} BPM", (24, y), 20, TEXT)
+                if not song.beat_map.verified:
+                    y = text(stage, "     beat map not checked", (24, y), 18, WARN)
+            y += 4
+        text(stage, "Up/Down song   Left/Right level   Enter play", (24, HEIGHT - 70), 16, DIM)
+        text(stage, "+/- text size   F fullscreen   Esc quit", (24, HEIGHT - 40), 16, DIM)
+        cal = "OK" if self.calibration else "needed"
         lat = f"{self.latency_ms:.0f} ms" if self.latency_ms is not None else "needed"
-        y = text(panel, f"body calibration: {cal}{'  (redo: B)' if self.calibration else ''}"
-                        f"{'  -> will redo' if m.redo_body else ''}", (20, 20), 24)  # fmt: skip
-        text(panel, f"latency: {lat}{'  (redo: L)' if self.latency_ms is not None else ''}"
-                    f"{'  -> will redo' if m.redo_latency else ''}", (20, y), 24)  # fmt: skip
+        y = text(panel, f"body: {cal}" + ("  -> redo" if m.redo_body else "  (B redo)" if self.calibration else ""),
+                 (20, 16), 22)  # fmt: skip
+        text(panel, f"latency: {lat}" + ("  -> redo" if m.redo_latency else "  (L redo)" if self.latency_ms is not None else ""),
+             (20, y), 22)  # fmt: skip
 
     def draw_body(self, stage, camera, panel) -> None:
-        titles = {0: "Position check", 1: "Neutral pose", 2: "Position check", 3: "T-pose", 4: "Calibration"}
-        y = text(stage, titles[self.step], (30, 30), 48, ACCENT)
+        titles = {0: "Stand in position", 1: "Neutral pose", 2: "Stand in position", 3: "T-pose", 4: "Calibration"}
+        y = text(stage, titles[self.step], (24, 20), 34, ACCENT)
         latest = self.framing.latest
         if self.step in (0, 2):
             draw_framing_box(camera, latest, self.mirrored)
-            for issue in (latest.issues if latest else ())[:2]:
-                y = text(stage, issue.message, (30, y + 10), 26, WARN)
             if latest is not None and latest.ok:
-                text(stage, "Position OK, hold still ...", (30, y + 10), 26, OK)
-        elif self.step in (1, 3):
-            pose = "Stand relaxed, arms down." if self.step == 1 else "Arms straight out, level with shoulders."
-            y = text(stage, pose, (30, y + 10), 26)
-            elapsed = time.monotonic() - self.t0
-            label = str(int(np.ceil(CALIBRATION_COUNTDOWN_S - elapsed))) if elapsed < CALIBRATION_COUNTDOWN_S else "HOLD"
-            text(stage, label, (STAGE_W // 2, 300), 120, ACCENT, centre=True)
-        else:
-            if self.calibration_issues:
-                y = text(stage, "Calibration failed:", (30, y + 10), 28, WARN)
-                for issue in self.calibration_issues:
-                    y = text(stage, issue, (30, y), 22, WARN)
-                text(stage, "R retry   Esc menu", (30, y + 20), 24, DIM)
+                text(stage, "OK - hold still", (24, y + 20), 28, OK)
             else:
-                c = self.calibration
-                y = text(stage, "Done!", (30, y + 10), 32, OK)
-                text(stage, f"shoulders {c.shoulder_width_m:.2f} m · lean {c.neutral_lean_deg:.0f}° · Enter continue",
-                     (30, y), 22, DIM)  # fmt: skip
+                for issue in (latest.issues if latest else ())[:1]:
+                    text(stage, issue.message, (24, y + 20), 28, WARN)
+        elif self.step in (1, 3):
+            how = "Arms down, relaxed" if self.step == 1 else "Arms straight out to the sides"
+            text(stage, how, (24, y + 10), 26)
+            elapsed = time.monotonic() - self.t0
+            countdown = 0.4 if self.args.fast else CALIBRATION_COUNTDOWN_S
+            label = str(int(np.ceil(countdown - elapsed))) if elapsed < countdown else "HOLD"
+            text(stage, label, (STAGE_W // 2, 300), 110, ACCENT, centre=True)
+        elif self.calibration_issues:
+            y = text(stage, "Try again:", (24, y + 10), 28, WARN)
+            text(stage, self.calibration_issues[0], (24, y), 22, WARN)
+            text(stage, "R retry   Esc menu", (24, HEIGHT - 50), 20, DIM)
+        else:
+            text(stage, "Done!", (24, y + 20), 40, OK)
+            text(stage, "Enter continue", (24, HEIGHT - 50), 22, DIM)
 
     def draw_latency(self, stage, camera, panel) -> None:
-        y = text(stage, "Clap to the beat", (30, 30), 48, ACCENT)
+        y = text(stage, "Clap to the beat", (24, 20), 34, ACCENT)
         if self.step == 0:
-            y = text(stage, f"After {LATENCY_COUNT_IN} count-in clicks, clap on each of the next {LATENCY_CLAPS}.",
-                     (30, y + 10), 24)  # fmt: skip
-            text(stage, "Keep your hands in view. Space start   Esc menu", (30, y), 22, DIM)
+            y = text(stage, f"Listen to {LATENCY_COUNT_IN} clicks, then clap on the next {LATENCY_CLAPS}.",
+                     (24, y + 10), 24)  # fmt: skip
+            text(stage, "Hands in view.", (24, y), 24)
+            text(stage, "Space start", (24, HEIGHT - 50), 24, ACCENT)
         elif self.step == 1:
             now = time.monotonic_ns()
             done = sum(c <= now for c in self.click_ns)
-            text(stage, "listen ..." if done == 0 else f"clap! {done}/{len(self.click_ns)}", (STAGE_W // 2, 300), 72,
-                 ACCENT, centre=True)  # fmt: skip
+            text(stage, "listen ..." if done == 0 else "CLAP!", (STAGE_W // 2, 230), 64, ACCENT, centre=True)
+            if done:
+                text(stage, f"{done} / {len(self.click_ns)}", (STAGE_W // 2, 340), 40, TEXT, centre=True)
         else:
             r = self.latency_result
             if r and r.ok:
-                y = text(stage, f"latency {r.latency_ms:.0f} ms (spread {r.spread_ms:.0f} ms, {r.claps_found} claps)",
-                         (30, y + 10), 28, OK)  # fmt: skip
-                text(stage, "Enter accept   R retry", (30, y), 22, DIM)
+                text(stage, f"{r.latency_ms:.0f} ms", (STAGE_W // 2, 220), 72, OK, centre=True)
+                text(stage, f"{r.claps_found} claps heard", (STAGE_W // 2, 340), 22, DIM, centre=True)
+                text(stage, "Enter accept   R retry", (24, HEIGHT - 50), 22, DIM)
             else:
-                y = text(stage, r.reason if r else "no result", (30, y + 10), 26, WARN)
-                text(stage, "R retry   S skip (keep previous)", (30, y), 22, DIM)
+                y = text(stage, "Try again:", (24, y + 10), 28, WARN)
+                text(stage, r.reason if r else "no result", (24, y), 22, WARN)
+                text(stage, "R retry   S skip", (24, HEIGHT - 50), 22, DIM)
 
     def draw_play(self, stage, camera, panel) -> None:
         session, song = self.session, self.menu.song
@@ -443,55 +495,53 @@ class Game:
         pos = self.player.position()
         beat = song.beat_at(pos) - song.routine_start_beat
         pose = self.animator.pose_at(beat)
-        draw_dancer(stage, pose, (STAGE_W // 2, 170), HEIGHT / 7.2, self.mirrored)
-        text(stage, str(pose.count) if pose.count else ("get ready" if beat < 0 else ""), (24, 14), 72 if pose.count else 36,
-             ACCENT if pose.count and beat - np.floor(beat) < 0.12 else TEXT)  # fmt: skip
-        if pose.block is not None:
-            title = pygame.font.Font(None, 28).render(block_title(pose.block), True, TEXT)
-            stage.blit(title, (STAGE_W - 24 - title.get_width(), 26))
+        draw_dancer(stage, pose, (STAGE_W // 2, 190), HEIGHT / 7.6, self.mirrored)
+        on_beat = pose.count and beat - np.floor(beat) < 0.12
+        text(stage, str(pose.count) if pose.count else ("ready" if beat < 0 else ""), (16, 6),
+             56 if pose.count else 30, ACCENT if on_beat else TEXT)  # fmt: skip
         if pose.next_block is not None and pose.next_block_beat is not None:
-            card = stage.subsurface((20, HEIGHT - 150, 260, 130))
+            card = stage.subsurface((10, HEIGHT - 120, STAGE_W - 20, 110))
             card.fill(PANEL)
-            text(card, f"next: {block_title(pose.next_block)}", (10, 8), 22, ACCENT)
-            text(card, f"in {int(np.ceil(pose.next_block_beat - beat))}", (10, 30), 20, DIM)
-            draw_dancer(card, static_pose(pose.next_block.keyframes[0]), (190, 30), 15, self.mirrored)
-        # grade pop-ups over the camera view
+            counts = int(np.ceil(pose.next_block_beat - beat))
+            text(card, f"next: {block_title(pose.next_block)}", (12, 8), 24, ACCENT)
+            text(card, f"in {counts}", (12, 8 + round(30 * UI.scale)), 22, TEXT)
+            draw_dancer(card, static_pose(pose.next_block.keyframes[0]), (card.get_width() - 70, 28), 18, self.mirrored)
+        # Grade pop-up just above the demo dancer's head: players watch the
+        # dancer, not their camera view (first test run, 2026-10-23). Drawn
+        # after the dancer so a raised arm never hides it.
         now = time.monotonic()
         for t, grade, points in self.popups[-1:]:
-            fade = 1 - (now - t) / POPUP_S
             label = grade.value.upper() + ("!" if grade in (Grade.PERFECT, Grade.GREAT) else "")
-            text(camera, label, (camera.get_width() // 2, 40 - round(10 * fade)), 72, GRADE_COLOUR[grade], centre=True)
-            if points:
-                text(camera, f"+{points}", (camera.get_width() // 2, 100), 32, TEXT, centre=True)
+            rise = round(12 * (1 - (now - t) / POPUP_S))
+            text(stage, label, (STAGE_W // 2, 18 - rise), 56, GRADE_COLOUR[grade], centre=True)
         warning = session.framing_warning
         if warning is not None:
-            draw_hud(camera, ["WARNING: " + warning.issues[0].message], WARN)
+            text(camera, warning.issues[0].message, (camera.get_width() // 2, camera.get_height() - 120), 28,
+                 WARN, centre=True)  # fmt: skip
         k = session.keeper
-        text(panel, f"{k.score:,}", (20, 14), 72, ACCENT)
-        text(panel, f"combo {k.combo}   x{k.multiplier:.1f}", (20, 80), 32)
-        g = k.grades
-        text(panel, f"perfect {g[Grade.PERFECT]}  great {g[Grade.GREAT]}  good {g[Grade.GOOD]}  "
-                    f"hold {g[Grade.HOLD]}  miss {g[Grade.MISS]}", (20, 120), 22, DIM)  # fmt: skip
+        text(panel, f"{k.score:,}", (20, 6), 56, ACCENT)
+        text(panel, f"combo {k.combo}", (20, 6 + round(56 * UI.scale)), 30)
         progress = min(1.0, pos / self.play_end_s) if self.play_end_s else 0.0
-        bar = pygame.Rect(20, panel.get_height() - 40, panel.get_width() - 40, 12)
+        bar = pygame.Rect(20, panel.get_height() - 22, panel.get_width() - 40, 12)
         pygame.draw.rect(panel, DIM, bar, 1)
         pygame.draw.rect(panel, ACCENT, (bar.x, bar.y, round(bar.w * progress), bar.h))
-        text(panel, f"{song.title} · Esc end", (20, panel.get_height() - 24), 18, DIM)
 
     def draw_results(self, stage, camera, panel) -> None:
         r = self.results or {}
-        y = text(stage, "Results", (30, 30), 56, ACCENT)
-        y = text(stage, f"{r.get('score', 0):,} points", (30, y + 10), 48)
+        y = text(stage, "Results", (24, 18), 40, ACCENT)
+        y = text(stage, f"{r.get('score', 0):,}", (24, y), 56)
+        y = text(stage, f"accuracy {r.get('accuracy_pct', 0):.0f}%", (24, y + 6), 28)
+        y = text(stage, f"best combo {r.get('max_combo', 0)}", (24, y), 28)
+        g = r.get("grades", {})
+        y = text(stage, f"perfect {g.get('perfect', 0)}  great {g.get('great', 0)}  good {g.get('good', 0)}",
+                 (24, y + 6), 20, DIM)  # fmt: skip
+        y = text(stage, f"hold {g.get('hold', 0)}  miss {g.get('miss', 0)}", (24, y), 20, DIM)
         if r.get("ended_early"):
-            y = text(stage, f"ended early: {r.get('keyframes', 0)} moves judged", (30, y), 22, DIM)
-        rows = [f"accuracy {r.get('accuracy_pct', 0):.1f}%", f"max combo {r.get('max_combo', 0)}",
-                "  ".join(f"{k} {v}" for k, v in r.get("grades", {}).items()),
-                f"posture {r.get('posture_pct', 0):.0f}%" + (f"   flow {r['flow_pct']:.0f}%" if r.get("flow_pct") is not None else ""),
-                f"latency {r.get('latency_ms', 0):.0f} ms" + ("" if r.get("calibrated") else "  (not body-calibrated)")]  # fmt: skip
-        for row in rows:
-            y = text(stage, row, (30, y + 6), 26)
-        text(stage, "Enter menu   Esc menu", (30, y + 20), 22, DIM)
-        text(panel, self.message, (20, 20), 18, DIM)
+            text(stage, "ended early", (24, y), 18, DIM)
+        text(stage, "Enter menu", (24, HEIGHT - 50), 22, DIM)
+        text(panel, f"posture {r.get('posture_pct', 0):.0f}%   latency {r.get('latency_ms', 0):.0f} ms",
+             (20, 16), 20)  # fmt: skip
+        text(panel, self.message, (20, panel.get_height() - 40), 12, DIM)
 
 
 def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
@@ -499,10 +549,13 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     parser.add_argument("--latency-ms", type=float, help="override the latency calibration")
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--model", choices=("lite", "full"), default="full")
+    parser.add_argument("--window", action="store_true", help="run in a window instead of fullscreen")
+    parser.add_argument("--text-scale", type=float, help="text size (default: saved, or 2.0; +/- in game)")
     parser.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # tests: play straight away
     parser.add_argument("--auto-seconds", type=float, default=3.0, help=argparse.SUPPRESS)
     parser.add_argument("--screenshot", help=argparse.SUPPRESS)  # save one play frame (reviews)
     parser.add_argument("--fast", action="store_true", help=argparse.SUPPRESS)  # tests: short calibrations
+    parser.add_argument("--shots", help=argparse.SUPPRESS)  # reviews: screenshot folder
     parser.add_argument("--keys", help=argparse.SUPPRESS)  # tests: "frame:key ..." scripted presses
     parser.add_argument("--results-screenshot", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)

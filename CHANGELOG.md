@@ -5,6 +5,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Game screens readable from the dancing spot** (first test run, 2026-10-23:
+  the text was too small to read from 1.5-2 m away).
+  - `parapara-play` opens **fullscreen** (`pygame.SCALED`, the 1240x720
+    layout scaled to the display); `F` toggles a window, `--window` starts in
+    one.
+  - All text is scaled by a **text size** (default 2.0, range 1.0-2.6):
+    `+` / `-` change it in the game, `--text-scale` sets it; the choice is
+    saved in `ui.json` next to the calibrations (`settings.save_ui` /
+    `load_ui`).
+  - Screens redrawn with fewer, larger lines: big count, move card, grade
+    pop-up, CLAP prompt, warnings as large text; long messages word-wrap.
+  - The grade pop-up (Perfect / Great / Good / Hold / Miss) moved from the
+    camera view to just above the demo dancer's head, where players look
+    while dancing.
+  - Tests: text-size keys and saving (`test_game_app.py`), `ui.json` round
+    trip (`test_play_session.py`).
+
 ### Added
 - `docs/verify-beat-maps.md`: step-by-step guide to verifying a song's beat
   map by ear (linked from the README, PLAN.md, `parapara-beatcheck` and the
