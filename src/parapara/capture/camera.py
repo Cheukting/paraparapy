@@ -87,7 +87,9 @@ class LatestFrameGrabber:
         )
         self._capture = capture
         self._running.set()
-        self._thread = threading.Thread(target=self._run, name="camera-grabber", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="camera-grabber", daemon=True
+        )
         self._thread.start()
 
     def _run(self) -> None:
@@ -123,8 +125,10 @@ class LatestFrameGrabber:
         """
         with self._new_frame:
             self._new_frame.wait_for(
-                lambda: self._error is not None
-                or (self._latest is not None and self._latest.index > after),
+                lambda: (
+                    self._error is not None
+                    or (self._latest is not None and self._latest.index > after)
+                ),
                 timeout,
             )
             if self._error is not None:

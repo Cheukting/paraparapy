@@ -44,7 +44,14 @@ from dataclasses import dataclass
 import numpy as np
 
 from parapara.routine.geometry import Vec3, angle_between_deg, normalize, slerp
-from parapara.routine.model import COUNTS_PER_BAR, COUNTS_PER_PHRASE, ArmPose, Block, BlockKind, Routine
+from parapara.routine.model import (
+    COUNTS_PER_BAR,
+    COUNTS_PER_PHRASE,
+    ArmPose,
+    Block,
+    BlockKind,
+    Routine,
+)
 
 SNAP_WINDOW_BEATS = 0.4
 FLICK_WINDOW_BEATS = 0.22
@@ -55,8 +62,12 @@ PREVIEW_BEATS = COUNTS_PER_BAR  # show the next block one bar ahead
 BOUNCE = 0.06  # knee dip, in shoulder widths
 STEP_WIDTH = 0.35  # foot travel of the two-step, in shoulder widths
 
-REST = ArmPose(upper=(0.12, -1, 0.05), fore=(0.05, -1, 0.15))  # right arm hanging relaxed
-CLAP = ArmPose(upper=(0.35, -0.75, 0.6), fore=(-0.75, 0.55, 0.4))  # right arm; hands meet in front
+REST = ArmPose(
+    upper=(0.12, -1, 0.05), fore=(0.05, -1, 0.15)
+)  # right arm hanging relaxed
+CLAP = ArmPose(
+    upper=(0.35, -0.75, 0.6), fore=(-0.75, 0.55, 0.4)
+)  # right arm; hands meet in front
 
 _FORWARD: Vec3 = (0.0, 0.0, 1.0)
 
@@ -149,7 +160,9 @@ class Animator:
         self = cls.__new__(cls)
         self.routine = None
         starts = np.cumsum([0] + [b.duration for b in blocks])
-        self._place(list(zip(starts[:-1].tolist(), blocks, strict=True)), float(starts[-1]))
+        self._place(
+            list(zip(starts[:-1].tolist(), blocks, strict=True)), float(starts[-1])
+        )
         return self
 
     def _place(self, placements: list[tuple[int, Block]], end_beat: float) -> None:
@@ -165,8 +178,14 @@ class Animator:
                     self._claps.append(beat)
                 for side in ("right", "left"):
                     arm = getattr(kf, side)
-                    flick = block.kind is BlockKind.FLICK_CLAP and arm is not None and arm.hand is not None
-                    self._targets[side].append(_Target(beat, _side_pose(arm, kf.clap, side), block, flick))
+                    flick = (
+                        block.kind is BlockKind.FLICK_CLAP
+                        and arm is not None
+                        and arm.hand is not None
+                    )
+                    self._targets[side].append(
+                        _Target(beat, _side_pose(arm, kf.clap, side), block, flick)
+                    )
         self._beats = {s: [t.beat for t in ts] for s, ts in self._targets.items()}
         self._block_starts = [b.start for b in self._blocks]
         self.end_beat = end_beat
@@ -183,7 +202,11 @@ class Animator:
             return self._blend(prev, rest, u)
         nxt = targets[k + 1]
         gap = nxt.beat - (beats[k] if k >= 0 else nxt.beat - 1.0)
-        same_sweep = k >= 0 and targets[k].block is nxt.block and nxt.block.kind is BlockKind.SWEEP
+        same_sweep = (
+            k >= 0
+            and targets[k].block is nxt.block
+            and nxt.block.kind is BlockKind.SWEEP
+        )
         if same_sweep:  # glide through the sweep at constant speed
             u = (beat - beats[k]) / gap
         else:  # snap onto the beat
@@ -194,14 +217,20 @@ class Animator:
             # After the previous hit the hand cocks back gradually, then whips
             # out to the target in the last FLICK_WINDOW_BEATS: exact on both
             # beats, no jumps in between.
-            cocked = normalize(tuple(2 * f - h for f, h in zip(state.fore, nxt.pose.hand, strict=True)))
+            cocked = normalize(
+                tuple(2 * f - h for f, h in zip(state.fore, nxt.pose.hand, strict=True))
+            )
             whip_start = nxt.beat - min(FLICK_WINDOW_BEATS, gap)
             start = beats[k] if k >= 0 else nxt.beat - 1.0
             if beat < whip_start:
                 c = smoothstep((beat - start) / max(whip_start - start, 1e-9))
                 hand = turn(state.hand, cocked, c)
             else:
-                hand = turn(cocked, nxt.pose.hand, smoothstep((beat - whip_start) / (nxt.beat - whip_start)))
+                hand = turn(
+                    cocked,
+                    nxt.pose.hand,
+                    smoothstep((beat - whip_start) / (nxt.beat - whip_start)),
+                )
             state = ArmState(state.upper, state.fore, hand)
         return self._knock(side, beat, self._roll(side, beat, state))
 
@@ -224,7 +253,11 @@ class Animator:
         hand_a = a.hand if a.hand is not None else a.fore
         hand_b = b.hand if b.hand is not None else b.fore
         fore = turn(a.fore, b.fore, u)
-        hand = turn(hand_a, hand_b, u) if (a.hand is not None or b.hand is not None) else fore
+        hand = (
+            turn(hand_a, hand_b, u)
+            if (a.hand is not None or b.hand is not None)
+            else fore
+        )
         return ArmState(turn(a.upper, b.upper, u), fore, hand)
 
     def _roll(self, side: str, beat: float, state: ArmState) -> ArmState:
@@ -232,9 +265,13 @@ class Animator:
         if block is None or block.block.kind is not BlockKind.WRIST_ROLL:
             return state
         phase = 2 * math.pi * beat
-        sign = 1.0 if side == "right" else -1.0  # opposite phase: one hand over, one under
+        sign = (
+            1.0 if side == "right" else -1.0
+        )  # opposite phase: one hand over, one under
         # Zero on whole beats (sin 0 = 0, 1 - cos 0 = 0): the scored pose stays exact.
-        offset = np.array([0.0, sign * math.sin(phase), 1 - math.cos(phase)]) * ROLL_RADIUS
+        offset = (
+            np.array([0.0, sign * math.sin(phase), 1 - math.cos(phase)]) * ROLL_RADIUS
+        )
 
         def roll(v: Vec3) -> Vec3:
             return normalize(tuple(np.asarray(v) + offset))
@@ -259,7 +296,9 @@ class Animator:
 
         def foot(xs: tuple[float, float, float, float]) -> tuple[float, float]:
             here, there = xs[whole % 4], xs[(whole + 1) % 4]
-            return here + (there - here) * u, (0.1 * math.sin(math.pi * u) if there != here else 0.0)
+            return here + (there - here) * u, (
+                0.1 * math.sin(math.pi * u) if there != here else 0.0
+            )
 
         w = STEP_WIDTH
         right = foot((0.1 + w, 0.1 + w, 0.1 + w, 0.1))

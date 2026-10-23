@@ -57,7 +57,9 @@ def draw_frame(screen: pygame.Surface, song: Song, routine: Routine, animator: A
     screen.fill(BG)
     stage = screen.subsurface((0, 0, STAGE_WIDTH, HEIGHT))
     # Raised hands reach ~1.4 shoulder widths above the shoulders, feet ~3.2 below.
-    draw_dancer(stage, pose, (STAGE_WIDTH // 2, round(HEIGHT * 0.25)), HEIGHT / 6.4, mirrored)
+    draw_dancer(
+        stage, pose, (STAGE_WIDTH // 2, round(HEIGHT * 0.25)), HEIGHT / 6.4, mirrored
+    )
 
     panel = screen.subsurface((STAGE_WIDTH, 0, WIDTH - STAGE_WIDTH, HEIGHT))
     panel.fill(PANEL)
@@ -91,25 +93,47 @@ def draw_frame(screen: pygame.Surface, song: Song, routine: Routine, animator: A
 
 def run(argv: list[str] | None = None) -> None:
     songs = load_all_songs()
-    parser = argparse.ArgumentParser(description="Watch the demo dancer perform a routine")
-    parser.add_argument("song", nargs="?", help=f"song id (default: first); known: {', '.join(sorted(songs))}")
-    parser.add_argument("--routine", help="routine id or difficulty (easy/normal/hard/custom)")
-    parser.add_argument("--clicks", action="store_true", help="start with metronome clicks")
-    parser.add_argument("--auto", type=int, default=0, help=argparse.SUPPRESS)  # tests: run N frames
+    parser = argparse.ArgumentParser(
+        description="Watch the demo dancer perform a routine"
+    )
+    parser.add_argument(
+        "song",
+        nargs="?",
+        help=f"song id (default: first); known: {', '.join(sorted(songs))}",
+    )
+    parser.add_argument(
+        "--routine", help="routine id or difficulty (easy/normal/hard/custom)"
+    )
+    parser.add_argument(
+        "--clicks", action="store_true", help="start with metronome clicks"
+    )
+    parser.add_argument(
+        "--auto", type=int, default=0, help=argparse.SUPPRESS
+    )  # tests: run N frames
     args = parser.parse_args(argv)
     if not songs:
         parser.error("no songs: run `uv run parapara-fetch-demo-songs` or import one")
     song = songs.get(args.song or sorted(songs)[0])
     if song is None:
         parser.error(f"unknown song {args.song!r}")
-    routines = sorted(routines_for(song).values(), key=lambda r: (r.difficulty.value, r.id))
+    routines = sorted(
+        routines_for(song).values(), key=lambda r: (r.difficulty.value, r.id)
+    )
     if not routines:
-        parser.error(f"{song.id} has no routines: run `uv run parapara-routines generate {song.id}`")
+        parser.error(
+            f"{song.id} has no routines: run `uv run parapara-routines generate {song.id}`"
+        )
     index = 0
     if args.routine:
-        matches = [i for i, r in enumerate(routines) if args.routine in (r.id, r.difficulty.value)]
+        matches = [
+            i
+            for i, r in enumerate(routines)
+            if args.routine in (r.id, r.difficulty.value)
+        ]
         if not matches:
-            parser.error(f"no routine {args.routine!r}; have: {', '.join(r.id for r in routines)}")
+            parser.error(
+                f"no routine {args.routine!r}; have: {', '.join(r.id for r in routines)}"
+            )
         index = matches[0]
 
     samples, sr = load_audio(song.audio_path)
@@ -145,11 +169,20 @@ def run(argv: list[str] | None = None) -> None:
                 if key in (pygame.K_ESCAPE, pygame.K_q):
                     running = False
                 elif key == pygame.K_SPACE:
-                    player.pause() if not player.paused else player.play(mix(), player.position())
+                    player.pause() if not player.paused else player.play(
+                        mix(), player.position()
+                    )
                 elif key in (pygame.K_LEFT, pygame.K_RIGHT):
-                    step = COUNTS_PER_BAR * song.beat_s * (1 if key == pygame.K_RIGHT else -1)
+                    step = (
+                        COUNTS_PER_BAR
+                        * song.beat_s
+                        * (1 if key == pygame.K_RIGHT else -1)
+                    )
                     target = min(max(0.0, player.position() + step), duration)
-                    player.play(mix(), target) if not player.paused else (player.play(mix(), target), player.pause())
+                    player.play(mix(), target) if not player.paused else (
+                        player.play(mix(), target),
+                        player.pause(),
+                    )
                 elif key == pygame.K_r:
                     index = (index + 1) % len(routines)
                     animator = Animator(routines[index])
@@ -162,7 +195,16 @@ def run(argv: list[str] | None = None) -> None:
         pos = player.position()
         if pos >= duration and not player.paused:
             player.play(mix(), 0.0)  # loop
-        draw_frame(screen, song, routines[index], animator, pos, mirrored, clicks, player.paused)
+        draw_frame(
+            screen,
+            song,
+            routines[index],
+            animator,
+            pos,
+            mirrored,
+            clicks,
+            player.paused,
+        )
         pygame.display.flip()
         clock.tick(60)
         frame += 1

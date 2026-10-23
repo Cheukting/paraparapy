@@ -51,8 +51,16 @@ def test_dances_exactly_what_is_scored(routine) -> None:
             if target is None:
                 continue
             arm = getattr(pose, side)
-            assert angle_between_deg(arm.upper, target.upper) < 1e-3, (tk.block.id, tk.beat, side)
-            assert angle_between_deg(arm.fore, target.fore) < 1e-3, (tk.block.id, tk.beat, side)
+            assert angle_between_deg(arm.upper, target.upper) < 1e-3, (
+                tk.block.id,
+                tk.beat,
+                side,
+            )
+            assert angle_between_deg(arm.fore, target.fore) < 1e-3, (
+                tk.block.id,
+                tk.beat,
+                side,
+            )
             if target.hand is not None:
                 assert angle_between_deg(arm.hand, target.hand) < 1e-3
 
@@ -76,9 +84,14 @@ def test_motion_is_smooth(routine) -> None:
 
 
 def test_snap_holds_then_lands_on_the_beat() -> None:
-    chop = next(tk for tk in load_routine(FIXTURE).timeline() if tk.block.kind is BlockKind.CHOP)
+    chop = next(
+        tk for tk in load_routine(FIXTURE).timeline() if tk.block.kind is BlockKind.CHOP
+    )
     animator = Animator(load_routine(FIXTURE))
-    held = [animator.pose_at(chop.beat + d).right.fore for d in (0.02, 0.3, 1 - SNAP_WINDOW_BEATS - 0.01)]
+    held = [
+        animator.pose_at(chop.beat + d).right.fore
+        for d in (0.02, 0.3, 1 - SNAP_WINDOW_BEATS - 0.01)
+    ]
     assert max(angle_between_deg(held[0], h) for h in held) < 1e-4  # holding still
     moving = animator.pose_at(chop.beat + 1 - SNAP_WINDOW_BEATS / 2).right.fore
     assert angle_between_deg(held[0], moving) > 5  # then snapping to the next target
@@ -93,7 +106,9 @@ def test_sweeps_glide_continuously() -> None:
 
 def test_wrist_roll_rolls_but_is_exact_on_beats() -> None:
     routine = load_routine(FIXTURE)
-    roll = next(tk for tk in routine.timeline() if tk.block.kind is BlockKind.WRIST_ROLL)
+    roll = next(
+        tk for tk in routine.timeline() if tk.block.kind is BlockKind.WRIST_ROLL
+    )
     animator = Animator(routine)
     on_beat = animator.pose_at(roll.beat).right.fore
     mid = animator.pose_at(roll.beat + 0.5).right.fore
@@ -129,12 +144,18 @@ def test_clap_and_rest_arms() -> None:
 
 def test_two_step_and_bounce() -> None:
     sway = [Animator.two_step(b)[0] for b in np.arange(0, 8, 0.05)]
-    assert min(sway) == pytest.approx(-max(sway), abs=1e-6) and max(sway) > 0.1  # centred sway
+    assert (
+        min(sway) == pytest.approx(-max(sway), abs=1e-6) and max(sway) > 0.1
+    )  # centred sway
     for beat in range(8):  # feet land (stop moving) on every beat
         before, after = Animator.two_step(beat - 1e-4), Animator.two_step(beat + 1e-4)
-        assert before[1][0] == pytest.approx(after[1][0], abs=1e-3) and before[1][1] < 1e-3
+        assert (
+            before[1][0] == pytest.approx(after[1][0], abs=1e-3) and before[1][1] < 1e-3
+        )
     animator = Animator(load_routine(FIXTURE))
-    assert animator.pose_at(3.0).bounce > animator.pose_at(3.5).bounce  # dip on the beat
+    assert (
+        animator.pose_at(3.0).bounce > animator.pose_at(3.5).bounce
+    )  # dip on the beat
 
 
 def test_counts_blocks_and_preview() -> None:
@@ -142,14 +163,18 @@ def test_counts_blocks_and_preview() -> None:
     animator = Animator(routine)
     intro = animator.pose_at(-6.0)
     assert (intro.count, intro.bar, intro.phrase, intro.block) == (0, 0, 0, None)
-    assert intro.next_block is not None and intro.next_block_beat == 0.0  # previewed a bar ahead
+    assert (
+        intro.next_block is not None and intro.next_block_beat == 0.0
+    )  # previewed a bar ahead
     assert animator.pose_at(-9.0).next_block is None  # more than a bar away: not yet
     p = animator.pose_at(37.5)
     assert (p.count, p.bar, p.phrase) == (6, 1, 2)
     assert p.block is routine.phrases[1].blocks[2]
     end = animator.pose_at(routine.total_counts + 3)
     assert end.count == 0 and end.block is None and end.next_block is None
-    assert angle_between_deg(end.right.fore, REST.fore) < 1e-3  # relaxed after the routine
+    assert (
+        angle_between_deg(end.right.fore, REST.fore) < 1e-3
+    )  # relaxed after the routine
 
 
 @pytest.mark.parametrize("block_id", list(BLOCK_LIBRARY))
@@ -167,7 +192,9 @@ def test_for_blocks_loops_any_single_move_exactly(block_id) -> None:
             for side in ("right", "left"):
                 target = getattr(kf, side)
                 if target is not None:
-                    assert angle_between_deg(getattr(pose, side).fore, target.fore) < 1e-3
+                    assert (
+                        angle_between_deg(getattr(pose, side).fore, target.fore) < 1e-3
+                    )
 
 
 def test_block_titles() -> None:
@@ -218,10 +245,20 @@ def test_preview_app_runs_headless(tmp_path) -> None:
 
     track = render_demo_song()
     write_wav(tmp_path / "t.wav", track.samples, track.sample_rate)
-    song, _ = importer.import_song(tmp_path / "t.wav", importer.SongInfo("Test"), library=tmp_path / "lib")
-    script = "from parapara.game import preview; preview.run([%r, '--routine', 'hard', '--clicks', '--auto', '40'])" % song.id
+    song, _ = importer.import_song(
+        tmp_path / "t.wav", importer.SongInfo("Test"), library=tmp_path / "lib"
+    )
+    script = (
+        "from parapara.game import preview; preview.run([%r, '--routine', 'hard', '--clicks', '--auto', '40'])"
+        % song.id
+    )
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=90,
                             cwd=tmp_path, env=_env(PARAPARA_SONGS_DIR=str(tmp_path / "lib")))  # fmt: skip
     assert result.returncode == 0, result.stderr
     assert "SDL_" not in result.stderr
-    assert json.loads((song.directory / "routines" / "hard.json").read_text())["difficulty"] == "hard"
+    assert (
+        json.loads((song.directory / "routines" / "hard.json").read_text())[
+            "difficulty"
+        ]
+        == "hard"
+    )

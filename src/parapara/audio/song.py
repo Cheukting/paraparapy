@@ -126,7 +126,9 @@ class Song:
     def from_dict(cls, data: dict[str, Any], directory: Path) -> Self:
         issues: list[str] = []
         if data.get("format_version") != FORMAT_VERSION:
-            raise SongError([f"unsupported format_version {data.get('format_version')!r}"])
+            raise SongError(
+                [f"unsupported format_version {data.get('format_version')!r}"]
+            )
         required = ("id", "title", "audio", "bpm", "first_beat_s", "routine_start_beat",
                     "duration_beats", "beat_map")  # fmt: skip
         missing = [k for k in required if k not in data]
@@ -138,7 +140,9 @@ class Song:
             issues.append("license must be an object with a name (and optional url)")
             lic = {}
         if Path(data["audio"]).suffix.lower() not in AUDIO_SUFFIXES:
-            issues.append(f"audio must be one of {AUDIO_SUFFIXES}, got {data['audio']!r}")
+            issues.append(
+                f"audio must be one of {AUDIO_SUFFIXES}, got {data['audio']!r}"
+            )
         bpm = float(data["bpm"])
         if not 60 <= bpm <= 240:
             issues.append(f"bpm {bpm} is not a plausible tempo")
@@ -146,10 +150,14 @@ class Song:
             issues.append("first_beat_s must be >= 0")
         start, total = int(data["routine_start_beat"]), int(data["duration_beats"])
         if not 0 <= start < total:
-            issues.append(f"routine_start_beat {start} must be within the song's {total} beats")
+            issues.append(
+                f"routine_start_beat {start} must be within the song's {total} beats"
+            )
         bm = data["beat_map"]
         if bm.get("method") not in ("generated", "librosa", "manual"):
-            issues.append(f"beat_map.method {bm.get('method')!r} is not generated/librosa/manual")
+            issues.append(
+                f"beat_map.method {bm.get('method')!r} is not generated/librosa/manual"
+            )
         if issues:
             raise SongError(issues)
 
@@ -157,7 +165,9 @@ class Song:
         if not DESIGN_BPM[0] <= bpm <= DESIGN_BPM[1]:
             warnings.append(f"bpm {bpm} is outside the design range {DESIGN_BPM}")
         if not bm.get("verified"):
-            warnings.append("beat map not verified by ear yet (see docs/verify-beat-maps.md)")
+            warnings.append(
+                "beat map not verified by ear yet (see docs/verify-beat-maps.md)"
+            )
         return cls(
             id=data["id"], title=data["title"], artist=data.get("artist", ""), audio=data["audio"],
             license=License(lic.get("name") or UNSPECIFIED_LICENSE, lic.get("url")),
@@ -170,9 +180,15 @@ class Song:
 
     @classmethod
     def load(cls, directory: Path, require_audio: bool = True) -> Self:
-        song = cls.from_dict(json.loads((directory / "song.json").read_text(encoding="utf-8")), directory)
+        song = cls.from_dict(
+            json.loads((directory / "song.json").read_text(encoding="utf-8")), directory
+        )
         if require_audio and not song.audio_path.exists():
-            hint = " (run `uv run parapara-fetch-demo-songs`)" if song.license.name.startswith("CC") else ""
+            hint = (
+                " (run `uv run parapara-fetch-demo-songs`)"
+                if song.license.name.startswith("CC")
+                else ""
+            )
             raise SongError([f"audio file missing: {song.audio_path}{hint}"])
         return song
 

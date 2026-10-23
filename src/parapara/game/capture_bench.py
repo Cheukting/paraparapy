@@ -33,7 +33,11 @@ from parapara.ipc.client import DEFAULT_WORKER  # noqa: E402
 
 
 def _between_configs(
-    screen: pygame.Surface, clock: pygame.time.Clock, seconds: float, lines: list[str], mirrored: bool
+    screen: pygame.Surface,
+    clock: pygame.time.Clock,
+    seconds: float,
+    lines: list[str],
+    mirrored: bool,
 ) -> tuple[bool, bool]:
     """Show a "next up" screen for ``seconds``; returns ``(quit, mirrored)``."""
     end = time.monotonic() + seconds
@@ -42,7 +46,9 @@ def _between_configs(
         if quit_requested:
             return True, mirrored
         screen.fill(BG)
-        draw_hud(screen, [*lines, f"starting in {end - time.monotonic():.0f} s"], TEXT_COLOUR)
+        draw_hud(
+            screen, [*lines, f"starting in {end - time.monotonic():.0f} s"], TEXT_COLOUR
+        )
         pygame.display.flip()
         clock.tick(30)
     return False, mirrored
@@ -76,11 +82,17 @@ def run(
         step = f"benchmark {i + 1}/{total}: {name}"
         if i:
             quit_requested, mirrored = _between_configs(
-                screen, clock, args.pause, [f"done: {configs[i - 1][0]}", f"next: {step}"], mirrored
+                screen,
+                clock,
+                args.pause,
+                [f"done: {configs[i - 1][0]}", f"next: {step}"],
+                mirrored,
             )
             if quit_requested:
                 break
-        print(f"[{i + 1}/{total}] {name}: keep dancing for ~{args.warmup + args.seconds:.0f} s ...")
+        print(
+            f"[{i + 1}/{total}] {name}: keep dancing for ~{args.warmup + args.seconds:.0f} s ..."
+        )
         session = run_session(
             screen,
             clock,

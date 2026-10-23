@@ -92,12 +92,16 @@ def beat_clarity(onset_env: npt.ArrayLike, frames_per_s: float, first_beat_s: fl
     env = np.asarray(onset_env, dtype=np.float64)
     period = 60.0 / bpm
     duration = len(env) / frames_per_s
-    beats = first_beat_s + period * np.arange(max(0, int((duration - first_beat_s) / period)))
+    beats = first_beat_s + period * np.arange(
+        max(0, int((duration - first_beat_s) / period))
+    )
 
     def strength(times: np.ndarray) -> np.ndarray:
         frames = np.round((times + bm.DETECTION_LAG_S) * frames_per_s).astype(int)
         frames = frames[(frames >= 1) & (frames < len(env) - 1)]
-        return np.maximum.reduce([env[frames - 1], env[frames], env[frames + 1]])  # ±1 frame
+        return np.maximum.reduce(
+            [env[frames - 1], env[frames], env[frames + 1]]
+        )  # ±1 frame
 
     on, off = strength(beats), strength(beats + period / 2)
     if len(on) == 0 or len(off) == 0:
@@ -123,7 +127,9 @@ def license_warnings(license_name: str) -> list[str]:
     name = license_name.upper().replace("-", " ")
     out = []
     if "NC" in name.split() or "NONCOMMERCIAL" in name.replace(" ", ""):
-        out.append("non-commercial licence: fine for private play, not for a commercial release")
+        out.append(
+            "non-commercial licence: fine for private play, not for a commercial release"
+        )
     if "ND" in name.split() or "NODERIV" in name.replace(" ", ""):
         out.append("no-derivatives licence: play the track unmodified only")
     if "SA" in name.split() or "SHAREALIKE" in name.replace(" ", ""):
@@ -131,12 +137,18 @@ def license_warnings(license_name: str) -> list[str]:
     return out
 
 
-def judge_suitability(analysis: TrackAnalysis | None, license_name: str = "") -> SuitabilityReport:
+def judge_suitability(
+    analysis: TrackAnalysis | None, license_name: str = ""
+) -> SuitabilityReport:
     """Apply the table in the module docstring to an analysis."""
     rejections: list[str] = []
     warnings: list[str] = license_warnings(license_name) if license_name.strip() else []
     if analysis is None:
-        return SuitabilityReport(None, tuple(rejections + ["no steady beat could be detected"]), tuple(warnings))
+        return SuitabilityReport(
+            None,
+            tuple(rejections + ["no steady beat could be detected"]),
+            tuple(warnings),
+        )
 
     a = analysis
     if not BPM_REJECT[0] <= a.bpm <= BPM_REJECT[1]:
@@ -147,18 +159,31 @@ def judge_suitability(analysis: TrackAnalysis | None, license_name: str = "") ->
         rejections.append(f"tempo not steady: beats drift {a.drift_ms:.0f} ms from a constant grid "
                           "(tempo changes, rubato or unclear beat)")  # fmt: skip
     elif a.drift_ms > DRIFT_WARN_MS:
-        warnings.append(f"beats drift {a.drift_ms:.0f} ms from a constant grid; check by ear")
+        warnings.append(
+            f"beats drift {a.drift_ms:.0f} ms from a constant grid; check by ear"
+        )
     if a.on_grid_share < MIN_ON_GRID:
-        rejections.append(f"only {100 * a.on_grid_share:.0f}% of beats follow one constant tempo")
+        rejections.append(
+            f"only {100 * a.on_grid_share:.0f}% of beats follow one constant tempo"
+        )
     if a.beat_clarity < CLARITY_REJECT:
-        rejections.append(f"beat not clear enough (clarity {a.beat_clarity:.2f}): needs a steady kick on every beat")
+        rejections.append(
+            f"beat not clear enough (clarity {a.beat_clarity:.2f}): needs a steady kick on every beat"
+        )
     elif a.beat_clarity < CLARITY_WARN:
-        warnings.append(f"beat clarity {a.beat_clarity:.2f} is low; the beat may be hard to follow")
+        warnings.append(
+            f"beat clarity {a.beat_clarity:.2f} is low; the beat may be hard to follow"
+        )
     if a.duration_beats < MIN_BEATS:
-        rejections.append(f"too short: {a.duration_beats} beats (needs at least {MIN_BEATS})")
+        rejections.append(
+            f"too short: {a.duration_beats} beats (needs at least {MIN_BEATS})"
+        )
     elif a.duration_beats < SHORT_BEATS:
         warnings.append(f"short track: {a.duration_beats} beats")
-    metrics = asdict(a) | {"on_grid_share": round(a.on_grid_share, 3), "duration_beats": a.duration_beats}
+    metrics = asdict(a) | {
+        "on_grid_share": round(a.on_grid_share, 3),
+        "duration_beats": a.duration_beats,
+    }
     return SuitabilityReport(a, tuple(rejections), tuple(warnings), metrics)
 
 

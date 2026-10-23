@@ -35,7 +35,9 @@ def to_screen(
     return [(round(x), round(y)) for x, y in xy]
 
 
-def visible(pose: npt.NDArray[np.float32], index: int, threshold: float = VISIBILITY_THRESHOLD) -> bool:
+def visible(
+    pose: npt.NDArray[np.float32], index: int, threshold: float = VISIBILITY_THRESHOLD
+) -> bool:
     """Whether a pose landmark is confidently visible (NaN counts as not)."""
     v = float(pose[index, 3])
     return v == v and v >= threshold  # v == v is False for NaN
@@ -95,7 +97,9 @@ def guide_figure(
 
     def arm(pose: ArmPose | None, side: float) -> GuideArm:
         scored = pose is not None
-        upper, fore = (pose.upper, pose.fore) if pose is not None else ((0, -1, 0), (0, -1, 0))
+        upper, fore = (
+            (pose.upper, pose.fore) if pose is not None else ((0, -1, 0), (0, -1, 0))
+        )
         hand = pose.hand if pose is not None and pose.hand is not None else fore
         sx, sy = side * GUIDE_SHOULDER_HALF, 0.0
         ex, ey = sx + upper[0] * GUIDE_UPPER_ARM, sy + upper[1] * GUIDE_UPPER_ARM

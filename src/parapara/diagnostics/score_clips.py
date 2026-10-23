@@ -33,7 +33,9 @@ from parapara.scoring.schedule import schedule_block_clip
 from parapara.scoring.scorekeeper import ScoreKeeper
 
 
-def score_clip(rec: Recording, calibration: Calibration | None, latency_ms: float) -> dict[str, Any]:
+def score_clip(
+    rec: Recording, calibration: Calibration | None, latency_ms: float
+) -> dict[str, Any]:
     m = rec.metadata
     schedule = schedule_block_clip(BLOCK_LIBRARY[m["block_id"]], m["beat_times_ns"][m["count_in_beats"]:],
                                    int(latency_ms * 1e6))  # fmt: skip
@@ -57,7 +59,11 @@ def score_session(session: Path, latency_ms: float = 0.0, auto_latency: bool = F
         if auto_latency:
             lag = analyze_block(rec).best_lag_ms or 0.0
         clips[path.stem] = score_clip(rec, calibration, lag)
-    return {"session": str(session), "calibrated": calibration is not None, "clips": clips}
+    return {
+        "session": str(session),
+        "calibrated": calibration is not None,
+        "clips": clips,
+    }
 
 
 def format_scores(report: dict[str, Any]) -> str:
@@ -75,9 +81,15 @@ def format_scores(report: dict[str, Any]) -> str:
 
 def run(argv: list[str] | None = None) -> dict[str, Any]:
     parser = argparse.ArgumentParser(description="Score recorded block clips")
-    parser.add_argument("session", nargs="?", type=Path, help="default: latest in recordings/")
-    parser.add_argument("--latency-ms", type=float, default=0.0, help="fixed latency offset")
-    parser.add_argument("--auto-latency", action="store_true", help="use each clip's analysed lag")
+    parser.add_argument(
+        "session", nargs="?", type=Path, help="default: latest in recordings/"
+    )
+    parser.add_argument(
+        "--latency-ms", type=float, default=0.0, help="fixed latency offset"
+    )
+    parser.add_argument(
+        "--auto-latency", action="store_true", help="use each clip's analysed lag"
+    )
     args = parser.parse_args(argv)
     session = args.session or latest_session()
     report = score_session(session, args.latency_ms, args.auto_latency)

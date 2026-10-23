@@ -30,7 +30,11 @@ from pathlib import Path
 
 import numpy as np
 
-from parapara.diagnostics.pose_analysis import STATIC_CLIPS, analyze_block, latest_session
+from parapara.diagnostics.pose_analysis import (
+    STATIC_CLIPS,
+    analyze_block,
+    latest_session,
+)
 from parapara.pose.body_frame import arm_directions
 from parapara.pose.features import (
     LANDMARK_FILTER,
@@ -43,8 +47,17 @@ from parapara.pose.filters import filter_series
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
 
-LANDMARK_GRID = {"min_cutoff": (0.5, 1.0, 2.0, 3.0, 5.0), "beta": (0.0, 3.0, 10.0, 30.0)}
-TORSO_GRID = ((50.0, 0.0), (2.0, 0.0), (0.5, 0.0), (0.5, 0.5), (0.2, 0.0))  # (min_cutoff, beta)
+LANDMARK_GRID = {
+    "min_cutoff": (0.5, 1.0, 2.0, 3.0, 5.0),
+    "beta": (0.0, 3.0, 10.0, 30.0),
+}
+TORSO_GRID = (
+    (50.0, 0.0),
+    (2.0, 0.0),
+    (0.5, 0.0),
+    (0.5, 0.5),
+    (0.2, 0.0),
+)  # (min_cutoff, beta)
 
 
 def forearm_jitter_deg(world: np.ndarray) -> float:
@@ -65,18 +78,28 @@ def trajectory_lag_ms(rec: Recording, filtered: np.ndarray, max_ms: int = 250) -
         for axis in (0, 1):
             raw = np.interp(grid, t, rec.pose_world[:, idx, axis])
             filt = np.interp(grid, t, filtered[:, idx, axis])
-            errors = [np.mean((filt[s:] - raw[: len(raw) - s]) ** 2) for s in range(max_ms)]
+            errors = [
+                np.mean((filt[s:] - raw[: len(raw) - s]) ** 2) for s in range(max_ms)
+            ]
             lags.append(int(np.argmin(errors)))
     return float(np.median(lags))
 
 
 def tune(session: Path) -> dict:
-    static = [Recording.load(session / f"{c}.npz") for c in STATIC_CLIPS if (session / f"{c}.npz").exists()]
+    static = [
+        Recording.load(session / f"{c}.npz")
+        for c in STATIC_CLIPS
+        if (session / f"{c}.npz").exists()
+    ]
     blocks = [Recording.load(f) for f in sorted(session.glob("block_*.npz"))]
     report: dict = {"session": str(session), "landmarks": [], "torso": []}
     if static:
-        report["raw_jitter_deg"] = round(np.mean([forearm_jitter_deg(r.pose_world) for r in static]), 2)
-    for mc, beta in itertools.product(LANDMARK_GRID["min_cutoff"], LANDMARK_GRID["beta"]):
+        report["raw_jitter_deg"] = round(
+            np.mean([forearm_jitter_deg(r.pose_world) for r in static]), 2
+        )
+    for mc, beta in itertools.product(
+        LANDMARK_GRID["min_cutoff"], LANDMARK_GRID["beta"]
+    ):
         params = {"min_cutoff": mc, "beta": beta}
         row = {**params}
         if static:
@@ -104,13 +127,19 @@ def format_tuning(report: dict) -> str:
                      f"jitter {row.get('jitter_deg', '-')}°  lag {row.get('lag_ms', '-')} ms")  # fmt: skip
     lines += ["", "torso filter (mean block fit error, full pipeline):"]
     for row in report["torso"]:
-        lines.append(f"  min_cutoff {row['min_cutoff']:<4} beta {row['beta']:<4} error {row['mean_error_deg']}°")
+        lines.append(
+            f"  min_cutoff {row['min_cutoff']:<4} beta {row['beta']:<4} error {row['mean_error_deg']}°"
+        )
     return "\n".join(lines)
 
 
 def run(argv: list[str] | None = None) -> dict:
-    parser = argparse.ArgumentParser(description="Tune the landmark and torso smoothing filters")
-    parser.add_argument("session", nargs="?", type=Path, help="default: latest in recordings/")
+    parser = argparse.ArgumentParser(
+        description="Tune the landmark and torso smoothing filters"
+    )
+    parser.add_argument(
+        "session", nargs="?", type=Path, help="default: latest in recordings/"
+    )
     args = parser.parse_args(argv)
     report = tune(args.session or latest_session())
     print(format_tuning(report))

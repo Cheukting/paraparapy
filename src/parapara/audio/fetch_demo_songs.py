@@ -52,28 +52,44 @@ def fetch_demo_songs(
                 outcomes[song_id] = "already present"
                 continue
             suffix = Path(entry["audio_url"]).suffix or ".mp3"
-            local = from_dir / f"{song_id}{suffix}" if from_dir else Path(tmp) / f"{song_id}{suffix}"
+            local = (
+                from_dir / f"{song_id}{suffix}"
+                if from_dir
+                else Path(tmp) / f"{song_id}{suffix}"
+            )
             if not from_dir:
                 download(entry["audio_url"], local)
             try:
-                song, _ = import_song(local, SongInfo.from_catalog(entry), song_id, library, replace=True)
-                outcomes[song_id] = f"imported ({song.bpm:.1f} BPM, beat map unverified, routines generated)"
+                song, _ = import_song(
+                    local, SongInfo.from_catalog(entry), song_id, library, replace=True
+                )
+                outcomes[song_id] = (
+                    f"imported ({song.bpm:.1f} BPM, beat map unverified, routines generated)"
+                )
             except ImportRejected as err:
                 outcomes[song_id] = "REJECTED: " + "; ".join(err.report.rejections)
     return outcomes
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Download the CC BY demo songs from the catalog")
+    parser = argparse.ArgumentParser(
+        description="Download the CC BY demo songs from the catalog"
+    )
     parser.add_argument("ids", nargs="*", help="catalog ids (default: all)")
     parser.add_argument("--library", type=Path, default=DEFAULT_LIBRARY)
-    parser.add_argument("--from-dir", type=Path, help="use <id>.<ext> files from this folder instead of downloading")
+    parser.add_argument(
+        "--from-dir",
+        type=Path,
+        help="use <id>.<ext> files from this folder instead of downloading",
+    )
     parser.add_argument("--replace", action="store_true")
     args = parser.parse_args(argv)
     for song_id, outcome in fetch_demo_songs(args.library, ids=args.ids or None, replace=args.replace,
                                              from_dir=args.from_dir).items():  # fmt: skip
         print(f"{song_id:42s} {outcome}")
-    print(f"\nsongs are in {args.library}/ (git-ignored); credits: see each song.json 'attribution'.")
+    print(
+        f"\nsongs are in {args.library}/ (git-ignored); credits: see each song.json 'attribution'."
+    )
     print("verify each beat map by ear: uv run parapara-beatcheck <song folder>")
 
 

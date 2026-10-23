@@ -79,7 +79,9 @@ def test_attach_shares_memory_and_checks_size() -> None:
 
 def test_client_receives_samples_and_frames_across_processes() -> None:
     with CaptureClient(SMALL, worker="fake_capture_worker:run") as client:
-        messages = _poll_until(client, lambda ms: sum(isinstance(m, PoseSample) for m in ms) >= 3)
+        messages = _poll_until(
+            client, lambda ms: sum(isinstance(m, PoseSample) for m in ms) >= 3
+        )
         statuses = [m for m in messages if isinstance(m, CaptureStatus)]
         assert statuses[0].kind is StatusKind.READY
         assert statuses[0].details == {"camera_width": 6}

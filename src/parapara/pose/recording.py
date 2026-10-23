@@ -72,14 +72,18 @@ class Recording:
         return cls(
             frame_index=np.array([s.frame_index for s in samples], np.int64).reshape(n),
             captured_ns=np.array([s.captured_ns for s in samples], np.int64).reshape(n),
-            processed_ns=np.array([s.processed_ns for s in samples], np.int64).reshape(n),
+            processed_ns=np.array([s.processed_ns for s in samples], np.int64).reshape(
+                n
+            ),
             pose_ms=np.array([s.pose_ms for s in samples], np.float32).reshape(n),
             has_pose=np.array([s.has_pose for s in samples], np.bool_).reshape(n),
             pose_image=np.array(
-                [nan_pose if s.pose_image is None else s.pose_image for s in samples], np.float32
+                [nan_pose if s.pose_image is None else s.pose_image for s in samples],
+                np.float32,
             ).reshape(n, *_POSE_SHAPE),
             pose_world=np.array(
-                [nan_pose if s.pose_world is None else s.pose_world for s in samples], np.float32
+                [nan_pose if s.pose_world is None else s.pose_world for s in samples],
+                np.float32,
             ).reshape(n, *_POSE_SHAPE),
             metadata=meta,
         )
@@ -109,7 +113,11 @@ class Recording:
 
     @property
     def duration_s(self) -> float:
-        return (int(self.captured_ns[-1]) - int(self.captured_ns[0])) / 1e9 if len(self) > 1 else 0.0
+        return (
+            (int(self.captured_ns[-1]) - int(self.captured_ns[0])) / 1e9
+            if len(self) > 1
+            else 0.0
+        )
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,7 +140,9 @@ class Recording:
             meta = json.loads(str(data["metadata"]))
             version = meta.pop("format_version", None)
             if version != FORMAT_VERSION:
-                raise ValueError(f"{path}: unsupported recording format_version {version!r}")
+                raise ValueError(
+                    f"{path}: unsupported recording format_version {version!r}"
+                )
             return cls(
                 frame_index=data["frame_index"],
                 captured_ns=data["captured_ns"],

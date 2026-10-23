@@ -52,8 +52,8 @@ def test_kicks_fall_exactly_on_the_beats() -> None:
     low = np.convolve(x, np.ones(64) / 64, mode="same")  # crude low-pass: keep the kick
     for beat in (0, 1, 17, 79):
         t = int(round(song.beat_time(beat) * sr))
-        before = np.mean(low[t - int(0.03 * sr):t - int(0.005 * sr)] ** 2)
-        after = np.mean(low[t:t + int(0.025 * sr)] ** 2)
+        before = np.mean(low[t - int(0.03 * sr) : t - int(0.005 * sr)] ** 2)
+        after = np.mean(low[t : t + int(0.025 * sr)] ** 2)
         assert after > 10 * before, beat
     assert np.abs(x[: int(0.45 * sr)]).max() < 1e-6  # silent lead-in
 
@@ -73,7 +73,9 @@ def test_generated_track_is_not_in_the_game_library() -> None:
     """Machine testing only: the generated track is never offered for dancing."""
     library = ROOT / "assets" / "songs"
     for song_json in library.glob("*/song.json"):
-        assert json.loads(song_json.read_text())["beat_map"]["method"] != "generated", song_json
+        assert json.loads(song_json.read_text())["beat_map"]["method"] != "generated", (
+            song_json
+        )
     assert not (library / DEMO_ID).exists() and not (library / "demo").exists()
 
 
@@ -83,13 +85,18 @@ def test_demo_song_loads_and_maps_beats(demo_library) -> None:
     assert song.beat_time_s(8) == pytest.approx(0.5 + 8 * 0.4)
     assert song.beat_at(song.beat_time_s(13.5)) == pytest.approx(13.5)
     clock = song.routine_clock(playback_start_ns=10**9, latency_ns=50_000_000)
-    assert clock.time_of(0) == 10**9 + int(3.7e9) + 50_000_000  # routine starts after the intro
+    assert (
+        clock.time_of(0) == 10**9 + int(3.7e9) + 50_000_000
+    )  # routine starts after the intro
 
 
 def test_sample_routine_fits_the_test_track(demo_library) -> None:
     routine = load_routine(ROOT / "tests/fixtures/sample-routine.json")
     test_track = load_library(demo_library)[DEMO_ID]
-    assert test_track.routine_start_beat + routine.total_counts <= test_track.duration_beats
+    assert (
+        test_track.routine_start_beat + routine.total_counts
+        <= test_track.duration_beats
+    )
 
 
 def _song_dict(**changes) -> dict:
@@ -119,7 +126,11 @@ def test_licence_and_source_are_optional(tmp_path) -> None:
     for key in ("license", "source", "artist", "attribution"):
         del data[key]
     song = Song.from_dict(data, tmp_path)
-    assert song.license.name == "unspecified (personal use)" and song.source == "" and song.artist == ""
+    assert (
+        song.license.name == "unspecified (personal use)"
+        and song.source == ""
+        and song.artist == ""
+    )
 
 
 def test_missing_fields_and_audio(tmp_path) -> None:
@@ -133,14 +144,18 @@ def test_missing_fields_and_audio(tmp_path) -> None:
 
 
 def test_song_warnings(tmp_path) -> None:
-    song = Song.from_dict(_song_dict(bpm=128, beat_map={"method": "librosa", "verified": False}), tmp_path)
+    song = Song.from_dict(
+        _song_dict(bpm=128, beat_map={"method": "librosa", "verified": False}), tmp_path
+    )
     assert any("design range" in w for w in song.warnings)
     assert any("not verified" in w for w in song.warnings)
 
 
 def test_library_can_skip_songs_without_audio(demo_library, tmp_path) -> None:
     (tmp_path / DEMO_ID).mkdir()
-    (tmp_path / DEMO_ID / "song.json").write_bytes((demo_library / DEMO_ID / "song.json").read_bytes())
+    (tmp_path / DEMO_ID / "song.json").write_bytes(
+        (demo_library / DEMO_ID / "song.json").read_bytes()
+    )
     with pytest.raises(SongError, match="audio file missing"):
         load_library(tmp_path)
     assert load_library(tmp_path, skip_missing_audio=True) == {}
@@ -191,21 +206,32 @@ def test_estimate_beat_map_on_the_demo_track(demo_library) -> None:
 def test_update_song_creates_a_loadable_skeleton(demo_library, tmp_path) -> None:
     song_dir = tmp_path / "new_track"
     song_dir.mkdir()
-    (song_dir / "track.wav").write_bytes((demo_library / DEMO_ID / "demo.wav").read_bytes())
+    (song_dir / "track.wav").write_bytes(
+        (demo_library / DEMO_ID / "demo.wav").read_bytes()
+    )
     fit = update_song(song_dir, "track.wav")
     data = json.loads((song_dir / "song.json").read_text())
-    assert data["bpm"] == pytest.approx(150, abs=0.05) and data["beat_map"]["verified"] is False
+    assert (
+        data["bpm"] == pytest.approx(150, abs=0.05)
+        and data["beat_map"]["verified"] is False
+    )
     assert data["duration_beats"] == pytest.approx(80, abs=1)
     assert Song.load(song_dir).title == "new_track"  # loads without a licence
     # Updating an existing song keeps the human-entered fields.
-    data |= {"license": {"name": "CC-BY-4.0", "url": "https://example.org"}, "source": "test"}
+    data |= {
+        "license": {"name": "CC-BY-4.0", "url": "https://example.org"},
+        "source": "test",
+    }
     (song_dir / "song.json").write_text(json.dumps(data))
     update_song(song_dir)
     song = Song.load(song_dir)
-    assert song.license.name == "CC-BY-4.0" and song.bpm == pytest.approx(fit.bpm, abs=1e-3)
+    assert song.license.name == "CC-BY-4.0" and song.bpm == pytest.approx(
+        fit.bpm, abs=1e-3
+    )
 
 
 # --- beat grid & check app ---------------------------------------------------------
+
 
 def test_beat_grid_nudges() -> None:
     g = BeatGrid(150.0, 0.5, 8)
@@ -213,7 +239,12 @@ def test_beat_grid_nudges() -> None:
     assert g.nudge_offset_ms(-1000).first_beat_s == 0.0  # never before the file starts
     assert g.nudge_bpm(0.01).bpm == pytest.approx(150.01)
     assert g.shift_downbeat(-1).routine_start_beat == 7
-    assert g.is_bar_start(8) and g.is_bar_start(16) and g.is_bar_start(0) and not g.is_bar_start(9)
+    assert (
+        g.is_bar_start(8)
+        and g.is_bar_start(16)
+        and g.is_bar_start(0)
+        and not g.is_bar_start(9)
+    )
     assert g.beats_between(0.0, 1.31) == [0, 1, 2]  # beats at 0.5, 0.9, 1.3
     assert g.beat_at(g.time_of(12.25)) == pytest.approx(12.25)
 
@@ -224,7 +255,9 @@ def test_click_track_is_sample_accurate() -> None:
     mix = render_click_track(np.zeros(sr * 2), sr, grid)
     onsets = np.flatnonzero(np.abs(mix) > 1e-3)
     starts = onsets[np.insert(np.diff(onsets) > 100, 0, True)]
-    assert starts.tolist() == [round(grid.time_of(b) * sr) + 1 for b in range(4)]  # sin(0)=0 at the very first sample
+    assert starts.tolist() == [
+        round(grid.time_of(b) * sr) + 1 for b in range(4)
+    ]  # sin(0)=0 at the very first sample
 
 
 def test_low_band_envelope_peaks_on_the_kicks() -> None:
@@ -232,20 +265,31 @@ def test_low_band_envelope_peaks_on_the_kicks() -> None:
     env = low_band_envelope(song.samples, song.sample_rate, hop_s=0.005)
     for beat in (2, 30):
         i = int(song.beat_time(beat) / 0.005)
-        assert env[i + 1:i + 10].max() > 4 * env[i - 10:i - 2].mean()
+        assert env[i + 1 : i + 10].max() > 4 * env[i - 10 : i - 2].mean()
 
 
-def test_beatcheck_app_saves_a_verified_beat_map_headless(demo_library, tmp_path) -> None:
+def test_beatcheck_app_saves_a_verified_beat_map_headless(
+    demo_library, tmp_path
+) -> None:
     song_dir = tmp_path / DEMO_ID
     song_dir.mkdir()
     for f in ("song.json", "demo.wav"):
         (song_dir / f).write_bytes((demo_library / DEMO_ID / f).read_bytes())
-    env = os.environ | {"SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
+    env = os.environ | {
+        "SDL_VIDEODRIVER": "dummy",
+        "SDL_AUDIODRIVER": "dummy",
+        "PYGAME_HIDE_SUPPORT_PROMPT": "1",
+    }
     script = "import sys; from parapara.game import beatcheck; beatcheck.run([sys.argv[1], '--auto'])"
     result = subprocess.run([sys.executable, "-c", script, str(song_dir)], capture_output=True,
                             text=True, env=env, timeout=60)  # fmt: skip
     assert result.returncode == 0, result.stderr
     saved = json.loads((song_dir / "song.json").read_text())
-    assert saved["first_beat_s"] == pytest.approx(0.505) and saved["bpm"] == pytest.approx(150.01)
-    assert saved["beat_map"]["method"] == "manual" and saved["beat_map"]["verified"] is True
+    assert saved["first_beat_s"] == pytest.approx(0.505) and saved[
+        "bpm"
+    ] == pytest.approx(150.01)
+    assert (
+        saved["beat_map"]["method"] == "manual"
+        and saved["beat_map"]["verified"] is True
+    )
     assert "verified by ear" in saved["beat_map"]["notes"]

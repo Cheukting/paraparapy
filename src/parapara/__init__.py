@@ -42,6 +42,8 @@ __version__ = _version()
 
 def main() -> None:
     """Console entry point (``parapara``): starts the game, like ``parapara-play``."""
-    from parapara.game import app  # pygame only on demand (see the process boundary above)
+    from parapara.game import (
+        app,  # pygame only on demand (see the process boundary above)
+    )
 
     app.main()

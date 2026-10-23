@@ -66,7 +66,9 @@ def test_left_arm_and_hand_direction() -> None:
     left = ArmPose(upper=LEFT, fore=UP, hand=(-1, 1, 0))
     arms = arm_directions(world_pose(left=left)[None])
     np.testing.assert_allclose(arms["left"].fore[0], UP, atol=1e-6)
-    np.testing.assert_allclose(arms["left"].hand[0], np.array([-1, 1, 0]) / np.sqrt(2), atol=1e-6)
+    np.testing.assert_allclose(
+        arms["left"].hand[0], np.array([-1, 1, 0]) / np.sqrt(2), atol=1e-6
+    )
 
 
 def test_hidden_hips_fall_back_to_vertical_up() -> None:
@@ -124,7 +126,11 @@ def test_torso_motion_measures_turn_and_lean() -> None:
 
 def test_analyze_static_t_pose() -> None:
     poses = [world_pose(*T_POSE, lean_deg=10) for _ in range(5)]
-    rec = recording(poses, [i * 40_000_000 for i in range(5)], {"clip_id": "t_pose", "kind": "static"})
+    rec = recording(
+        poses,
+        [i * 40_000_000 for i in range(5)],
+        {"clip_id": "t_pose", "kind": "static"},
+    )
     report = pose_analysis.analyze_static(rec)
     assert report.arms["right"]["upper"] == [1.0, 0.0, 0.0]
     assert report.arms["left"]["fore"] == [-1.0, 0.0, 0.0]
@@ -137,7 +143,9 @@ def test_analyze_static_t_pose() -> None:
 # --- analysis: blocks ------------------------------------------------------------
 
 
-@pytest.mark.parametrize("block_id", ["chop_right", "sweep_to_right_4", "flick_clap_to_right"])
+@pytest.mark.parametrize(
+    "block_id", ["chop_right", "sweep_to_right_4", "flick_clap_to_right"]
+)
 def test_analyze_block_finds_lag_and_perfect_fit(block_id) -> None:
     report = pose_analysis.analyze_block(_danced_block(block_id, lag_s=0.3))
     assert report.best_lag_ms == pytest.approx(300, abs=25)
@@ -167,7 +175,9 @@ def test_analyze_block_reports_a_wrongly_danced_pose() -> None:
         rec.pose_world[i] = world_pose(right=wrong)
     report = pose_analysis.analyze_block(rec)
     salute = next(f for f in report.keyframes if f.beat == 1)
-    assert salute.seen_upper == pytest.approx(list(np.round(np.array(wrong.upper), 2)), abs=0.01)
+    assert salute.seen_upper == pytest.approx(
+        list(np.round(np.array(wrong.upper), 2)), abs=0.01
+    )
     assert salute.error_upper_deg == pytest.approx(
         float(angle_deg(np.array(wrong.upper), salute_target.upper)), abs=1
     )
@@ -179,11 +189,13 @@ def test_analyze_session_cli_writes_report(tmp_path, capsys) -> None:
     (session / "session.json").write_text("{}")
     _danced_block("knock_right", 0.1).save(session / "block_knock_right.npz")
     poses = [world_pose(*T_POSE)] * 3
-    recording(poses, [0, 40_000_000, 80_000_000], {"clip_id": "t_pose", "kind": "static"}).save(
-        session / "t_pose.npz"
-    )
+    recording(
+        poses, [0, 40_000_000, 80_000_000], {"clip_id": "t_pose", "kind": "static"}
+    ).save(session / "t_pose.npz")
     report = pose_analysis.run([str(session)])
-    assert set(report["static"]) == {"t_pose"} and set(report["blocks"]) == {"block_knock_right"}
+    assert set(report["static"]) == {"t_pose"} and set(report["blocks"]) == {
+        "block_knock_right"
+    }
     saved = json.loads((session / "analysis.json").read_text())
     block = saved["blocks"]["block_knock_right"]
     assert block["block_id"] == "knock_right"

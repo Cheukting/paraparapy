@@ -71,8 +71,16 @@ class Clip:
         return self.kind == "static"
 
 
-def _static(id: str, title: str, instructions: tuple[str, ...], right: ArmPose, left: ArmPose) -> Clip:
-    return Clip(id, title, instructions, "static", guide=Keyframe(beat=0, right=right, left=left))
+def _static(
+    id: str, title: str, instructions: tuple[str, ...], right: ArmPose, left: ArmPose
+) -> Clip:
+    return Clip(
+        id,
+        title,
+        instructions,
+        "static",
+        guide=Keyframe(beat=0, right=right, left=left),
+    )
 
 
 def _block(block_id: str, title: str, *instructions: str) -> Clip:
@@ -181,7 +189,9 @@ class ClipTimeline:
         clicks = []
         for i in range(total):
             recording_index = i - self.count_in_beats
-            accent = i == 0 or (recording_index >= 0 and recording_index % COUNTS_PER_BAR == 0)
+            accent = i == 0 or (
+                recording_index >= 0 and recording_index % COUNTS_PER_BAR == 0
+            )
             clicks.append((i * self.beat_s, accent))
         return clicks
 
@@ -224,14 +234,20 @@ class ClipTimeline:
             return Phase("done", progress=1.0)
         if t < self.recording_start:
             if self.clip.kind == "static":
-                return Phase("countdown", str(math.ceil(self.countdown_s - t)), self.clip.guide)
+                return Phase(
+                    "countdown", str(math.ceil(self.countdown_s - t)), self.clip.guide
+                )
             beat = int(t / self.beat_s)
             label = str(self.count_in_beats - beat)  # 8, 7, ... 1
             return Phase("count_in", label, self._keyframe_at(0.0), guide_count=1)
-        progress = (t - self.recording_start) / (self.recording_end - self.recording_start)
+        progress = (t - self.recording_start) / (
+            self.recording_end - self.recording_start
+        )
         if self.clip.kind == "static":
             return Phase("recording", "REC", self.clip.guide, progress=progress)
-        position = (t - self.recording_start) / self.beat_s  # counts since recording start
+        position = (
+            t - self.recording_start
+        ) / self.beat_s  # counts since recording start
         index = int(position)
         bar, count = index // COUNTS_PER_BAR + 1, index % COUNTS_PER_BAR + 1
         ahead = position + self.lookahead_counts

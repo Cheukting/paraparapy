@@ -89,7 +89,9 @@ def low_band_envelope(samples: npt.ArrayLike, sr: int, hop_s: float = 0.005,
     """Low-frequency (kick) energy per ``hop_s``, normalized to its 99th percentile."""
     x = np.asarray(samples, dtype=np.float64)
     width = max(1, int(sr / cutoff_hz))
-    low = np.convolve(x, np.ones(width) / width, mode="same")  # moving average = low-pass
+    low = np.convolve(
+        x, np.ones(width) / width, mode="same"
+    )  # moving average = low-pass
     hop = max(1, int(sr * hop_s))
     n = len(low) // hop
     energy = np.sqrt(np.mean(low[: n * hop].reshape(n, hop) ** 2, axis=1))

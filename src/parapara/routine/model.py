@@ -205,7 +205,9 @@ class Block:
 
     def tolerance_for(self, kf: Keyframe) -> float:
         """Effective angular tolerance of one of this block's keyframes."""
-        return self.default_tolerance_deg if kf.tolerance_deg is None else kf.tolerance_deg
+        return (
+            self.default_tolerance_deg if kf.tolerance_deg is None else kf.tolerance_deg
+        )
 
     def mirrored(self, new_id: str, description: str | None = None) -> Block:
         """The left/right mirror image of this block, e.g. Chop-right → Chop-left."""
@@ -233,7 +235,9 @@ def block_issues(block: Block) -> list[str]:
         issues.append(f"{block.id}: keyframe beats must be < duration {block.duration}")
     if any(a >= b for a, b in zip(beats, beats[1:])):
         issues.append(f"{block.id}: keyframe beats must be strictly increasing")
-    if block.kind is BlockKind.FLICK_CLAP and not (block.keyframes and block.keyframes[-1].clap):
+    if block.kind is BlockKind.FLICK_CLAP and not (
+        block.keyframes and block.keyframes[-1].clap
+    ):
         issues.append(f"{block.id}: flick + clap must finish with a clap keyframe")
     return issues
 
@@ -287,7 +291,9 @@ def phrase_issues(blocks: tuple[Block, ...] | list[Block]) -> list[str]:
         if start // COUNTS_PER_BAR != end // COUNTS_PER_BAR:
             issues.append(f"{position} crosses a bar line")
         if start % block.duration != 0:
-            issues.append(f"{position} must start on a multiple of {block.duration} counts")
+            issues.append(
+                f"{position} must start on a multiple of {block.duration} counts"
+            )
         start += block.duration
     return issues
 

@@ -16,7 +16,13 @@ from parapara.generator.routine_generator import (
     generate_routine,
 )
 from parapara.routine import cli
-from parapara.routine.model import COUNTS_PER_BAR, BlockKind, Difficulty, RoutineError, phrase_issues
+from parapara.routine.model import (
+    COUNTS_PER_BAR,
+    BlockKind,
+    Difficulty,
+    RoutineError,
+    phrase_issues,
+)
 from parapara.routine.serialization import load_routine, routine_to_dict
 from parapara.routine.store import (
     END_MARGIN_COUNTS,
@@ -34,7 +40,11 @@ DIFFICULTIES = (Difficulty.EASY, Difficulty.NORMAL, Difficulty.HARD)
 @pytest.fixture
 def song(tmp_path):
     """A song (the generated test track's metadata) in a temporary folder."""
-    s = replace(demo_song_metadata(render_demo_song(phrases=4)), id="song-x", directory=tmp_path / "song-x")
+    s = replace(
+        demo_song_metadata(render_demo_song(phrases=4)),
+        id="song-x",
+        directory=tmp_path / "song-x",
+    )
     s.directory.mkdir()
     s.save()
     return s
@@ -46,7 +56,9 @@ def song(tmp_path):
 def test_units_are_well_formed() -> None:
     for unit in UNITS.values():
         assert unit.counts in (2, 4, 8), unit.name
-        assert unit.finisher == (unit.blocks[-1].kind is BlockKind.FLICK_CLAP), unit.name
+        assert unit.finisher == (unit.blocks[-1].kind is BlockKind.FLICK_CLAP), (
+            unit.name
+        )
     for settings in SETTINGS.values():
         assert set(settings.weights) <= set(UNITS)
         assert any(UNITS[n].finisher for n in settings.weights)
@@ -78,7 +90,9 @@ def test_choreography_conventions() -> None:
 
 def test_repetition_patterns() -> None:
     easy = generate_routine("song-x", 6, Difficulty.EASY).phrases
-    assert easy[0] == easy[1] and easy[2] == easy[3] and easy[4] == easy[0]  # A A B B A A
+    assert (
+        easy[0] == easy[1] and easy[2] == easy[3] and easy[4] == easy[0]
+    )  # A A B B A A
     hard = generate_routine("song-x", 6, Difficulty.HARD).phrases
     assert hard[0] != hard[1] and hard[4] == hard[0]  # A B C D A B
     assert arrange(["A", "B"], 5, "pairs") == ("A", "A", "B", "B", "A")
@@ -89,7 +103,11 @@ def test_difficulty_changes_the_movement() -> None:
         blocks = [b for p in generate_routine("song-z", 8, d).phrases for b in p.blocks]
         return sum(b.duration == 2 for b in blocks) / len(blocks)
 
-    assert short_share(Difficulty.EASY) < short_share(Difficulty.NORMAL) < short_share(Difficulty.HARD)
+    assert (
+        short_share(Difficulty.EASY)
+        < short_share(Difficulty.NORMAL)
+        < short_share(Difficulty.HARD)
+    )
 
 
 def test_generation_is_deterministic_per_song() -> None:
@@ -112,7 +130,10 @@ def test_eight_count_units_start_on_a_bar() -> None:
     for phrase in generate_routine("song-q", 8, Difficulty.NORMAL).phrases:
         start = 0
         for block in phrase.blocks:
-            assert start // COUNTS_PER_BAR == (start + block.duration - 1) // COUNTS_PER_BAR
+            assert (
+                start // COUNTS_PER_BAR
+                == (start + block.duration - 1) // COUNTS_PER_BAR
+            )
             start += block.duration
 
 
@@ -121,7 +142,11 @@ def test_eight_count_units_start_on_a_bar() -> None:
 
 def test_max_phrases_and_fit(song) -> None:
     # 8 intro + 4 * 32 + 8 outro beats; routine starts after the intro.
-    assert max_phrases(song) == (song.duration_beats - song.routine_start_beat - END_MARGIN_COUNTS) // 32 == 4
+    assert (
+        max_phrases(song)
+        == (song.duration_beats - song.routine_start_beat - END_MARGIN_COUNTS) // 32
+        == 4
+    )
     assert fit_issues(generate_routine(song.id, 4), song) == []
     assert "only 4 fit" in fit_issues(generate_routine(song.id, 5), song)[0]
     assert "not 'song-x'" in fit_issues(generate_routine("other", 1), song)[0]
@@ -139,12 +164,16 @@ def test_ensure_generated_writes_missing_routines_only(song, tmp_path) -> None:
 
 def test_install_a_players_routine(song, tmp_path) -> None:
     mine = tmp_path / "my routine.json"
-    mine.write_text(json.dumps(routine_to_dict(generate_routine("whatever", 2, Difficulty.EASY))))
+    mine.write_text(
+        json.dumps(routine_to_dict(generate_routine("whatever", 2, Difficulty.EASY)))
+    )
     target = install_routine(mine, song)  # song id is taken from the target song
     routine = load_routine(target)
     assert target.name == "my-routine.json" and routine.difficulty is Difficulty.CUSTOM
     assert routine.id == "song-x-my-routine" and routine.song_id == "song-x"
-    assert install_routine(mine, song, name="easy").name == "my-easy.json"  # never overwrite generated
+    assert (
+        install_routine(mine, song, name="easy").name == "my-easy.json"
+    )  # never overwrite generated
 
 
 def test_install_rejects_invalid_routines(song, tmp_path) -> None:
@@ -172,7 +201,19 @@ def test_cli_workflow(song, tmp_path, monkeypatch, capsys) -> None:
     cli.main(["generate"])
     assert "wrote easy, normal, hard" in capsys.readouterr().out
     template = tmp_path / "mine.json"
-    cli.main(["template", "--song", "song-x", "--difficulty", "hard", "--phrases", "2", "-o", str(template)])
+    cli.main(
+        [
+            "template",
+            "--song",
+            "song-x",
+            "--difficulty",
+            "hard",
+            "--phrases",
+            "2",
+            "-o",
+            str(template),
+        ]
+    )
     assert json.loads(template.read_text())["difficulty"] == "custom"
     cli.main(["check", str(template), "--song", "song-x"])
     assert "OK, 2 phrases" in capsys.readouterr().out
@@ -199,8 +240,14 @@ def test_import_generates_routines(tmp_path) -> None:
     track = render_demo_song(phrases=3)
     audio = tmp_path / "t.wav"
     write_wav(audio, track.samples, track.sample_rate)
-    song, _ = importer.import_song(audio, importer.SongInfo("T"), library=tmp_path / "lib")
-    assert set(routines_for(song)) == {f"{song.id}-{d}" for d in ("easy", "normal", "hard")}
+    song, _ = importer.import_song(
+        audio, importer.SongInfo("T"), library=tmp_path / "lib"
+    )
+    assert set(routines_for(song)) == {
+        f"{song.id}-{d}" for d in ("easy", "normal", "hard")
+    }
     assert not (tmp_path / "lib2").exists()
-    song2, _ = importer.import_song(audio, importer.SongInfo("U"), library=tmp_path / "lib2", routines=False)
+    song2, _ = importer.import_song(
+        audio, importer.SongInfo("U"), library=tmp_path / "lib2", routines=False
+    )
     assert not (song2.directory / "routines").exists()

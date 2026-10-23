@@ -37,7 +37,9 @@ def weighted_angle_deg(a: np.ndarray, b: tuple[float, float, float] | np.ndarray
     return float(np.degrees(np.arccos(np.clip(u @ v / (nu * nv), -1.0, 1.0))))
 
 
-def arm_error_deg(arm: ArmFeatures, target: ArmPose, depth_weight: float = DEPTH_WEIGHT) -> float | None:
+def arm_error_deg(
+    arm: ArmFeatures, target: ArmPose, depth_weight: float = DEPTH_WEIGHT
+) -> float | None:
     """Weighted mean segment error of one arm, or ``None`` if not visible."""
     if not arm.valid or not np.all(np.isfinite(arm.fore)):
         return None

@@ -106,15 +106,24 @@ def ensure_model(
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / spec.filename
 
-    if target.exists() and target.stat().st_size == spec.size and _sha256(target) == spec.sha256:
+    if (
+        target.exists()
+        and target.stat().st_size == spec.size
+        and _sha256(target) == spec.sha256
+    ):
         return target
 
     if on_download is not None:
         on_download(spec)
-    fd, tmp_name = tempfile.mkstemp(dir=directory, prefix=f".{spec.filename}.", suffix=".part")
+    fd, tmp_name = tempfile.mkstemp(
+        dir=directory, prefix=f".{spec.filename}.", suffix=".part"
+    )
     tmp = Path(tmp_name)
     try:
-        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(spec.url, timeout=timeout) as resp:
+        with (
+            os.fdopen(fd, "wb") as out,
+            urllib.request.urlopen(spec.url, timeout=timeout) as resp,
+        ):
             for chunk in iter(lambda: resp.read(1 << 20), b""):
                 out.write(chunk)
         actual = _sha256(tmp)

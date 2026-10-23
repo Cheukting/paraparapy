@@ -65,7 +65,11 @@ def test_console_entry_points_return_none() -> None:
         if not source.exists():
             source = root / "src" / Path(*module.split(".")) / "__init__.py"
         tree = ast.parse(source.read_text())
-        (fn,) = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == func]
+        (fn,) = [
+            n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == func
+        ]
         returns = ast.unparse(fn.returns) if fn.returns else None
         assert returns == "None", f"{name}: {target} is annotated to return {returns}"
-        assert all(r.value is None for r in ast.walk(fn) if isinstance(r, ast.Return)), name
+        assert all(
+            r.value is None for r in ast.walk(fn) if isinstance(r, ast.Return)
+        ), name

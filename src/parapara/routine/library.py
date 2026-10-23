@@ -131,7 +131,9 @@ def _sweep(block_id: str, duration: int, start: Vec3, end: Vec3, label: str) -> 
 
 # From the recording: upper arm out and ~45° forward, forearm up and tilted
 # forward towards the "door".
-_KNOCK = ArmPose(upper=(0.7, 0.1, 0.7), fore=(-0.15, 0.75, 0.65), hand_shape=HandShape.FIST)
+_KNOCK = ArmPose(
+    upper=(0.7, 0.1, 0.7), fore=(-0.15, 0.75, 0.65), hand_shape=HandShape.FIST
+)
 
 KNOCK_RIGHT = Block(
     id="knock_right",
@@ -159,7 +161,9 @@ KNOCK_RIGHT = Block(
 # 2026-10-23, once hits were timed on the unsmoothed arms (before that the
 # judge timed the reach ~50 ms late with this target). The wider tolerance
 # from the 45° days is kept for now.
-_CHOP_OUT = ArmPose(upper=(0.9, 0.42, 0), fore=(0.9, 0.42, 0), hand_shape=HandShape.OPEN)
+_CHOP_OUT = ArmPose(
+    upper=(0.9, 0.42, 0), fore=(0.9, 0.42, 0), hand_shape=HandShape.OPEN
+)
 CHOP_OUT_TOLERANCE_DEG = 40.0
 # Salute fold (from the recording): elbow at shoulder height, out and forward;
 # forearm across the front of the chest, flat hand continuing its line.
@@ -228,9 +232,15 @@ _TRAVEL_RIGHT = (0.7, 0.7, 0)  # backhanded flick: hand up and towards travel
 # it level across the chest, which scored 26-39%). Targets follow the
 # recordings in x/y and only partly in z (depth reads biased towards the
 # camera).
-_FLICK_CROSSED = ArmPose(upper=(0.0, -0.55, 0.85), fore=(-0.6, 0.25, 0.75), hand=_TRAVEL_RIGHT)
-_FLICK_FRONT = ArmPose(upper=(0.23, -0.45, 0.86), fore=(-0.49, 0.2, 0.81), hand=_TRAVEL_RIGHT)
-_FLICK_SIDE = ArmPose(upper=(0.7, -0.55, 0.45), fore=(-0.22, 0.25, 0.85), hand=_TRAVEL_RIGHT)
+_FLICK_CROSSED = ArmPose(
+    upper=(0.0, -0.55, 0.85), fore=(-0.6, 0.25, 0.75), hand=_TRAVEL_RIGHT
+)
+_FLICK_FRONT = ArmPose(
+    upper=(0.23, -0.45, 0.86), fore=(-0.49, 0.2, 0.81), hand=_TRAVEL_RIGHT
+)
+_FLICK_SIDE = ArmPose(
+    upper=(0.7, -0.55, 0.45), fore=(-0.22, 0.25, 0.85), hand=_TRAVEL_RIGHT
+)
 
 FLICK_CLAP_TO_RIGHT = Block(
     id="flick_clap_to_right",

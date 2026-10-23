@@ -80,15 +80,28 @@ def check_framing(sample: PoseSample) -> FramingResult:
     """Check one sample; issues are ordered by what to fix first."""
     pose = sample.pose_image
     if pose is None:
-        return FramingResult((FramingIssue("no_person", "Step into the picture, facing the camera."),))
+        return FramingResult(
+            (FramingIssue("no_person", "Step into the picture, facing the camera."),)
+        )
     if not _visible(pose, P.LEFT_SHOULDER, P.RIGHT_SHOULDER):
-        return FramingResult((FramingIssue("no_shoulders", "Face the camera with your shoulders in view."),))
+        return FramingResult(
+            (
+                FramingIssue(
+                    "no_shoulders", "Face the camera with your shoulders in view."
+                ),
+            )
+        )
 
     width, height = sample.frame_size
     aspect = width / height  # converts frame-width fractions to frame-height fractions
-    rs, ls = pose[P.RIGHT_SHOULDER, :2].astype(float), pose[P.LEFT_SHOULDER, :2].astype(float)
+    rs, ls = (
+        pose[P.RIGHT_SHOULDER, :2].astype(float),
+        pose[P.LEFT_SHOULDER, :2].astype(float),
+    )
     mid_x, shoulder_y = (rs[0] + ls[0]) / 2, (rs[1] + ls[1]) / 2
-    shoulder_w = float(np.hypot((ls[0] - rs[0]), (ls[1] - rs[1]) / aspect))  # in frame widths
+    shoulder_w = float(
+        np.hypot((ls[0] - rs[0]), (ls[1] - rs[1]) / aspect)
+    )  # in frame widths
     reach_x = shoulder_w / 2 + ARM_REACH * shoulder_w
     reach_up = ARM_REACH * shoulder_w * aspect  # same length in frame heights
 
@@ -103,11 +116,17 @@ def check_framing(sample: PoseSample) -> FramingResult:
     hips_in = hips_seen and hip_y <= 1 - MARGIN
 
     if not hips_in:
-        issues.append(FramingIssue("no_hips", "Step back until your hips are in the picture."))
+        issues.append(
+            FramingIssue("no_hips", "Step back until your hips are in the picture.")
+        )
     if shoulder_w < MIN_SHOULDER_WIDTH:
         issues.append(FramingIssue("too_far", "Come a little closer to the camera."))
-    elif (not room_left and not room_right) or (not room_up and (not room_left or not room_right)):
-        issues.append(FramingIssue("too_close", "Step back: leave room to stretch your arms."))
+    elif (not room_left and not room_right) or (
+        not room_up and (not room_left or not room_right)
+    ):
+        issues.append(
+            FramingIssue("too_close", "Step back: leave room to stretch your arms.")
+        )
     else:
         offset = mid_x - 0.5
         if not room_left or offset < -CENTRE_TOLERANCE:
@@ -115,7 +134,12 @@ def check_framing(sample: PoseSample) -> FramingResult:
         elif not room_right or offset > CENTRE_TOLERANCE:
             issues.append(FramingIssue("move_right", "Move a little to your RIGHT."))
         if not room_up:
-            issues.append(FramingIssue("no_headroom", "Step back: leave room above your head for raised arms."))
+            issues.append(
+                FramingIssue(
+                    "no_headroom",
+                    "Step back: leave room above your head for raised arms.",
+                )
+            )
 
     if sample.pose_world is not None:
         yaw = float(torso_motion(sample.pose_world[None])["yaw"][0])

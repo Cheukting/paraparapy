@@ -27,7 +27,11 @@ GOOD = TrackAnalysis(bpm=150.0, first_beat_s=0.5, drift_ms=4.0, beats_used=200, 
 def tracks(tmp_path_factory) -> dict[str, Path]:
     d = tmp_path_factory.mktemp("tracks")
     out = {}
-    for name, kwargs in {"good": {}, "slow": {"bpm": 120.0}, "short": {"phrases": 0, "outro_counts": 0}}.items():
+    for name, kwargs in {
+        "good": {},
+        "slow": {"bpm": 120.0},
+        "short": {"phrases": 0, "outro_counts": 0},
+    }.items():
         song = render_demo_song(**kwargs)
         out[name] = d / f"{name}.wav"
         write_wav(out[name], song.samples, song.sample_rate)
@@ -61,7 +65,9 @@ def test_rejections(changes, text) -> None:
     from dataclasses import replace
 
     report = judge_suitability(replace(GOOD, **changes), "CC-BY-4.0")
-    assert not report.ok and any(text in r for r in report.rejections), report.rejections
+    assert not report.ok and any(text in r for r in report.rejections), (
+        report.rejections
+    )
 
 
 @pytest.mark.parametrize(
@@ -86,14 +92,19 @@ def test_licence_rules() -> None:
     assert license_warnings("CC-BY-4.0") == []
     assert len(license_warnings("CC BY-NC-ND 4.0")) == 2
     assert "share-alike" in license_warnings("CC-BY-SA")[0]
-    assert judge_suitability(None, "CC-BY").rejections[-1] == "no steady beat could be detected"
+    assert (
+        judge_suitability(None, "CC-BY").rejections[-1]
+        == "no steady beat could be detected"
+    )
 
 
 def test_beat_clarity_on_synthetic_envelopes() -> None:
     fps, bpm = 100.0, 150.0
     env = np.full(3000, 0.1)
     on_beat = env.copy()
-    on_beat[(np.arange(0, 30, 0.4) * fps).astype(int) + 2] = 1.0  # spikes on the beats (+ detection lag)
+    on_beat[(np.arange(0, 30, 0.4) * fps).astype(int) + 2] = (
+        1.0  # spikes on the beats (+ detection lag)
+    )
     assert beat_clarity(on_beat, fps, 0.0, bpm) > 5
     assert beat_clarity(env, fps, 0.0, bpm) == pytest.approx(1.0)
 
@@ -101,9 +112,14 @@ def test_beat_clarity_on_synthetic_envelopes() -> None:
 def test_check_track_on_real_audio(tracks) -> None:
     good = check_track(tracks["good"], "own work")
     assert good.ok, good.rejections
-    assert good.analysis.bpm == pytest.approx(150, abs=0.1) and good.analysis.beat_clarity > 1.5
+    assert (
+        good.analysis.bpm == pytest.approx(150, abs=0.1)
+        and good.analysis.beat_clarity > 1.5
+    )
     assert any("BPM" in r for r in check_track(tracks["slow"], "own work").rejections)
-    assert any("too short" in r for r in check_track(tracks["short"], "own work").rejections)
+    assert any(
+        "too short" in r for r in check_track(tracks["short"], "own work").rejections
+    )
     assert not check_track(tracks["noise"], "own work").ok
 
 
@@ -144,12 +160,16 @@ def test_cli_exit_codes_and_catalog(tracks, tmp_path, capsys) -> None:
     with pytest.raises(SystemExit) as rejected:
         importer.main([str(tracks["slow"]), "--library", lib])
     assert rejected.value.code == 2 and "REJECTED" in capsys.readouterr().out
-    importer.main([str(tracks["good"]), "--catalog", "soulbringer-goa-trolls", "--library", lib])
+    importer.main(
+        [str(tracks["good"]), "--catalog", "soulbringer-goa-trolls", "--library", lib]
+    )
     song = Song.load(tmp_path / "lib" / "soulbringer-goa-trolls")
     assert song.license.name == "CC-BY-4.0" and "Soulbringer" in song.attribution
     assert song.source.startswith("https://freemusicarchive.org/")
     importer.main([str(tracks["good"]), "--library", lib])  # nothing but the file
-    assert Song.load(tmp_path / "lib" / "good").title == "good"  # title from the file name
+    assert (
+        Song.load(tmp_path / "lib" / "good").title == "good"
+    )  # title from the file name
 
 
 def test_user_library_location(monkeypatch, tmp_path) -> None:
@@ -165,7 +185,9 @@ def test_load_all_songs_merges_libraries(tracks, monkeypatch, tmp_path) -> None:
     importer.import_song(tracks["good"], INFO, song_id="demo", library=builtin)
     importer.import_song(tracks["good"], INFO, library=user)
     assert set(importer.load_all_songs(builtin=builtin)) == {"demo", "me-demo"}
-    importer.import_song(tracks["good"], INFO, song_id="demo", library=user)  # clashes with built-in
+    importer.import_song(
+        tracks["good"], INFO, song_id="demo", library=user
+    )  # clashes with built-in
     with pytest.raises(SongError, match="exists in both"):
         importer.load_all_songs(builtin=builtin)
 
@@ -180,11 +202,15 @@ def test_fetch_demo_songs_imports_the_catalog(tracks, tmp_path) -> None:
         downloads.append(url)
         path.write_bytes(payload)
 
-    out = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download)
+    out = fetch_demo_songs.fetch_demo_songs(
+        tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download
+    )
     assert out["soulbringer-goa-trolls"].startswith("imported") and len(downloads) == 1
     song = Song.load(tmp_path / "soulbringer-goa-trolls")
     assert song.license.name == "CC-BY-4.0" and "Soulbringer" in song.attribution
-    again = fetch_demo_songs.fetch_demo_songs(tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download)
+    again = fetch_demo_songs.fetch_demo_songs(
+        tmp_path, ids=["soulbringer-goa-trolls"], download=fake_download
+    )
     assert again["soulbringer-goa-trolls"] == "already present" and len(downloads) == 1
 
 
@@ -192,7 +218,9 @@ def test_catalog_entries_are_complete() -> None:
     catalog = json.loads((ROOT / "assets/songs/catalog.json").read_text())
     assert 3 <= len(catalog["candidates"]) <= 4
     for e in catalog["candidates"]:
-        assert e["license"]["name"] == "CC-BY-4.0" and e["license"]["url"].startswith("https://creativecommons.org/")
+        assert e["license"]["name"] == "CC-BY-4.0" and e["license"]["url"].startswith(
+            "https://creativecommons.org/"
+        )
         assert e["title"] in e["attribution"] and e["artist"] in e["attribution"]
         assert 135 <= e["measured"]["bpm"] <= 165 and e["measured"]["drift_ms"] <= 15
     with pytest.raises(KeyError):
@@ -200,7 +228,10 @@ def test_catalog_entries_are_complete() -> None:
 
 
 def test_slugify() -> None:
-    assert importer.slugify("Shane Ivers", "80s Motivational Chiptune!") == "shane-ivers-80s-motivational-chiptune"
+    assert (
+        importer.slugify("Shane Ivers", "80s Motivational Chiptune!")
+        == "shane-ivers-80s-motivational-chiptune"
+    )
     assert importer.slugify("!!!") == "song"
 
 
@@ -220,13 +251,20 @@ def test_jamendo_keeps_only_downloadable_plain_cc_by() -> None:
                _result(4, "http://creativecommons.org/licenses/by/3.0/", allowed=False)]  # fmt: skip
     entries = find_songs.candidates(results)
     assert [e["id"] for e in entries] == ["jamendo-1"]
-    assert entries[0]["license"]["name"] == "CC-BY" and "Track 1" in entries[0]["attribution"]
+    assert (
+        entries[0]["license"]["name"] == "CC-BY"
+        and "Track 1" in entries[0]["attribution"]
+    )
 
 
 def test_jamendo_search_url() -> None:
     url = find_songs.search_url("abc", ("trance", "techno"), 20)
     assert url.startswith("https://api.jamendo.com/v3.0/tracks/?client_id=abc")
-    assert "speed=high+veryhigh" in url and "fuzzytags=trance+techno" in url and "include=licenses+musicinfo" in url
+    assert (
+        "speed=high+veryhigh" in url
+        and "fuzzytags=trance+techno" in url
+        and "include=licenses+musicinfo" in url
+    )
 
 
 def test_jamendo_find_downloads_and_checks(tracks, tmp_path) -> None:
@@ -235,4 +273,6 @@ def test_jamendo_find_downloads_and_checks(tracks, tmp_path) -> None:
     entries = find_songs.find("abc", tmp_path, fetch=lambda url: fake,
                               download=lambda url, path: path.write_bytes(payload))  # fmt: skip
     (e,) = entries
-    assert e["check"]["ok"] and e["check"]["measured"]["bpm"] == pytest.approx(150, abs=0.1)
+    assert e["check"]["ok"] and e["check"]["measured"]["bpm"] == pytest.approx(
+        150, abs=0.1
+    )

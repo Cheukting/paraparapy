@@ -78,7 +78,10 @@ class ScoreKeeper:
     def add_posture(self, features: PoseFeatures | None) -> None:
         if features is None:
             return
-        ok = abs(features.lean_deg) <= POSTURE_MAX_TILT_DEG and abs(features.side_tilt_deg) <= POSTURE_MAX_TILT_DEG
+        ok = (
+            abs(features.lean_deg) <= POSTURE_MAX_TILT_DEG
+            and abs(features.side_tilt_deg) <= POSTURE_MAX_TILT_DEG
+        )
         if self.calibrated:
             ok = ok and features.head_height >= -HEAD_DROP_MAX
         self._posture_n += 1
@@ -90,7 +93,12 @@ class ScoreKeeper:
 
     @property
     def posture_bonus(self) -> int:
-        return round(POSTURE_SHARE_OF_MAX * POINTS_PER_KEYFRAME * len(self._points) * self.posture_share)
+        return round(
+            POSTURE_SHARE_OF_MAX
+            * POINTS_PER_KEYFRAME
+            * len(self._points)
+            * self.posture_share
+        )
 
     def summary(self) -> dict[str, Any]:
         n = len(self._points)
@@ -103,5 +111,7 @@ class ScoreKeeper:
             "grades": {g.value: self.grades.get(g, 0) for g in Grade},
             "max_combo": self.max_combo,
             "posture_pct": round(100 * self.posture_share, 1),
-            "flow_pct": round(100 * sum(self._flow) / len(self._flow), 1) if self._flow else None,
+            "flow_pct": round(100 * sum(self._flow) / len(self._flow), 1)
+            if self._flow
+            else None,
         }

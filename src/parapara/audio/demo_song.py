@@ -35,8 +35,12 @@ def demo_song_metadata(track: DemoSong, directory: Path = Path(".")) -> Song:
         first_beat_s=track.first_beat_s,
         routine_start_beat=track.routine_start_beat,
         duration_beats=track.duration_beats,
-        beat_map=BeatMapInfo("generated", verified=True, drift_ms=0.0,
-                             notes="exact by construction; sections " + str(track.sections)),  # fmt: skip
+        beat_map=BeatMapInfo(
+            "generated",
+            verified=True,
+            drift_ms=0.0,
+            notes="exact by construction; sections " + str(track.sections),
+        ),  # fmt: skip
         directory=directory,
     )
 

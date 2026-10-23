@@ -16,6 +16,15 @@ uv sync
 uv run pytest
 ```
 
+### Development checks
+
+CI runs tests, ruff (lint/format), pyrefly, and `pip-audit`. Locally, use [prek](https://github.com/j178/prek) to run the same checks before committing:
+
+```sh
+prek install
+prek run --all-files
+```
+
 ## Capture debug view
 
 ```sh

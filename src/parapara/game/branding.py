@@ -60,8 +60,11 @@ def icon(size: int = 256, path: Path = LOGO) -> pygame.Surface | None:
         return None
     (cx, cy), half = FLOWER_CENTRE, FLOWER_HALF
     crop = logo.subsurface(pygame.Rect(cx - half, cy - half, 2 * half, 2 * half))
-    out = pygame.transform.smoothscale(crop, (size, size)).convert_alpha() if pygame.display.get_surface() \
+    out = (
+        pygame.transform.smoothscale(crop, (size, size)).convert_alpha()
+        if pygame.display.get_surface()
         else pygame.transform.smoothscale(crop, (size, size))
+    )
     mask = pygame.Surface((size, size), pygame.SRCALPHA)
     mask.fill((255, 255, 255, 0))
     pygame.draw.circle(mask, (255, 255, 255, 255), (size // 2, size // 2), size // 2)
@@ -85,7 +88,9 @@ def main() -> None:
         raise SystemExit(f"logo not found: {LOGO}")
     pygame.image.save(mark, str(BRANDING_DIR / "paraparapy-wordmark.png"))
     pygame.image.save(ico, str(BRANDING_DIR / "paraparapy-icon.png"))
-    print(f"wrote {BRANDING_DIR / 'paraparapy-wordmark.png'} and {BRANDING_DIR / 'paraparapy-icon.png'}")
+    print(
+        f"wrote {BRANDING_DIR / 'paraparapy-wordmark.png'} and {BRANDING_DIR / 'paraparapy-icon.png'}"
+    )
     pygame.quit()
 
 

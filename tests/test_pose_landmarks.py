@@ -23,7 +23,9 @@ def test_upper_body_drawing_includes_pose_hand_points_but_no_legs() -> None:
     for side in ("LEFT", "RIGHT"):
         for joint in ("SHOULDER", "ELBOW", "WRIST", "INDEX", "PINKY", "THUMB"):
             assert PoseLandmark[f"{side}_{joint}"] in used
-    assert not any(p.name.endswith(("KNEE", "ANKLE", "HEEL", "FOOT_INDEX")) for p in used)
+    assert not any(
+        p.name.endswith(("KNEE", "ANKLE", "HEEL", "FOOT_INDEX")) for p in used
+    )
 
 
 def test_pose_sample_pickles_and_reports_timing() -> None:

@@ -77,7 +77,10 @@ class RunRecorder:
             ``skipped_pct``: camera frames that were never processed.
         """
         if len(self._rows) < 2:
-            return {"samples": len(self._rows), "error": "not enough samples after warm-up"}
+            return {
+                "samples": len(self._rows),
+                "error": "not enough samples after warm-up",
+            }
         a = np.array(self._rows, dtype=np.float64)
         captured, processed, index = a[:, 0], a[:, 1], a[:, 2]
         duration_s = (processed[-1] - processed[0]) / 1e9
@@ -87,8 +90,12 @@ class RunRecorder:
             "samples": len(a),
             "duration_s": round(duration_s, 2),
             "tracking_fps": _r((len(a) - 1) / duration_s if duration_s > 0 else 0.0),
-            "camera_fps": _r(delivered / captured_span_s if captured_span_s > 0 else 0.0),
-            "skipped_pct": _r(100 * (1 - (len(a) - 1) / delivered) if delivered > 0 else 0.0),
+            "camera_fps": _r(
+                delivered / captured_span_s if captured_span_s > 0 else 0.0
+            ),
+            "skipped_pct": _r(
+                100 * (1 - (len(a) - 1) / delivered) if delivered > 0 else 0.0
+            ),
             "pose_ms": _stats(a[:, 3]),
             "camera_to_landmarks_ms": _stats(a[:, 4]),
             "person_found_pct": _r(100 * a[:, 5].mean()),
@@ -135,7 +142,9 @@ def environment() -> dict[str, str]:
     }
 
 
-def write_log(kind: str, payload: dict[str, Any], log_dir: Path = DEFAULT_LOG_DIR) -> Path:
+def write_log(
+    kind: str, payload: dict[str, Any], log_dir: Path = DEFAULT_LOG_DIR
+) -> Path:
     """Write ``payload`` (plus timestamp and environment) to
     ``<log_dir>/<kind>-YYYYmmdd-HHMMSS.json`` and return the path."""
     log_dir.mkdir(parents=True, exist_ok=True)

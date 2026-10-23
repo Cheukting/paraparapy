@@ -42,7 +42,9 @@ def routine_to_dict(routine: Routine) -> dict[str, Any]:
         "id": routine.id,
         "song_id": routine.song_id,
         "difficulty": routine.difficulty.value,
-        "phrases": [[block.id for block in phrase.blocks] for phrase in routine.phrases],
+        "phrases": [
+            [block.id for block in phrase.blocks] for phrase in routine.phrases
+        ],
     }
 
 
@@ -57,7 +59,9 @@ def routine_from_dict(
     """
     version = data.get("format_version")
     if version != FORMAT_VERSION:
-        raise RoutineError([f"unsupported format_version {version!r}, expected {FORMAT_VERSION}"])
+        raise RoutineError(
+            [f"unsupported format_version {version!r}, expected {FORMAT_VERSION}"]
+        )
 
     missing = [k for k in ("id", "song_id", "difficulty", "phrases") if k not in data]
     if missing:
@@ -76,9 +80,13 @@ def routine_from_dict(
         unknown = [b for b in block_ids if b not in library]
         if unknown:
             hints = []
-            for name in unknown:  # typos in hand-written routines: suggest the closest names
+            for (
+                name
+            ) in unknown:  # typos in hand-written routines: suggest the closest names
                 close = difflib.get_close_matches(name, list(library), n=1)
-                hints.append(f"{name!r} (did you mean {close[0]!r}?)" if close else repr(name))
+                hints.append(
+                    f"{name!r} (did you mean {close[0]!r}?)" if close else repr(name)
+                )
             issues.append(f"phrase {p_index}: unknown block id(s) [{', '.join(hints)}] "
                           "(list them with `parapara-routines blocks`)")  # fmt: skip
             continue
@@ -90,12 +98,17 @@ def routine_from_dict(
     if issues:
         raise RoutineError(issues)
     return Routine(
-        id=data["id"], song_id=data["song_id"], difficulty=difficulty, phrases=tuple(phrases)
+        id=data["id"],
+        song_id=data["song_id"],
+        difficulty=difficulty,
+        phrases=tuple(phrases),
     )
 
 
 def save_routine(routine: Routine, path: Path) -> None:
-    path.write_text(json.dumps(routine_to_dict(routine), indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(routine_to_dict(routine), indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def load_routine(path: Path, library: Mapping[str, Block] = BLOCK_LIBRARY) -> Routine:

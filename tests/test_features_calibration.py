@@ -5,7 +5,11 @@ import pytest
 from pose_synth import image_pose, recording, world_pose
 
 from parapara.pose.calibration import Calibration, CalibrationError, calibrate
-from parapara.pose.features import FeatureExtractor, as_arm_directions, extract_recording
+from parapara.pose.features import (
+    FeatureExtractor,
+    as_arm_directions,
+    extract_recording,
+)
 from parapara.pose.landmarks import PoseSample
 from parapara.routine.geometry import DOWN, LEFT, RIGHT, angle_between_deg
 from parapara.routine.model import ArmPose
@@ -74,7 +78,9 @@ def test_features_of_a_t_pose() -> None:
     assert last.wrist_distance == pytest.approx((0.35 + 4 * 0.22) / 0.35, abs=0.01)
     assert abs(last.lean_deg) < 0.1 and abs(last.shoulder_tilt_deg) < 0.1
     # Right wrist out to the dancer's right at shoulder height: 0.5 + 2*0.63 widths.
-    np.testing.assert_allclose(last.right_wrist, [0.5 + (0.22 + 0.22) / 0.35, 0, 0], atol=0.01)
+    np.testing.assert_allclose(
+        last.right_wrist, [0.5 + (0.22 + 0.22) / 0.35, 0, 0], atol=0.01
+    )
     assert last.left_wrist[0] < 0
 
 
@@ -86,7 +92,9 @@ def test_filters_reduce_frame_to_frame_jitter() -> None:
     raw = arm_directions(rec.pose_world)["right"].fore
 
     def jitter(d):
-        return np.degrees(np.arccos(np.clip((d[1:] * d[:-1]).sum(-1), -1, 1)))[10:].mean()
+        return np.degrees(np.arccos(np.clip((d[1:] * d[:-1]).sum(-1), -1, 1)))[
+            10:
+        ].mean()
 
     assert jitter(smooth) < jitter(raw) / 2
 
@@ -128,11 +136,15 @@ def test_analysis_saves_calibration_and_tuning_runs(tmp_path) -> None:
     _clip(*T_ARMS, n=12).save(session / "t_pose.npz")
     report = pose_analysis.analyze_session(session)
     assert report["calibration"]["shoulder_width_m"] == pytest.approx(0.35, abs=1e-3)
-    assert Calibration.load(session / "calibration.json").shoulder_width_m == pytest.approx(0.35, abs=1e-3)
+    assert Calibration.load(
+        session / "calibration.json"
+    ).shoulder_width_m == pytest.approx(0.35, abs=1e-3)
 
     tuning = filter_tuning.tune(session)  # static clips only: jitter, no lag
     assert tuning["raw_jitter_deg"] == 0.0
-    assert all("jitter_deg" in row and "lag_ms" not in row for row in tuning["landmarks"])
+    assert all(
+        "jitter_deg" in row and "lag_ms" not in row for row in tuning["landmarks"]
+    )
 
 
 def test_analysis_reports_rejected_calibration(tmp_path) -> None:
@@ -159,9 +171,14 @@ def test_timing_copy_follows_the_arm_without_smoothing_lag() -> None:
     for i in range(12):  # 30 fps: arm down for 10 frames, then out
         t_ns = i * 33_333_333
         world = world_pose(down if i < 10 else out)
-        features.append(extractor.update(PoseSample(i, t_ns, t_ns, (640, 480), image, world)))
+        features.append(
+            extractor.update(PoseSample(i, t_ns, t_ns, (640, 480), image, world))
+        )
     snapped = features[10]
     timing, smoothed = snapped.for_timing().right, snapped.right
-    assert angle_between_deg(timing.upper, RIGHT) < 2.0 and angle_between_deg(timing.fore, RIGHT) < 2.0
+    assert (
+        angle_between_deg(timing.upper, RIGHT) < 2.0
+        and angle_between_deg(timing.fore, RIGHT) < 2.0
+    )
     assert angle_between_deg(smoothed.upper, RIGHT) > 10.0  # the smoothed arm lags
     assert snapped.for_timing().left.valid and snapped.for_timing().t_ns == snapped.t_ns

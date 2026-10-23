@@ -51,14 +51,20 @@ class SharedFrameBuffer:
     """
 
     def __init__(
-        self, shm: shared_memory.SharedMemory, shape: tuple[int, int, int], lock: Any, owner: bool
+        self,
+        shm: shared_memory.SharedMemory,
+        shape: tuple[int, int, int],
+        lock: Any,
+        owner: bool,
     ) -> None:
         self._shm = shm
         self._lock = lock
         self._owner = owner
         self.shape = shape
         self._header = np.ndarray((_HEADER_FIELDS,), dtype=np.int64, buffer=shm.buf)
-        self._frame = np.ndarray(shape, dtype=np.uint8, buffer=shm.buf, offset=_HEADER_BYTES)
+        self._frame = np.ndarray(
+            shape, dtype=np.uint8, buffer=shm.buf, offset=_HEADER_BYTES
+        )
 
     @staticmethod
     def nbytes(shape: tuple[int, int, int]) -> int:
@@ -78,16 +84,22 @@ class SharedFrameBuffer:
         shm = shared_memory.SharedMemory(name=name, track=False)
         if shm.size < cls.nbytes(shape):
             shm.close()
-            raise ValueError(f"shared memory {name!r} is too small for frames of shape {shape}")
+            raise ValueError(
+                f"shared memory {name!r} is too small for frames of shape {shape}"
+            )
         return cls(shm, shape, lock, owner=False)
 
     @property
     def name(self) -> str:
         return self._shm.name
 
-    def write(self, frame: npt.NDArray[np.uint8], frame_index: int, captured_ns: int) -> None:
+    def write(
+        self, frame: npt.NDArray[np.uint8], frame_index: int, captured_ns: int
+    ) -> None:
         if frame.shape != self.shape or frame.dtype != np.uint8:
-            raise ValueError(f"expected uint8 frame of shape {self.shape}, got {frame.dtype} {frame.shape}")
+            raise ValueError(
+                f"expected uint8 frame of shape {self.shape}, got {frame.dtype} {frame.shape}"
+            )
         with self._lock:
             self._frame[...] = frame
             self._header[:] = (frame_index, captured_ns)

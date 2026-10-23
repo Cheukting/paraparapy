@@ -10,20 +10,21 @@ exactly what was put in.
 
 import numpy as np
 
-from parapara.routine.geometry import DOWN, angle_between_deg, slerp
-from parapara.routine.library import BLOCK_LIBRARY
-from parapara.routine.model import ArmPose
-
 from parapara.pose.landmarks import NUM_POSE_LANDMARKS
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
+from parapara.routine.geometry import DOWN, angle_between_deg, slerp
+from parapara.routine.library import BLOCK_LIBRARY
+from parapara.routine.model import ArmPose
 
 SHOULDER_HALF = 0.175  # metres
 TORSO = 0.47
 UPPER, FORE, HAND = 0.22, 0.22, 0.08
 
 # Body-frame axes (right, up, forward) in MediaPipe coordinates, unrotated.
-BODY_TO_MP = np.array([[-1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]])  # rows: right, up, forward
+BODY_TO_MP = np.array(
+    [[-1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]]
+)  # rows: right, up, forward
 
 
 def rotation(lean_deg: float = 0.0, turn_deg: float = 0.0) -> np.ndarray:
@@ -35,7 +36,9 @@ def rotation(lean_deg: float = 0.0, turn_deg: float = 0.0) -> np.ndarray:
     return turn @ lean
 
 
-def world_pose(right=None, left=None, lean_deg=0.0, turn_deg=0.0, hips_visible=True) -> np.ndarray:
+def world_pose(
+    right=None, left=None, lean_deg=0.0, turn_deg=0.0, hips_visible=True
+) -> np.ndarray:
     """One (33, 5) MediaPipe world pose. ``right``/``left`` are ArmPose-like
     objects (``upper``, ``fore``, optional ``hand``) or ``None`` (arm down)."""
     rot = rotation(lean_deg, turn_deg)
@@ -67,13 +70,19 @@ def world_pose(right=None, left=None, lean_deg=0.0, turn_deg=0.0, hips_visible=T
     return pose.astype(np.float32)
 
 
-def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict,
-              images: list[np.ndarray] | None = None) -> Recording:
+def recording(
+    poses: list[np.ndarray],
+    times_ns: list[int],
+    metadata: dict,
+    images: list[np.ndarray] | None = None,
+) -> Recording:
     """A Recording of world ``poses``; image landmarks default to a copy of the
     world ones (fine unless the framing check is involved: pass ``images``)."""
     n = len(poses)
     arr = np.stack(poses).astype(np.float32)
-    image_arr = np.stack(images).astype(np.float32) if images is not None else arr.copy()
+    image_arr = (
+        np.stack(images).astype(np.float32) if images is not None else arr.copy()
+    )
     return Recording(
         frame_index=np.arange(n, dtype=np.int64),
         captured_ns=np.asarray(times_ns, dtype=np.int64),
@@ -86,8 +95,9 @@ def recording(poses: list[np.ndarray], times_ns: list[int], metadata: dict,
     )
 
 
-def image_pose(mid_x=0.52, shoulder_y=0.49, shoulder_w=0.19, hip_y=0.87,
-               hips_visible=True) -> np.ndarray:
+def image_pose(
+    mid_x=0.52, shoulder_y=0.49, shoulder_w=0.19, hip_y=0.87, hips_visible=True
+) -> np.ndarray:
     """(33, 5) normalized image landmarks of a player standing upright, facing
     an unmirrored camera (their right shoulder at the smaller x). Defaults are
     the neutral pose measured on 2026-10-18; arms hang down."""
@@ -107,7 +117,9 @@ def image_pose(mid_x=0.52, shoulder_y=0.49, shoulder_w=0.19, hip_y=0.87,
     return pose.astype(np.float32)
 
 
-def danced_block(block_id: str, lag_s: float, bpm: float = 120, fps: float = 50, bars: int = 2):
+def danced_block(
+    block_id: str, lag_s: float, bpm: float = 120, fps: float = 50, bars: int = 2
+):
     """A recording of a dancer moving smoothly through ``block_id``: each arm
     segment turns at constant speed from one keyframe's direction to the
     next, arriving exactly ``lag_s`` after each keyframe's beat."""
@@ -115,7 +127,10 @@ def danced_block(block_id: str, lag_s: float, bpm: float = 120, fps: float = 50,
     beat_s = 60 / bpm
     count_in = 4
     first_beat_ns = 1_000_000_000
-    beat_times = [first_beat_ns + int((i - count_in) * beat_s * 1e9) for i in range(count_in + bars * 8)]
+    beat_times = [
+        first_beat_ns + int((i - count_in) * beat_s * 1e9)
+        for i in range(count_in + bars * 8)
+    ]
     times = np.arange(0, bars * 8 * beat_s, 1 / fps)
     kfs = block.keyframes
 
@@ -125,7 +140,11 @@ def danced_block(block_id: str, lag_s: float, bpm: float = 120, fps: float = 50,
     poses = []
     for t in times:
         position = ((t - lag_s) / beat_s) % block.duration
-        k = max(i for i, kf in enumerate(kfs) if kf.beat <= position + 1e-9) if position >= kfs[0].beat else len(kfs) - 1
+        k = (
+            max(i for i, kf in enumerate(kfs) if kf.beat <= position + 1e-9)
+            if position >= kfs[0].beat
+            else len(kfs) - 1
+        )
         a, nxt = kfs[k], kfs[(k + 1) % len(kfs)]
         span = (nxt.beat - a.beat) % block.duration or block.duration
         frac = ((position - a.beat) % block.duration) / span
@@ -147,7 +166,9 @@ def slerp_safe(a, b, t):
     return slerp(a, b, t)
 
 
-def routine_play_samples(song, routine, playback_start_ns: int, lag_s: float = 0.0, fps: float = 30.0):
+def routine_play_samples(
+    song, routine, playback_start_ns: int, lag_s: float = 0.0, fps: float = 30.0
+):
     """PoseSamples of a perfect player: the demo dancer's own motion (which is
     exact on every scored keyframe), performed ``lag_s`` late, seen by a
     camera at ``fps`` from audio time 0 to the end of the routine + 1 bar."""
@@ -166,5 +187,9 @@ def routine_play_samples(song, routine, playback_start_ns: int, lag_s: float = 0
         if p.clap_flash > 0.9:  # hands together on the clap
             world[16, :3] = world[15, :3]
         t_ns = playback_start_ns + int(t * 1e9)
-        samples.append(PoseSample(i, t_ns, t_ns + 20_000_000, (640, 480), image, world, pose_ms=20.0))
+        samples.append(
+            PoseSample(
+                i, t_ns, t_ns + 20_000_000, (640, 480), image, world, pose_ms=20.0
+            )
+        )
     return samples

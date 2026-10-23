@@ -11,14 +11,23 @@ import textwrap
 import numpy as np
 import pytest
 
-from parapara.diagnostics.live_stats import CameraRateMeter, CaptureStats, RateMeter, RollingMean
+from parapara.diagnostics.live_stats import (
+    CameraRateMeter,
+    CaptureStats,
+    RateMeter,
+    RollingMean,
+)
 from parapara.game.overlay import to_screen, visible
 from parapara.pose.landmarks import PoseSample
 
 
 def test_to_screen_scales_and_mirrors() -> None:
     pts = [(0.0, 0.0), (0.25, 0.5), (1.0, 1.0)]
-    assert to_screen(pts, (640, 480), mirrored=False) == [(0, 0), (160, 240), (640, 480)]
+    assert to_screen(pts, (640, 480), mirrored=False) == [
+        (0, 0),
+        (160, 240),
+        (640, 480),
+    ]
     assert to_screen(pts, (640, 480), mirrored=True) == [(640, 0), (480, 240), (0, 480)]
 
 
@@ -114,7 +123,11 @@ RENDER_SCRIPT = textwrap.dedent(
 def test_debug_view_draws_left_wrist_on_correct_side_headless() -> None:
     env = os.environ | {"SDL_VIDEODRIVER": "dummy", "PYGAME_HIDE_SUPPORT_PROMPT": "1"}
     out = subprocess.run(
-        [sys.executable, "-c", RENDER_SCRIPT], capture_output=True, text=True, env=env, check=True
+        [sys.executable, "-c", RENDER_SCRIPT],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
     ).stdout.split("\n")
     # Unmirrored: the dancer's left wrist appears on the right of the image
     # (x=160); mirrored it appears on the left (x=40). Drawn in LEFT_COLOUR.
@@ -138,11 +151,16 @@ def test_debug_view_main_loop_runs_headless_with_fake_worker(tmp_path) -> None:
     env = os.environ | {
         "SDL_VIDEODRIVER": "dummy",
         "PYGAME_HIDE_SUPPORT_PROMPT": "1",
-        "PYTHONPATH": os.pathsep.join(filter(None, [tests_dir, os.environ.get("PYTHONPATH")])),
+        "PYTHONPATH": os.pathsep.join(
+            filter(None, [tests_dir, os.environ.get("PYTHONPATH")])
+        ),
     }
     result = subprocess.run(
         [sys.executable, "-c", SMOKE_SCRIPT, str(tmp_path)],
-        capture_output=True, text=True, env=env, timeout=60,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().endswith("ok")
@@ -169,7 +187,9 @@ def _run_bench(tmp_path, worker: str) -> dict:
     env = os.environ | {
         "SDL_VIDEODRIVER": "dummy",
         "PYGAME_HIDE_SUPPORT_PROMPT": "1",
-        "PYTHONPATH": os.pathsep.join(filter(None, [tests_dir, os.environ.get("PYTHONPATH")])),
+        "PYTHONPATH": os.pathsep.join(
+            filter(None, [tests_dir, os.environ.get("PYTHONPATH")])
+        ),
     }
     result = subprocess.run(
         [sys.executable, "-c", BENCH_SCRIPT, str(tmp_path), worker],

@@ -33,7 +33,10 @@ def test_summary_rates_timings_and_detection() -> None:
     assert s["tracking_fps"] == pytest.approx(20.0)
     assert s["camera_fps"] == pytest.approx(40.0)
     assert s["skipped_pct"] == pytest.approx(50.0)
-    assert s["pose_ms"]["mean"] == pytest.approx(20.5, abs=0.1) and s["pose_ms"]["max"] == 21.0
+    assert (
+        s["pose_ms"]["mean"] == pytest.approx(20.5, abs=0.1)
+        and s["pose_ms"]["max"] == 21.0
+    )
     assert s["camera_to_landmarks_ms"]["p50"] == pytest.approx(30.0)
     assert s["person_found_pct"] == pytest.approx(100 * 30 / 41, abs=0.1)
     assert s["dropped_samples"] == 4
@@ -71,7 +74,9 @@ def test_write_log(tmp_path) -> None:
     path = write_log("unit", {"answer": 42}, tmp_path / "logs")
     assert path.name.startswith("unit-") and path.suffix == ".json"
     record = json.loads(path.read_text())
-    assert record["kind"] == "unit" and record["answer"] == 42 and "environment" in record
+    assert (
+        record["kind"] == "unit" and record["answer"] == 42 and "environment" in record
+    )
 
 
 # --- benchmark, with fake workers in real spawned processes --------------------
@@ -86,7 +91,9 @@ def test_bench_runs_configs_and_logs(tmp_path, capsys) -> None:
     record = json.loads(path.read_text())
     assert list(record["results"]) == ["full", "lite"]
     full = record["results"]["full"]
-    assert full["config"]["pose_model"] == "full" and "detect_hands" not in full["config"]
+    assert (
+        full["config"]["pose_model"] == "full" and "detect_hands" not in full["config"]
+    )
     assert full["summary"]["samples"] == 3  # the fake worker emits 3 samples
     assert record["results"]["lite"]["config"]["pose_model"] == "lite"
     out = capsys.readouterr().out
@@ -95,7 +102,16 @@ def test_bench_runs_configs_and_logs(tmp_path, capsys) -> None:
 
 def test_bench_records_worker_failure(tmp_path) -> None:
     path = bench.run(
-        ["--seconds", "0.2", "--pause", "0", "--configs", "full", "--log-dir", str(tmp_path)],
+        [
+            "--seconds",
+            "0.2",
+            "--pause",
+            "0",
+            "--configs",
+            "full",
+            "--log-dir",
+            str(tmp_path),
+        ],
         worker="fake_capture_worker:crash",
     )
     result = json.loads(path.read_text())["results"]["full"]

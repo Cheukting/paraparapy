@@ -16,7 +16,9 @@ def _song(title: str, artist: str, licence: str, source: str = "") -> Song:
 def test_privacy_notice_says_what_happens_to_camera_images_and_data() -> None:
     text = " ".join(s for _, s in privacy_entries()).lower()
     assert "never saved and never sent" in text  # camera images stay on the computer
-    assert "mediapipe sends google statistics" in text and "cannot be switched off" in text
+    assert (
+        "mediapipe sends google statistics" in text and "cannot be switched off" in text
+    )
     assert "goo.gle/mediapipe-privacy" in text  # Google's own notice
     assert "recordings/" in text and "logs/" in text and "no images" in text
     assert "apache 2.0" in text and "cc by" in text
@@ -26,12 +28,20 @@ def test_privacy_notice_says_what_happens_to_camera_images_and_data() -> None:
 
 def test_credits_name_title_artist_licence_and_source_of_every_song() -> None:
     songs = [
-        _song("Lets Go To A Rave", "Defrini", "CC-BY-4.0", "https://freemusicarchive.org/music/defrini/x/y/"),
+        _song(
+            "Lets Go To A Rave",
+            "Defrini",
+            "CC-BY-4.0",
+            "https://freemusicarchive.org/music/defrini/x/y/",
+        ),
         _song("My Own Track", "Me", UNSPECIFIED_LICENSE),
     ]
     entries = credits_entries(songs)
     text = [s for _, s in entries]
-    assert "Lets Go To A Rave by Defrini" in text and "CC BY 4.0, from freemusicarchive.org" in text
+    assert (
+        "Lets Go To A Rave by Defrini" in text
+        and "CC BY 4.0, from freemusicarchive.org" in text
+    )
     assert "My Own Track by Me" in text and "your own music" in text
     joined = " ".join(text)
     assert "MediaPipe" in joined and "Apache 2.0" in joined and "pygame-ce" in joined

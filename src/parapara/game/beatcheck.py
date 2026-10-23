@@ -92,7 +92,11 @@ class Player:
         data = (mix[start:] * 32767).astype(np.int16)
         if self.channels > 1:
             data = np.repeat(data[:, None], self.channels, axis=1)
-        self._sound = pygame.sndarray.make_sound(np.ascontiguousarray(data)) if len(data) else None
+        self._sound = (
+            pygame.sndarray.make_sound(np.ascontiguousarray(data))
+            if len(data)
+            else None
+        )
         if self._sound is not None:
             self._sound.play()
         self._start_pos, self._started_at = max(0.0, pos), time.monotonic()
@@ -136,9 +140,17 @@ def draw(screen: pygame.Surface, grid: BeatGrid, env: np.ndarray, pos: float, du
     rel = current - grid.routine_start_beat
     count = rel % COUNTS_PER_BAR + 1
     flash = 0 <= beat - current < 0.15
-    colour = ACCENT if flash and grid.is_bar_start(current) else (TEXT if flash else DIM)
-    _text(screen, str(count) if current >= 0 else "-", (WIDTH // 2 - 30, 40), 160, colour)
-    where = "intro" if rel < 0 else f"bar {rel // COUNTS_PER_BAR + 1}  phrase {rel // 32 + 1}"
+    colour = (
+        ACCENT if flash and grid.is_bar_start(current) else (TEXT if flash else DIM)
+    )
+    _text(
+        screen, str(count) if current >= 0 else "-", (WIDTH // 2 - 30, 40), 160, colour
+    )
+    where = (
+        "intro"
+        if rel < 0
+        else f"bar {rel // COUNTS_PER_BAR + 1}  phrase {rel // 32 + 1}"
+    )
     _text(screen, where, (WIDTH // 2 - 60, 170), 28, DIM)
 
     # Kick energy with the beat grid on top.
@@ -154,9 +166,21 @@ def draw(screen: pygame.Surface, grid: BeatGrid, env: np.ndarray, pos: float, du
         pygame.draw.line(screen, ENERGY, (x, top + h), (x, top + h - round(v * h)))
     for b in grid.beats_between(max(0.0, t0), t1):
         x = x_of(grid.time_of(b))
-        pygame.draw.line(screen, BAR_LINE if grid.is_bar_start(b) else LINE, (x, top - 10), (x, top + h), 2)
+        pygame.draw.line(
+            screen,
+            BAR_LINE if grid.is_bar_start(b) else LINE,
+            (x, top - 10),
+            (x, top + h),
+            2,
+        )
     pygame.draw.line(screen, NOW, (x_of(pos), top - 18), (x_of(pos), top + h + 8), 1)
-    _text(screen, "kick energy (blue) vs. beat grid (lines; orange = count 1)", (16, top + h + 12), 20, DIM)
+    _text(
+        screen,
+        "kick energy (blue) vs. beat grid (lines; orange = count 1)",
+        (16, top + h + 12),
+        20,
+        DIM,
+    )
 
     lines = [
         f"tempo {grid.bpm:.3f} BPM    first beat {grid.first_beat_s * 1000:.1f} ms    "
@@ -188,17 +212,25 @@ def save(song_dir: Path, grid: BeatGrid, changed: bool) -> Path:
 
 def run(argv: list[str] | None = None) -> BeatGrid:
     parser = argparse.ArgumentParser(description="Verify a song's beat map by ear")
-    parser.add_argument("song_dir", type=Path, help="e.g. assets/songs/defrini-lets-go-to-a-rave")
-    parser.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # tests: scripted keys
+    parser.add_argument(
+        "song_dir", type=Path, help="e.g. assets/songs/defrini-lets-go-to-a-rave"
+    )
+    parser.add_argument(
+        "--auto", action="store_true", help=argparse.SUPPRESS
+    )  # tests: scripted keys
     args = parser.parse_args(argv)
     data = json.loads((args.song_dir / "song.json").read_text())
-    grid = loaded = BeatGrid(float(data["bpm"]), float(data["first_beat_s"]), int(data["routine_start_beat"]))
+    grid = loaded = BeatGrid(
+        float(data["bpm"]), float(data["first_beat_s"]), int(data["routine_start_beat"])
+    )
     samples, sr = load_audio(args.song_dir / data["audio"])
     duration = len(samples) / sr
 
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption(f"ParaParaPy – beat check: {data.get('title', args.song_dir.name)}")
+    pygame.display.set_caption(
+        f"ParaParaPy – beat check: {data.get('title', args.song_dir.name)}"
+    )
     player = Player(sr)
     if player.sr != sr:  # the mixer could not open the file's rate: resample (linear)
         samples = np.interp(np.arange(int(duration * player.sr)) / player.sr,
@@ -238,7 +270,9 @@ def run(argv: list[str] | None = None) -> BeatGrid:
             elif key == pygame.K_RIGHTBRACKET:
                 grid = grid.shift_downbeat(1)
             elif key == pygame.K_SPACE:
-                player.pause() if not player.paused else player.play(mix, player.position())
+                player.pause() if not player.paused else player.play(
+                    mix, player.position()
+                )
             elif key == pygame.K_HOME:
                 player.play(mix, 0.0)
             elif key in (pygame.K_COMMA, pygame.K_PERIOD, pygame.K_END):
@@ -246,7 +280,10 @@ def run(argv: list[str] | None = None) -> BeatGrid:
                 if key == pygame.K_END:
                     target = duration - 15.0
                 else:
-                    target = player.position() + (32 if key == pygame.K_PERIOD else -32) * grid.beat_s
+                    target = (
+                        player.position()
+                        + (32 if key == pygame.K_PERIOD else -32) * grid.beat_s
+                    )
                 target = min(max(0.0, target), duration - 0.5)
                 was_paused = player.paused
                 player.play(mix, target)
@@ -264,7 +301,16 @@ def run(argv: list[str] | None = None) -> BeatGrid:
         pos = player.position()
         if pos >= duration and not player.paused:
             player.play(mix, 0.0)  # loop
-        draw(screen, grid, env, pos, duration, data.get("beat_map", {}), grid != loaded, player.paused)
+        draw(
+            screen,
+            grid,
+            env,
+            pos,
+            duration,
+            data.get("beat_map", {}),
+            grid != loaded,
+            player.paused,
+        )
         pygame.display.flip()
         clock.tick(60)
         frame += 1

@@ -29,7 +29,10 @@ def data_dir() -> Path:
         return Path(env)
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "parapara"
-    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "parapara"
+    return (
+        Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+        / "parapara"
+    )
 
 
 def _path(name: str) -> Path:

@@ -33,7 +33,12 @@ from parapara.game.ui import (  # noqa: E402
 )
 from parapara.notices import PRIVACY_VERSION, Entry, privacy_entries  # noqa: E402
 
-STYLES = {"title": (34, ACCENT), "heading": (24, ACCENT), "text": (20, TEXT), "small": (16, DIM)}
+STYLES = {
+    "title": (34, ACCENT),
+    "heading": (24, ACCENT),
+    "text": (20, TEXT),
+    "small": (16, DIM),
+}
 WIDTH, HEIGHT = 1240, 720
 
 
@@ -41,7 +46,11 @@ def draw_document(surface: pygame.Surface, entries: list[Entry], scroll: int,
                   keys: str, x: int = 24, top: int = 16) -> bool:  # fmt: skip
     """Draw ``entries[scroll:]`` from ``top`` down to the key hints; returns
     whether entries were left out at the bottom (then "[Down] more" is shown)."""
-    hint_h = text_height(surface, keys, 16, x) + text_height(surface, "[Down] more", 16, x) + 10
+    hint_h = (
+        text_height(surface, keys, 16, x)
+        + text_height(surface, "[Down] more", 16, x)
+        + 10
+    )
     bottom = surface.get_height() - hint_h
     y, more = top, False
     shown = entries[scroll:]
@@ -49,7 +58,9 @@ def draw_document(surface: pygame.Surface, entries: list[Entry], scroll: int,
         size, colour = STYLES[style]
         gap = 10 if style == "heading" and i else 0
         need = gap + text_height(surface, s, size, x)
-        if style == "heading" and i + 1 < len(shown):  # keep a heading with its first line
+        if style == "heading" and i + 1 < len(
+            shown
+        ):  # keep a heading with its first line
             nxt_style, nxt = shown[i + 1]
             need += text_height(surface, nxt, STYLES[nxt_style][0], x)
         if y + need > bottom:
@@ -92,7 +103,11 @@ def privacy_gate(window: bool = False, keys_spec: str | None = None,
         frames += 1
         if pygame.K_ESCAPE in keys or pygame.K_q in keys:
             return False, frames
-        if pygame.K_RETURN in keys or pygame.K_KP_ENTER in keys or pygame.K_SPACE in keys:
+        if (
+            pygame.K_RETURN in keys
+            or pygame.K_KP_ENTER in keys
+            or pygame.K_SPACE in keys
+        ):
             settings.save_ui(privacy_notice=PRIVACY_VERSION)
             return True, frames
         UI.drawn = [] if check_layout else None
@@ -104,7 +119,13 @@ def privacy_gate(window: bool = False, keys_spec: str | None = None,
             rect = column.blit(logo, (24, 12))
             register_box(column, rect, "[logo]")
             top = rect.bottom + 8
-        more = draw_document(column, entries, scroll, "[Enter] OK, start the camera    [Esc] quit", top=top)
+        more = draw_document(
+            column,
+            entries,
+            scroll,
+            "[Enter] OK, start the camera    [Esc] quit",
+            top=top,
+        )
         if pygame.K_DOWN in keys and more:
             scroll += 1
         if pygame.K_UP in keys:
@@ -113,6 +134,9 @@ def privacy_gate(window: bool = False, keys_spec: str | None = None,
             for issue in layout_issues(UI.drawn):
                 if issue not in reported:
                     reported.add(issue)
-                    print(f"LAYOUT (privacy gate, text size {UI.scale}): {issue}", file=sys.stderr)
+                    print(
+                        f"LAYOUT (privacy gate, text size {UI.scale}): {issue}",
+                        file=sys.stderr,
+                    )
         pygame.display.flip()
         clock.tick(60)

@@ -5,6 +5,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) with jobs for running all tests, ruff lint and format checks, pyrefly type checking, and dependency audit with `pip-audit`.
+- **Git hooks**: Added `prek.toml` for [prek](https://github.com/j178/prek) to run the same checks locally before commits (tests, ruff, pyrefly, pip-audit).
+- **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.
+
 ### Changed
 - **Key hints in the UI**: player keys are now shown in brackets (e.g.
   `[Esc]`, `[Space]`, `[Up/Down]`) across the game, recorder, latency test,

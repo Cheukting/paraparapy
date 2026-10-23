@@ -141,12 +141,16 @@ def run(
         def downloading(spec: ModelSpec) -> None:
             emit(CaptureStatus(StatusKind.STARTING, f"downloading {spec.filename}"))
 
-        pose_path = ensure_model(MODELS[f"pose_{config.pose_model}"], model_dir, downloading)
+        pose_path = ensure_model(
+            MODELS[f"pose_{config.pose_model}"], model_dir, downloading
+        )
 
         emit(CaptureStatus(StatusKind.STARTING, "opening camera"))
         frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
         detector = LandmarkDetector(pose_path)
-        grabber = LatestFrameGrabber(config.camera_index, config.width, config.height, config.fps)
+        grabber = LatestFrameGrabber(
+            config.camera_index, config.width, config.height, config.fps
+        )
         grabber.start()
 
         width, height, fps = grabber.actual_format
@@ -169,7 +173,11 @@ def run(
         )
         emit(CaptureStatus(StatusKind.STOPPED))
     except Exception as err:  # report *any* failure to the game, then exit
-        emit(CaptureStatus(StatusKind.ERROR, str(err), {"traceback": traceback.format_exc()}))
+        emit(
+            CaptureStatus(
+                StatusKind.ERROR, str(err), {"traceback": traceback.format_exc()}
+            )
+        )
     finally:
         if grabber is not None:
             grabber.stop()

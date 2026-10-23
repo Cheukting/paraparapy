@@ -62,7 +62,9 @@ class DemoSong:
     first_beat_s: float  # time of beat 0 (the first intro count)
     routine_start_beat: int  # first count of the main section
     duration_beats: int
-    sections: dict[str, tuple[int, int]] = field(default_factory=dict)  # name -> (start, end) beat
+    sections: dict[str, tuple[int, int]] = field(
+        default_factory=dict
+    )  # name -> (start, end) beat
 
     @property
     def beat_s(self) -> float:
@@ -103,7 +105,9 @@ def _kick(sr: int) -> np.ndarray:
 
 
 def _hat(sr: int, rng: np.random.Generator) -> np.ndarray:
-    noise = np.diff(rng.standard_normal(int(0.05 * sr) + 1))  # differencing = crude high-pass
+    noise = np.diff(
+        rng.standard_normal(int(0.05 * sr) + 1)
+    )  # differencing = crude high-pass
     return noise * _env(len(noise), sr, 0.012) * 0.25
 
 
@@ -118,7 +122,9 @@ def _clap(sr: int, rng: np.random.Generator) -> np.ndarray:
     return noise * env * 0.35
 
 
-def _saw(freq: float, dur_s: float, sr: int, decay_s: float, brightness: float = 1.0) -> np.ndarray:
+def _saw(
+    freq: float, dur_s: float, sr: int, decay_s: float, brightness: float = 1.0
+) -> np.ndarray:
     t = np.arange(int(dur_s * sr)) / sr
     wave_ = 2.0 * ((t * freq) % 1.0) - 1.0
     # One-pole low-pass to tame the edges (brightness 1 = open).
@@ -162,8 +168,16 @@ def render_demo_song(
             continue  # outro: drums only
         root, third = _PROGRESSION[(b // 4) % len(_PROGRESSION)]
         bass_root = root - 24
-        mix.add(_saw(_midi_hz(bass_root), beat_s * 0.45, sample_rate, 0.12, 0.25), t(b), 0.35)
-        mix.add(_saw(_midi_hz(bass_root + 12), beat_s * 0.45, sample_rate, 0.12, 0.25), t(b + 0.5), 0.35)
+        mix.add(
+            _saw(_midi_hz(bass_root), beat_s * 0.45, sample_rate, 0.12, 0.25),
+            t(b),
+            0.35,
+        )
+        mix.add(
+            _saw(_midi_hz(bass_root + 12), beat_s * 0.45, sample_rate, 0.12, 0.25),
+            t(b + 0.5),
+            0.35,
+        )
         if b >= main_start:
             arpeggio = (root + 12, root + 12 + third, root + 19, root + 24)
             for k, note in enumerate(arpeggio):
@@ -179,13 +193,19 @@ def render_demo_song(
         first_beat_s=lead_in_s,
         routine_start_beat=main_start,
         duration_beats=total,
-        sections={"intro": (0, main_start), "main": (main_start, main_end), "outro": (main_end, total)},
+        sections={
+            "intro": (0, main_start),
+            "main": (main_start, main_end),
+            "outro": (main_end, total),
+        },
     )
 
 
 def write_wav(path: Path, samples: npt.ArrayLike, sample_rate: int) -> None:
     """Write mono float samples in [-1, 1] as 16-bit PCM WAV."""
-    data = (np.clip(np.asarray(samples, dtype=np.float64), -1.0, 1.0) * 32767).astype("<i2")
+    data = (np.clip(np.asarray(samples, dtype=np.float64), -1.0, 1.0) * 32767).astype(
+        "<i2"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     with wave.open(str(path), "wb") as w:
         w.setnchannels(1)
@@ -200,5 +220,8 @@ def read_wav(path: Path) -> tuple[npt.NDArray[np.float32], int]:
         if w.getsampwidth() != 2:
             raise ValueError(f"{path}: only 16-bit PCM WAV is supported")
         sr, channels = w.getframerate(), w.getnchannels()
-        data = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32767
+        data = (
+            np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32)
+            / 32767
+        )
     return data.reshape(-1, channels).mean(axis=1), sr

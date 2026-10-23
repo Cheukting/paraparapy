@@ -80,7 +80,9 @@ def test_framing_warning_and_recording() -> None:
     away = replace(session.samples[0], pose_image=None, pose_world=None)
     fresh = PlaySession(SONG, ROUTINE, START)
     fresh.add(away)
-    assert fresh.framing_warning is not None and "no_person" in fresh.framing_warning.codes
+    assert (
+        fresh.framing_warning is not None and "no_person" in fresh.framing_warning.codes
+    )
     rec = session.recording()
     assert len(rec) == len(session.samples) and rec.metadata["routine_id"] == ROUTINE.id
     assert len(rec.metadata["keyframe_times_ns"]) == len(session.schedule)
@@ -90,17 +92,32 @@ def test_framing_warning_and_recording() -> None:
 # --- latency -------------------------------------------------------------------------
 
 
-def _clapping(delay_ms: float, clicks_ns: list[int], jitter_ms: float = 0.0, miss: set[int] = frozenset()):
+def _clapping(
+    delay_ms: float,
+    clicks_ns: list[int],
+    jitter_ms: float = 0.0,
+    miss: set[int] = frozenset(),
+):
     """Features of a player clapping ``delay_ms`` after each click (sampled at 23 fps)."""
-    base = next(f for f in extract_recording(danced_block("chop_right", 0.0, fps=30)) if f is not None)
+    base = next(
+        f
+        for f in extract_recording(danced_block("chop_right", 0.0, fps=30))
+        if f is not None
+    )
     rng = np.random.default_rng(1)
-    claps = [c + (delay_ms + rng.normal(0, jitter_ms)) * 1e6 for i, c in enumerate(clicks_ns) if i not in miss]
+    claps = [
+        c + (delay_ms + rng.normal(0, jitter_ms)) * 1e6
+        for i, c in enumerate(clicks_ns)
+        if i not in miss
+    ]
     out = []
     for t in np.arange(clicks_ns[0] - 5e8, clicks_ns[-1] + 5e8, 1e9 / 23):
         d = min(abs(t - c) for c in claps) / 1e9
         dist = 0.15 + 2.0 * min(1.0, d / 0.12)
         # Both copies: the estimator reads the timing copy (unsmoothed), like the judge.
-        out.append(replace(base, t_ns=int(t), wrist_distance=dist, timing_wrist_distance=dist))
+        out.append(
+            replace(base, t_ns=int(t), wrist_distance=dist, timing_wrist_distance=dist)
+        )
     return out
 
 
@@ -124,7 +141,9 @@ def test_latency_from_8_claps() -> None:
     assert r.latency_ms == pytest.approx(200, abs=25)
     few = estimate_latency(_clapping(200, clicks, miss={0, 2, 4}), clicks, BEAT_NS)
     assert not few.ok  # 5 of 8 is below MIN_CLAPS
-    assert not estimate_latency(_clapping(200, clicks, jitter_ms=160), clicks, BEAT_NS).ok
+    assert not estimate_latency(
+        _clapping(200, clicks, jitter_ms=160), clicks, BEAT_NS
+    ).ok
     # Real-looking clapping that drifts within the round (spread ~50 ms) is accepted.
     assert estimate_latency(_clapping(100, clicks, jitter_ms=120), clicks, BEAT_NS).ok
 

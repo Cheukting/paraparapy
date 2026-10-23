@@ -90,7 +90,9 @@ class OneEuroFilter:
         self._x, self._dx, self._t_ns = out, edx, t_ns  # NaN inputs stay NaN
         return out.copy()
 
-    def _restart(self, x: npt.NDArray[np.float64], t_ns: int) -> npt.NDArray[np.float64]:
+    def _restart(
+        self, x: npt.NDArray[np.float64], t_ns: int
+    ) -> npt.NDArray[np.float64]:
         self._x, self._dx, self._t_ns = x.copy(), np.zeros_like(x), t_ns
         return x.copy()
 
@@ -100,4 +102,9 @@ def filter_series(
 ) -> npt.NDArray[np.float64]:
     """Filter a whole recorded series offline (``values[i]`` at ``times_ns[i]``)."""
     f = OneEuroFilter(**params)
-    return np.stack([f(v, int(t)) for v, t in zip(np.asarray(values), np.asarray(times_ns), strict=True)])
+    return np.stack(
+        [
+            f(v, int(t))
+            for v, t in zip(np.asarray(values), np.asarray(times_ns), strict=True)
+        ]
+    )

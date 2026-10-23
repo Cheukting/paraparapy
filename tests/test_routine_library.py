@@ -52,7 +52,9 @@ def _fores(block_id: str) -> list[tuple[float, float, float]]:
 def test_sweep_forearms_are_parallel() -> None:
     for block in L.values():
         if block.kind is BlockKind.SWEEP:
-            assert all(kf.right.fore == kf.left.fore for kf in block.keyframes), block.id
+            assert all(kf.right.fore == kf.left.fore for kf in block.keyframes), (
+                block.id
+            )
 
 
 def test_sweep_crossing_arm_keeps_upper_arm_forward() -> None:
@@ -74,7 +76,9 @@ def test_sweep_crossing_arm_keeps_upper_arm_forward() -> None:
         ("sweep_up_4", 1, True),
     ],
 )
-def test_sweep_travels_monotonically(block_id: str, axis: int, increasing: bool) -> None:
+def test_sweep_travels_monotonically(
+    block_id: str, axis: int, increasing: bool
+) -> None:
     values = [f[axis] for f in _fores(block_id)]
     assert values == sorted(values, reverse=not increasing)
     assert values[0] * values[-1] < 0  # crosses the midline / shoulder level
@@ -100,7 +104,9 @@ def test_knock_is_same_hand_twice_with_fist_and_bent_elbow() -> None:
     assert arm.hand_shape is HandShape.FIST
     assert abs(arm.upper[1]) < 0.2  # roughly level upper arm
     assert arm.upper[0] > 0.5 and arm.upper[2] > 0.5  # out and forward
-    assert angle_between_deg(arm.fore, UP) < 50 and arm.fore[2] > 0  # up, tilted forward
+    assert (
+        angle_between_deg(arm.fore, UP) < 50 and arm.fore[2] > 0
+    )  # up, tilted forward
     assert 55 < angle_between_deg(arm.upper, arm.fore) < 100  # clearly bent elbow
 
 
@@ -153,7 +159,10 @@ def test_flick_clap_travels_across_the_body_then_claps() -> None:
     # up, most of all on the side flick.
     crossed, front, side = (kf.right.fore for kf in kfs[:3])
     assert front[1] > 0 and side[1] > 0
-    assert side[2] > front[2] > crossed[2] - 0.1 and abs(side[0]) < abs(front[0]) < abs(crossed[0]) + 0.1
+    assert (
+        side[2] > front[2] > crossed[2] - 0.1
+        and abs(side[0]) < abs(front[0]) < abs(crossed[0]) + 0.1
+    )
 
 
 def test_clap_is_scored_only_as_a_clap() -> None:
@@ -172,7 +181,9 @@ def test_wrist_roll_holds_position_every_count() -> None:
     roll = L["wrist_roll_4"]
     assert [kf.beat for kf in roll.keyframes] == [0, 1, 2, 3]
     first = roll.keyframes[0]
-    assert all(kf.right == first.right and kf.left == first.left for kf in roll.keyframes)
+    assert all(
+        kf.right == first.right and kf.left == first.left for kf in roll.keyframes
+    )
     assert first.left == first.right.mirrored()
     # Forearms level and pointing inwards, elbows in front of the body.
     assert first.right.fore[0] < -0.6 and abs(first.right.fore[1]) < 0.2
@@ -192,4 +203,8 @@ def test_upper_arms_stay_anatomically_plausible() -> None:
                     continue
                 assert angle_between_deg(arm.upper, UP) > 30, (block.id, kf.beat)
                 inward = LEFT if side == "right" else RIGHT
-                assert angle_between_deg(arm.upper, inward) > 45, (block.id, kf.beat, side)
+                assert angle_between_deg(arm.upper, inward) > 45, (
+                    block.id,
+                    kf.beat,
+                    side,
+                )

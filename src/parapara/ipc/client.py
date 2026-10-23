@@ -100,7 +100,10 @@ class CaptureClient:
             "frame_lock": lock,
         }
         self._process = self._ctx.Process(
-            target=_bootstrap, args=(self._worker, kwargs), name="parapara-capture", daemon=True
+            target=_bootstrap,
+            args=(self._worker, kwargs),
+            name="parapara-capture",
+            daemon=True,
         )
         self._process.start()
 

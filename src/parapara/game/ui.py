@@ -77,7 +77,9 @@ def _wrap(f: pygame.font.Font, s: str, max_w: int) -> list[str]:
     return [*lines, line.rstrip()]
 
 
-def text(surface, s, pos, size=24, colour=TEXT, centre=False, right=False, draw=True) -> int:
+def text(
+    surface, s, pos, size=24, colour=TEXT, centre=False, right=False, draw=True
+) -> int:
     """Draw ``s`` at ``size`` x ``UI.scale``; returns the y below it.
 
     Long text is word-wrapped to the room left on ``surface`` (for centred
@@ -87,7 +89,9 @@ def text(surface, s, pos, size=24, colour=TEXT, centre=False, right=False, draw=
     """
     x, y = pos
     w = surface.get_width()
-    max_w = max(16, (2 * min(x, w - x) - 8) if centre else (x - 8 if right else w - x - 8))
+    max_w = max(
+        16, (2 * min(x, w - x) - 8) if centre else (x - 8 if right else w - x - 8)
+    )
     px = max(8, round(size * UI.scale))
     while True:
         f = _font(px)
@@ -113,7 +117,12 @@ def text_height(surface, s, size, width_from_x: int = 24) -> int:
     return text(surface, s, (width_from_x, 0), size, draw=False)
 
 
-def footer(surface, lines: list[tuple[str, float, tuple[int, int, int]]], x: int = 24, margin: int = 10) -> int:
+def footer(
+    surface,
+    lines: list[tuple[str, float, tuple[int, int, int]]],
+    x: int = 24,
+    margin: int = 10,
+) -> int:
     """Draw ``(text, size, colour)`` lines stacked up from the bottom of
     ``surface`` (key hints); returns the top y, i.e. the room left above."""
     y = surface.get_height() - margin
@@ -127,7 +136,14 @@ def register_box(surface, rect: pygame.Rect, label: str) -> None:
     """Record a framed box (text inside it is fine, text crossing its edge is not)."""
     if UI.drawn is not None:
         ox, oy = surface.get_abs_offset()
-        UI.drawn.append(Drawn(rect.move(ox, oy), label, pygame.Rect((ox, oy), surface.get_size()), box=True))
+        UI.drawn.append(
+            Drawn(
+                rect.move(ox, oy),
+                label,
+                pygame.Rect((ox, oy), surface.get_size()),
+                box=True,
+            )
+        )
 
 
 def layout_issues(drawn: list[Drawn]) -> list[str]:
@@ -138,7 +154,7 @@ def layout_issues(drawn: list[Drawn]) -> list[str]:
         if not d.box and not d.bounds.contains(d.rect):
             issues.append(f"cut off: {d.label!r}")
     for i, a in enumerate(drawn):
-        for b in drawn[i + 1:]:
+        for b in drawn[i + 1 :]:
             if a.box and b.box or not a.rect.colliderect(b.rect):
                 continue
             if a.box or b.box:

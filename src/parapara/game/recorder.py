@@ -122,8 +122,12 @@ class Metronome:
         """A 30 ms decaying sine burst, shaped for the mixer's channel count
         (the mixer may open a different count than requested)."""
         t = np.arange(int(freq * 0.03)) / freq
-        wave = (np.sin(2 * np.pi * pitch * t) * np.exp(-t * 120) * 20000).astype(np.int16)
-        return wave if channels == 1 else np.repeat(wave[:, None], channels, axis=1).copy()
+        wave = (np.sin(2 * np.pi * pitch * t) * np.exp(-t * 120) * 20000).astype(
+            np.int16
+        )
+        return (
+            wave if channels == 1 else np.repeat(wave[:, None], channels, axis=1).copy()
+        )
 
     def click(self, accent: bool) -> None:
         if accent in self._sounds:
@@ -147,7 +151,9 @@ STATIC_PREVIEW_S = 3.0  # a static pose is shown at least this long before its c
 RESULT_S = 2.5  # how long a result ("Saved", "Again: ...") stays up before moving on
 MAX_ATTEMPTS = 3  # a clip failing the quality check is redone up to this many times
 MIN_PERSON_PCT = 90.0  # quality: % of samples with a person found
-MAX_OUT_OF_FRAME = 0.1  # quality: share of recording frames with hips/shoulders/person missing
+MAX_OUT_OF_FRAME = (
+    0.1  # quality: share of recording frames with hips/shoulders/person missing
+)
 
 
 @dataclass
@@ -192,7 +198,10 @@ class ClipRun:
             return "no camera samples"
         if recording.person_found_pct < MIN_PERSON_PCT:
             return f"you were seen only {recording.person_found_pct:.0f}% of the time"
-        if self.framed_frames and self.out_of_frame / self.framed_frames > MAX_OUT_OF_FRAME:
+        if (
+            self.framed_frames
+            and self.out_of_frame / self.framed_frames > MAX_OUT_OF_FRAME
+        ):
             return "hips or shoulders left the picture"
         return None
 
@@ -210,7 +219,9 @@ class ClipRun:
                 "bars": clip.bars if clip.kind == "block" else None,
                 "bpm": bpm if clip.kind == "block" else None,
                 "count_in_beats": tl.count_in_beats if clip.kind == "block" else None,
-                "lookahead_counts": tl.lookahead_counts if clip.kind == "block" else None,
+                "lookahead_counts": tl.lookahead_counts
+                if clip.kind == "block"
+                else None,
                 "beat_times_ns": beat_times,
                 "recording_window_ns": list(self.window_ns()),
                 "camera": camera,
@@ -232,7 +243,9 @@ STAGE_W = 600
 _CLAP_DISPLAY = ArmPose(upper=(0.35, -0.75, 0.6), fore=(-0.75, 0.55, 0.4))
 
 
-def _draw_guide(surface: pygame.Surface, phase: Phase | None, guide, centre, scale) -> None:
+def _draw_guide(
+    surface: pygame.Surface, phase: Phase | None, guide, centre, scale
+) -> None:
     keyframe = phase.guide if phase is not None and phase.guide is not None else guide
     if keyframe is None:
         return
@@ -247,17 +260,29 @@ def _draw_guide(surface: pygame.Surface, phase: Phase | None, guide, centre, sca
 
     def arm(a: GuideArm, colour: tuple[int, int, int]) -> None:
         c = colour if a.scored else DIM
-        for p, q, lw in ((a.shoulder, a.elbow, w + 2), (a.elbow, a.wrist, w + 1), (a.wrist, a.hand, w)):
+        for p, q, lw in (
+            (a.shoulder, a.elbow, w + 2),
+            (a.elbow, a.wrist, w + 1),
+            (a.wrist, a.hand, w),
+        ):
             pygame.draw.line(surface, c, p, q, lw)
         pygame.draw.circle(surface, c, a.wrist, w + 2)
 
     arm(fig.left, LEFT_COLOUR)
     arm(fig.right, RIGHT_COLOUR)
     if keyframe.clap:
-        text(surface, "CLAP!", (centre[0] + round(0.8 * scale), centre[1] + round(0.4 * scale)), 30, ACCENT)
+        text(
+            surface,
+            "CLAP!",
+            (centre[0] + round(0.8 * scale), centre[1] + round(0.4 * scale)),
+            30,
+            ACCENT,
+        )
 
 
-def draw_framing_box(surface: pygame.Surface, framing: FramingResult | None, mirrored: bool) -> None:
+def draw_framing_box(
+    surface: pygame.Surface, framing: FramingResult | None, mirrored: bool
+) -> None:
     """Outline the picture area the player needs (arm span, head room, hips)."""
     if framing is None or framing.needed_box is None:
         return
@@ -278,19 +303,33 @@ def status_line(*, clip: Clip | None, stage: Stage, phase: Phase | None, framing
         return result
     if stage is Stage.READY:
         if not framed:
-            issue = framing.issues[0].message if framing is not None and framing.issues else "Step into the picture"
+            issue = (
+                framing.issues[0].message
+                if framing is not None and framing.issues
+                else "Step into the picture"
+            )
             return (issue, WARN)
         if manual:
             return ("Press [Space] to start", ACCENT)
-        return ("Watch the move" if clip.kind == "block" else "Get into this pose", ACCENT)
+        return (
+            "Watch the move" if clip.kind == "block" else "Get into this pose",
+            ACCENT,
+        )
     if stage is Stage.RUNNING and phase is not None:
         if phase.name == "preview":
             return ("Get ready ...", ACCENT)
         if phase.name in ("countdown", "count_in"):
             return ("Get ready ...", ACCENT)
-        if framing is not None and framing.codes & {"no_person", "no_shoulders", "no_hips"}:
+        if framing is not None and framing.codes & {
+            "no_person",
+            "no_shoulders",
+            "no_hips",
+        }:
             return (framing.issues[0].message, WARN)
-        return ("Recording - dance!" if clip.kind == "block" else "Recording - hold still", ERROR)
+        return (
+            "Recording - dance!" if clip.kind == "block" else "Recording - hold still",
+            ERROR,
+        )
     return ("", TEXT_COLOUR)
 
 
@@ -319,16 +358,29 @@ def draw_stage(surface: pygame.Surface, *, clip: Clip | None, index: int, total:
     text(surface, status[0], (24, status_top), 26, status[1])
     if stage is Stage.RUNNING and phase is not None and phase.name == "recording":
         pygame.draw.rect(surface, DIM, (24, status_top - 18, STAGE_W - 48, 10), 1)
-        pygame.draw.rect(surface, RECORD, (24, status_top - 18, round((STAGE_W - 48) * phase.progress), 10))
+        pygame.draw.rect(
+            surface,
+            RECORD,
+            (24, status_top - 18, round((STAGE_W - 48) * phase.progress), 10),
+        )
     # The guide figure fills the room between the instructions and the status:
     # from a raised hand (~2.3 shoulder widths above the shoulders) to the hips
     # and hanging hands (~1.6 below).
     room = status_top - 24 - y
     scale = max(10.0, min(110.0, room / 4.0))
-    _draw_guide(surface, phase, clip.guide, (STAGE_W // 2, round(y + 2.3 * scale)), scale)
+    _draw_guide(
+        surface, phase, clip.guide, (STAGE_W // 2, round(y + 2.3 * scale)), scale
+    )
 
 
-def draw_info(surface: pygame.Surface, *, clip: Clip | None, bpm: float, manual: bool, attempt: int) -> None:
+def draw_info(
+    surface: pygame.Surface,
+    *,
+    clip: Clip | None,
+    bpm: float,
+    manual: bool,
+    attempt: int,
+) -> None:
     """The panel under the camera: tempo, attempt, and the few keys."""
     surface.fill(PANEL)
     y = 12
@@ -338,20 +390,34 @@ def draw_info(surface: pygame.Surface, *, clip: Clip | None, bpm: float, manual:
         y = text(surface, f"attempt {attempt} of {MAX_ATTEMPTS}", (20, y), 18, WARN)
     keys = ("[Space] start   [Enter] keep   [R] redo   [S] skip   [Esc] quit" if manual
             else "Hands-free: nothing to press.   [S] skip   [Esc] quit")  # fmt: skip
-    footer(surface, [(keys, 14, DIM), ("[+]/[-] text size   [F] fullscreen   [M] mirror", 14, DIM)], x=20)
+    footer(
+        surface,
+        [(keys, 14, DIM), ("[+]/[-] text size   [F] fullscreen   [M] mirror", 14, DIM)],
+        x=20,
+    )
 
 
 # --- app -----------------------------------------------------------------------
 
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Guided recording of calibration and move clips")
-    parser.add_argument("--bpm", type=float, default=120.0, help="metronome tempo for move clips")
+    parser = argparse.ArgumentParser(
+        description="Guided recording of calibration and move clips"
+    )
+    parser.add_argument(
+        "--bpm", type=float, default=120.0, help="metronome tempo for move clips"
+    )
     parser.add_argument("--clips", default=",".join(c.id for c in CLIPS),
                         help=f"comma-separated, from: {', '.join(CLIP_IDS)}")  # fmt: skip
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="recordings directory")
-    parser.add_argument("--countdown", type=float, default=3.0, help="seconds before a static pose")
-    parser.add_argument("--static-seconds", type=float, default=4.0, help="seconds per static pose")
+    parser.add_argument(
+        "--out", type=Path, default=DEFAULT_OUT, help="recordings directory"
+    )
+    parser.add_argument(
+        "--countdown", type=float, default=3.0, help="seconds before a static pose"
+    )
+    parser.add_argument(
+        "--static-seconds", type=float, default=4.0, help="seconds per static pose"
+    )
     parser.add_argument("--lookahead", type=float, default=0.0,
                         help="counts the guide runs ahead while recording (default 0: on the beat)")  # fmt: skip
     parser.add_argument("--quiet-preview", action="store_true",
@@ -360,16 +426,26 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                         help="allow starting clips without a good position")  # fmt: skip
     parser.add_argument("--manual", action="store_true",
                         help="keys instead of hands-free: Space start, Enter keep, R redo, S skip")  # fmt: skip
-    parser.add_argument("--window", action="store_true", help="run in a window instead of fullscreen")
-    parser.add_argument("--text-scale", type=float, help="text size (default: saved, or 2.0; +/- while recording)")
+    parser.add_argument(
+        "--window", action="store_true", help="run in a window instead of fullscreen"
+    )
+    parser.add_argument(
+        "--text-scale",
+        type=float,
+        help="text size (default: saved, or 2.0; +/- while recording)",
+    )
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--model", choices=("lite", "full"), default="full")
     parser.add_argument("--no-mirror", action="store_true", help="start unmirrored")
-    parser.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # tests: start at once, keep all
-    parser.add_argument("--check-layout", action="store_true", help=argparse.SUPPRESS)  # tests
+    parser.add_argument(
+        "--auto", action="store_true", help=argparse.SUPPRESS
+    )  # tests: start at once, keep all
+    parser.add_argument(
+        "--check-layout", action="store_true", help=argparse.SUPPRESS
+    )  # tests
     parser.add_argument("--shots", help=argparse.SUPPRESS)  # reviews: screenshot folder
     args = parser.parse_args(argv)
     unknown = [c for c in args.clips.split(",") if c and c not in CLIP_IDS]
@@ -405,7 +481,9 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
 
     pygame.init()
     load_scale(args.text_scale)
-    accepted, _ = privacy_gate(args.window, None, args.check_layout)  # before the camera starts
+    accepted, _ = privacy_gate(
+        args.window, None, args.check_layout
+    )  # before the camera starts
     if not accepted:
         pygame.quit()
         return session_dir
@@ -425,7 +503,9 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     attempt = 1
     result: tuple[str, tuple[int, int, int]] | None = None
     result_at = 0.0  # time.monotonic() when the result was shown
-    pending: tuple[Recording, bool] | None = None  # REVIEW: the attempt and whether to keep it
+    pending: tuple[Recording, bool] | None = (
+        None  # REVIEW: the attempt and whether to keep it
+    )
     running = True
     preview_started: float | None = None  # time.monotonic() when READY began
     preview_t = -1.0  # preview time of the previous frame (for click timing)
@@ -471,13 +551,26 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
             # out of the picture in a whole earlier session); --manual keeps
             # the old rule (only static clips wait).
             needs_framing = clip is not None and (clip.requires_framing or not manual)
-            framed = clip is None or not needs_framing or args.no_framing_check or framing.stable
+            framed = (
+                clip is None
+                or not needs_framing
+                or args.no_framing_check
+                or framing.stable
+            )
             now = time.monotonic()
             # A block clip starts half a beat before the end of its preview
             # bar(s), so the count-in begins right at the next bar (not a bar later).
             beat_s = 60.0 / args.bpm
-            previewed = preview_started is not None and clip is not None and (now - preview_started) >= (
-                (PREVIEW_BARS * COUNTS_PER_BAR - 0.5) * beat_s if clip.kind == "block" else STATIC_PREVIEW_S)
+            previewed = (
+                preview_started is not None
+                and clip is not None
+                and (now - preview_started)
+                >= (
+                    (PREVIEW_BARS * COUNTS_PER_BAR - 0.5) * beat_s
+                    if clip.kind == "block"
+                    else STATIC_PREVIEW_S
+                )
+            )
             start = pygame.K_SPACE in keys or args.auto or (not manual and previewed)
 
             # --- state machine ---
@@ -492,29 +585,71 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                     next_bar_t = timeline.next_preview_bar(now - preview_started)
                     start_ns += int((preview_started + next_bar_t - now) * 1e9)
                     lead_in = preview_started
-                run = ClipRun(timeline, start_ns, preview_started=lead_in, preview_t=preview_t)
+                run = ClipRun(
+                    timeline, start_ns, preview_started=lead_in, preview_t=preview_t
+                )
                 stage = Stage.RUNNING
             elif stage is Stage.READY and pygame.K_s in keys:
                 index, attempt = index + 1, 1
             elif stage is Stage.REVIEW and pending is not None:
                 recording, good = pending
                 if manual:
-                    if pygame.K_RETURN in keys or pygame.K_KP_ENTER in keys or args.auto:
+                    if (
+                        pygame.K_RETURN in keys
+                        or pygame.K_KP_ENTER in keys
+                        or args.auto
+                    ):
                         keep(recording, good)
-                        index, attempt, stage, run, pending = index + 1, 1, Stage.READY, None, None
+                        index, attempt, stage, run, pending = (
+                            index + 1,
+                            1,
+                            Stage.READY,
+                            None,
+                            None,
+                        )
                     elif pygame.K_r in keys:
-                        attempt, stage, run, pending = attempt + 1, Stage.READY, None, None
+                        attempt, stage, run, pending = (
+                            attempt + 1,
+                            Stage.READY,
+                            None,
+                            None,
+                        )
                     elif pygame.K_s in keys:
-                        index, attempt, stage, run, pending = index + 1, 1, Stage.READY, None, None
+                        index, attempt, stage, run, pending = (
+                            index + 1,
+                            1,
+                            Stage.READY,
+                            None,
+                            None,
+                        )
                 elif pygame.K_s in keys:
-                    index, attempt, stage, run, pending = index + 1, 1, Stage.READY, None, None
+                    index, attempt, stage, run, pending = (
+                        index + 1,
+                        1,
+                        Stage.READY,
+                        None,
+                        None,
+                    )
                 elif pygame.K_r in keys or (now - result_at >= RESULT_S or args.auto):
-                    redo = pygame.K_r in keys or (not good and not args.auto and attempt < MAX_ATTEMPTS)
+                    redo = pygame.K_r in keys or (
+                        not good and not args.auto and attempt < MAX_ATTEMPTS
+                    )
                     if redo:
-                        attempt, stage, run, pending = attempt + 1, Stage.READY, None, None
+                        attempt, stage, run, pending = (
+                            attempt + 1,
+                            Stage.READY,
+                            None,
+                            None,
+                        )
                     else:
                         keep(recording, good)
-                        index, attempt, stage, run, pending = index + 1, 1, Stage.READY, None, None
+                        index, attempt, stage, run, pending = (
+                            index + 1,
+                            1,
+                            Stage.READY,
+                            None,
+                            None,
+                        )
             elif stage is Stage.FINISHED and (pygame.K_RETURN in keys or args.auto
                                               or (not manual and now - result_at >= 5.0)):  # fmt: skip
                 running = False
@@ -556,7 +691,12 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                     rec = run.recording(args.bpm, feed.camera_details)
                     issue = run.quality_issue(rec)
                     if issue is None:
-                        result = ("Saved - next clip coming" if not manual else "Good - Enter keeps it", OK)
+                        result = (
+                            "Saved - next clip coming"
+                            if not manual
+                            else "Good - Enter keeps it",
+                            OK,
+                        )
                     elif attempt < MAX_ATTEMPTS and not manual:
                         result = (f"Again: {issue}", WARN)
                     else:
@@ -579,19 +719,26 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
                                  result=result, manual=manual)  # fmt: skip
             draw_stage(screen.subsurface((0, 0, STAGE_W, HEIGHT)), clip=clip, index=index, total=len(clips),
                        stage=stage, phase=phase, status=status)  # fmt: skip
-            info = screen.subsurface((STAGE_W, config.height, WIDTH - STAGE_W, HEIGHT - config.height))
+            info = screen.subsurface(
+                (STAGE_W, config.height, WIDTH - STAGE_W, HEIGHT - config.height)
+            )
             draw_info(info, clip=clip, bpm=args.bpm, manual=manual, attempt=attempt)
             if UI.drawn is not None:
                 for issue in layout_issues(UI.drawn):
                     if issue not in reported:
                         reported.add(issue)
-                        print(f"LAYOUT ({stage.name.lower()}, text size {UI.scale}): {issue}", file=sys.stderr)
+                        print(
+                            f"LAYOUT ({stage.name.lower()}, text size {UI.scale}): {issue}",
+                            file=sys.stderr,
+                        )
             pygame.display.flip()
             feed.after_flip()
             clock.tick(60)
             frames += 1
             if args.shots and frames % 30 == 0:  # reviews: periodic screenshots
-                pygame.image.save(screen, f"{args.shots}/{frames:05d}-{stage.name.lower()}.png")
+                pygame.image.save(
+                    screen, f"{args.shots}/{frames:05d}-{stage.name.lower()}.png"
+                )
 
     pygame.quit()
     if manifest["clips"]:

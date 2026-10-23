@@ -123,11 +123,20 @@ from parapara.scoring.session import PlaySession  # noqa: E402
 
 WIDTH, HEIGHT = 1240, 720
 STAGE_W = 600  # demo dancer on the left; camera (640x480) + score panel on the right
-DANCER_X, DANCER_Y, DANCER_SCALE = 210, 190, HEIGHT / 7.6  # mid-shoulder point; px per shoulder width
+DANCER_X, DANCER_Y, DANCER_SCALE = (
+    210,
+    190,
+    HEIGHT / 7.6,
+)  # mid-shoulder point; px per shoulder width
 NEXT_BOX = pygame.Rect(392, 8, 204, 300)  # "next move" picture, top right of the dancer
 LEARN_SPEEDS = (0.5, 0.75, 1.0)  # fractions of the song's tempo
-COUNT_IN_DEFAULT, COUNT_IN_CHOICES = 4, (0, 2, 4, 8)  # counts before the first move (settings)
-LEARN_REPEATS = 64  # a learnt block is looped this many times before the animation restarts
+COUNT_IN_DEFAULT, COUNT_IN_CHOICES = (
+    4,
+    (0, 2, 4, 8),
+)  # counts before the first move (settings)
+LEARN_REPEATS = (
+    64  # a learnt block is looped this many times before the animation restarts
+)
 GRADE_COLOUR = {Grade.PERFECT: PERFECT, Grade.GREAT: GREAT, Grade.GOOD: GOOD,
                 Grade.HOLD: HOLD, Grade.MISS: MISS}  # fmt: skip
 POPUP_S = 0.7
@@ -135,21 +144,32 @@ CALIBRATION_HOLD_S, CALIBRATION_COUNTDOWN_S = 3.0, 3.0
 # 8 claps (fourth test run: 16 felt too long); estimate_latency needs MIN_CLAPS (6) of them.
 LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS = 100.0, 4, 8
 NEXT_LEAD_BEATS = 4  # the "next" box's timing dot travels during the last 4 counts
-NEXT_HIT_BEATS = 0.35  # after a move starts, its picture stays with the ring lit for this long
+NEXT_HIT_BEATS = (
+    0.35  # after a move starts, its picture stays with the ring lit for this long
+)
 
 
 # Stick-figure demonstrations of the body calibration poses.
 CALIBRATION_POSES = {
     "neutral": Keyframe(beat=0.0, right=REST, left=REST.mirrored()),
-    "t_pose": Keyframe(beat=0.0, right=ArmPose(upper=(1, 0, 0), fore=(1, 0, 0)),
-                       left=ArmPose(upper=(-1, 0, 0), fore=(-1, 0, 0))),  # fmt: skip
+    "t_pose": Keyframe(
+        beat=0.0,
+        right=ArmPose(upper=(1, 0, 0), fore=(1, 0, 0)),
+        left=ArmPose(upper=(-1, 0, 0), fore=(-1, 0, 0)),
+    ),  # fmt: skip
 }
 
 
 def learn_order() -> list[Block]:
     """The library's moves for "Learn the moves", simplest kinds first
     (knock, chop, wrist roll, sweep, flick + clap); library order within a kind."""
-    kinds = [BlockKind.KNOCK, BlockKind.CHOP, BlockKind.WRIST_ROLL, BlockKind.SWEEP, BlockKind.FLICK_CLAP]
+    kinds = [
+        BlockKind.KNOCK,
+        BlockKind.CHOP,
+        BlockKind.WRIST_ROLL,
+        BlockKind.SWEEP,
+        BlockKind.FLICK_CLAP,
+    ]
     return sorted(BLOCK_LIBRARY.values(), key=lambda b: kinds.index(b.kind))
 
 
@@ -188,14 +208,18 @@ class Menu:
 class Game:
     """The game's state machine and drawing (see module docstring)."""
 
-    def __init__(self, args: argparse.Namespace, capture: CaptureClient, config: CaptureConfig) -> None:
+    def __init__(
+        self, args: argparse.Namespace, capture: CaptureClient, config: CaptureConfig
+    ) -> None:
         self.args = args
         self.capture = capture
         self.config = config
         # Fullscreen, scaled from the WIDTH x HEIGHT layout (letterboxed);
         # F toggles a window. The dummy video driver (tests) gets a plain window.
         set_window_icon()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), display_flags(args.window))
+        self.screen = pygame.display.set_mode(
+            (WIDTH, HEIGHT), display_flags(args.window)
+        )
         pygame.display.set_caption(NAME)
         load_scale(args.text_scale)
         self.feed = LiveFeed(config)
@@ -221,14 +245,22 @@ class Game:
         # Settings kept between launches (ui.json; Settings screen, O in the menu).
         prefs = settings.load_ui()
         self.mirrored = bool(prefs.get("mirror", True))
-        self.count_in = args.count_in if args.count_in is not None else int(prefs.get("count_in", COUNT_IN_DEFAULT))
+        self.count_in = (
+            args.count_in
+            if args.count_in is not None
+            else int(prefs.get("count_in", COUNT_IN_DEFAULT))
+        )
         self.setting_index = 0
         self.learn_blocks = learn_order()
         self.learn_index, self.learn_speed = 0, 0
         self.lead_in_s = 0.0
         self.low_light = LowLightMonitor()  # "more light helps" hint (camera fps)
-        self.camera_hint_top = 0  # top of the hint on the camera view (warnings go above it)
-        self.placement: scores.Placement | None = None  # the last play's place on the score board
+        self.camera_hint_top = (
+            0  # top of the hint on the camera view (warnings go above it)
+        )
+        self.placement: scores.Placement | None = (
+            None  # the last play's place on the score board
+        )
         self.layout_reported: set[str] = set()
         self._reset_scene_state()
 
@@ -293,9 +325,16 @@ class Game:
             clock.tick(60)
             frames += 1
             if self.args.shots and frames % 40 == 0:  # reviews: periodic screenshots
-                pygame.image.save(self.screen, f"{self.args.shots}/{frames:05d}-{self.scene.name.lower()}.png")
+                pygame.image.save(
+                    self.screen,
+                    f"{self.args.shots}/{frames:05d}-{self.scene.name.lower()}.png",
+                )
             shot = self.args.screenshot
-            if shot and self.scene is Scene.PLAY and self.player.position() > self.args.auto_seconds * 0.8:
+            if (
+                shot
+                and self.scene is Scene.PLAY
+                and self.player.position() > self.args.auto_seconds * 0.8
+            ):
                 pygame.image.save(self.screen, shot)
                 self.args.screenshot = None
             if self.args.auto and self.scene is Scene.RESULTS and frames > 5:
@@ -312,15 +351,24 @@ class Game:
         adjust_scale(keys)
         if self.scene is Scene.MENU:
             return self.handle_menu(keys)
-        if pygame.K_ESCAPE in keys and self.scene in (Scene.BODY, Scene.LATENCY, Scene.RESULTS, Scene.LEARN):
+        if pygame.K_ESCAPE in keys and self.scene in (
+            Scene.BODY,
+            Scene.LATENCY,
+            Scene.RESULTS,
+            Scene.LEARN,
+        ):
             self.go(Scene.MENU)
             return True
         if self.scene is Scene.SETTINGS:
             self.handle_settings(keys)
             return True
         if self.scene in (Scene.CREDITS, Scene.PRIVACY, Scene.SCORES):
-            if self.scene is Scene.SCORES and (pygame.K_LEFT in keys or pygame.K_RIGHT in keys):
-                self.menu.routine_index += 1 if pygame.K_RIGHT in keys else -1  # another level
+            if self.scene is Scene.SCORES and (
+                pygame.K_LEFT in keys or pygame.K_RIGHT in keys
+            ):
+                self.menu.routine_index += (
+                    1 if pygame.K_RIGHT in keys else -1
+                )  # another level
                 self.doc_scroll = 0
             self.handle_document(keys)
             return True
@@ -360,7 +408,9 @@ class Game:
         if pygame.K_o in keys:
             self.go(Scene.SETTINGS)
             return True
-        if (pygame.K_RETURN in keys or pygame.K_SPACE in keys) and m.routine is not None:
+        if (
+            pygame.K_RETURN in keys or pygame.K_SPACE in keys
+        ) and m.routine is not None:
             self.next_after(Scene.MENU)
         return True
 
@@ -369,7 +419,9 @@ class Game:
         m = self.menu
         if scene is Scene.MENU and (self.calibration is None or m.redo_body):
             return self.go(Scene.BODY)
-        if scene in (Scene.MENU, Scene.BODY) and (self.latency_ms is None or m.redo_latency):
+        if scene in (Scene.MENU, Scene.BODY) and (
+            self.latency_ms is None or m.redo_latency
+        ):
             return self.go(Scene.LATENCY)
         m.redo_body = m.redo_latency = False
         self.start_play()
@@ -383,12 +435,18 @@ class Game:
             self.t0, self.collected = time.monotonic(), []
         elif self.step in (1, 3):
             elapsed = time.monotonic() - self.t0
-            countdown, hold = (0.4, 0.5) if self.args.fast else (CALIBRATION_COUNTDOWN_S, CALIBRATION_HOLD_S)
+            countdown, hold = (
+                (0.4, 0.5)
+                if self.args.fast
+                else (CALIBRATION_COUNTDOWN_S, CALIBRATION_HOLD_S)
+            )
             if elapsed > countdown:
                 self.collected += samples
             if elapsed > countdown + hold:
                 if self.step == 1:
-                    self.neutral = Recording.from_samples(self.collected, {"kind": "static"})
+                    self.neutral = Recording.from_samples(
+                        self.collected, {"kind": "static"}
+                    )
                     self.step = 2
                 else:
                     t_pose = Recording.from_samples(self.collected, {"kind": "static"})
@@ -402,7 +460,9 @@ class Game:
         elif self.step == 4:
             if self.calibration_issues and pygame.K_r in keys:
                 self.go(Scene.BODY)
-            elif not self.calibration_issues and (pygame.K_RETURN in keys or pygame.K_SPACE in keys):
+            elif not self.calibration_issues and (
+                pygame.K_RETURN in keys or pygame.K_SPACE in keys
+            ):
                 self.next_after(Scene.BODY)
 
     # -- latency calibration ------------------------------------------------------
@@ -412,33 +472,64 @@ class Game:
             features = self.latency_extractor.update(sample)
             if self.step == 1 and features is not None:
                 self.collected.append(features)
-        if self.step == 0 and pygame.K_s in keys:  # skip: reuse the last saved value (or none)
-            self.latency_ms = self.latency_ms if self.latency_ms is not None else (self.saved_latency_ms or 0.0)
+        if (
+            self.step == 0 and pygame.K_s in keys
+        ):  # skip: reuse the last saved value (or none)
+            self.latency_ms = (
+                self.latency_ms
+                if self.latency_ms is not None
+                else (self.saved_latency_ms or 0.0)
+            )
             self.next_after(Scene.LATENCY)
         elif self.step == 0 and (pygame.K_SPACE in keys or pygame.K_RETURN in keys):
-            bpm, count_in, claps = (600.0, 2, 8) if self.args.fast else (LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS)
+            bpm, count_in, claps = (
+                (600.0, 2, 8)
+                if self.args.fast
+                else (LATENCY_BPM, LATENCY_COUNT_IN, LATENCY_CLAPS)
+            )
             grid = BeatGrid(bpm, 0.5, 0)
             beats = count_in + claps
-            silence = np.zeros(int((0.5 + (beats + 1) * grid.beat_s) * self.player.sr), np.float32)
-            self.player.play(render_click_track(silence, self.player.sr, grid, music_gain=0.0, click_gain=0.9), 0.0)
+            silence = np.zeros(
+                int((0.5 + (beats + 1) * grid.beat_s) * self.player.sr), np.float32
+            )
+            self.player.play(
+                render_click_track(
+                    silence, self.player.sr, grid, music_gain=0.0, click_gain=0.9
+                ),
+                0.0,
+            )
             start = self.player.start_ns
-            self.click_ns = [start + int(grid.time_of(b) * 1e9) for b in range(count_in, beats)]
-            self.count_in_ns = [start + int(grid.time_of(b) * 1e9) for b in range(count_in)]
+            self.click_ns = [
+                start + int(grid.time_of(b) * 1e9) for b in range(count_in, beats)
+            ]
+            self.count_in_ns = [
+                start + int(grid.time_of(b) * 1e9) for b in range(count_in)
+            ]
             self.latency_beat_ns = grid.beat_s * 1e9
             self.collected, self.step = [], 1
         elif self.step == 1 and time.monotonic_ns() > self.click_ns[-1] + 1e9:
-            self.latency_result = estimate_latency(self.collected, self.click_ns, self.latency_beat_ns)
+            self.latency_result = estimate_latency(
+                self.collected, self.click_ns, self.latency_beat_ns
+            )
             self.step = 2
         elif self.step == 2:
             r = self.latency_result
             if pygame.K_r in keys:
                 self.go(Scene.LATENCY)
-            elif r is not None and r.ok and (pygame.K_RETURN in keys or pygame.K_SPACE in keys):
+            elif (
+                r is not None
+                and r.ok
+                and (pygame.K_RETURN in keys or pygame.K_SPACE in keys)
+            ):
                 self.latency_ms = r.latency_ms
                 settings.save_latency(r.latency_ms, r.spread_ms, r.claps_found)
                 self.next_after(Scene.LATENCY)
             elif pygame.K_s in keys:  # skip: reuse the last saved value (or none)
-                self.latency_ms = self.latency_ms if self.latency_ms is not None else (self.saved_latency_ms or 0.0)
+                self.latency_ms = (
+                    self.latency_ms
+                    if self.latency_ms is not None
+                    else (self.saved_latency_ms or 0.0)
+                )
                 self.next_after(Scene.LATENCY)
 
     # -- play ------------------------------------------------------------------
@@ -459,14 +550,18 @@ class Game:
         sr = self.player.sr
         first_move_s = song.beat_time_s(song.routine_start_beat)
         self.lead_in_s = max(0.0, self.count_in * song.beat_s - first_move_s)
-        track = np.concatenate([np.zeros(round(self.lead_in_s * sr), np.float32), samples])
+        track = np.concatenate(
+            [np.zeros(round(self.lead_in_s * sr), np.float32), samples]
+        )
         self.player.play(track, 0.0)
         song_start_ns = self.player.start_ns + round(self.lead_in_s * 1e9)
         self.session = PlaySession(song, routine, song_start_ns,
                                    int((self.latency_ms or 0.0) * 1e6), self.calibration)  # fmt: skip
         self.animator = Animator(routine)
         end_beat = song.routine_start_beat + routine.total_counts + 4
-        self.play_end_s = self.lead_in_s + min(song.beat_time_s(end_beat), len(samples) / sr)
+        self.play_end_s = self.lead_in_s + min(
+            song.beat_time_s(end_beat), len(samples) / sr
+        )
         if self.args.auto:
             self.play_end_s = min(self.play_end_s, self.args.auto_seconds)
 
@@ -489,13 +584,17 @@ class Game:
         self.results = session.summary()
         fps = [f for f in self.play_fps if f > 0]
         self.results["camera_fps"] = round(float(np.median(fps)), 1) if fps else None
-        self.results["low_light_pct"] = round(100 * self.play_low / len(self.play_fps), 1) if self.play_fps else 0.0
+        self.results["low_light_pct"] = (
+            round(100 * self.play_low / len(self.play_fps), 1) if self.play_fps else 0.0
+        )
         self.placement = scores.record(self.results)  # None if ended early (not ranked)
         self.results["placement"] = scores.placement_dict(self.placement)
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         rec_dir = Path("recordings") / f"game-{stamp}"
         session.recording().save(rec_dir / "play.npz")
-        path = write_log("game", {"result": self.results, "recording": str(rec_dir / "play.npz")})
+        path = write_log(
+            "game", {"result": self.results, "recording": str(rec_dir / "play.npz")}
+        )
         self.message = f"saved {path}"
         self.scene = Scene.RESULTS
 
@@ -515,10 +614,14 @@ class Game:
             self.doc_scroll = max(0, self.doc_scroll - 1)
 
     def draw_credits(self, stage, camera, panel) -> None:
-        self.doc_more = draw_document(stage, credits_entries(self.menu.songs), self.doc_scroll, "[Esc] back")
+        self.doc_more = draw_document(
+            stage, credits_entries(self.menu.songs), self.doc_scroll, "[Esc] back"
+        )
 
     def draw_privacy(self, stage, camera, panel) -> None:
-        self.doc_more = draw_document(stage, privacy_entries(), self.doc_scroll, "[Esc] back")
+        self.doc_more = draw_document(
+            stage, privacy_entries(), self.doc_scroll, "[Esc] back"
+        )
 
     # -- settings ---------------------------------------------------------------------
 
@@ -548,7 +651,9 @@ class Game:
             self.go(Scene.MENU)
             return
         rows = len(self.setting_rows())
-        self.setting_index = (self.setting_index + (pygame.K_DOWN in keys) - (pygame.K_UP in keys)) % rows
+        self.setting_index = (
+            self.setting_index + (pygame.K_DOWN in keys) - (pygame.K_UP in keys)
+        ) % rows
         step = (pygame.K_RIGHT in keys) - (pygame.K_LEFT in keys)
         if not step:
             return
@@ -557,15 +662,23 @@ class Game:
         elif self.setting_index == 1:
             self.set_mirrored(not self.mirrored)
         elif self.setting_index == 2:
-            i = COUNT_IN_CHOICES.index(self.count_in) if self.count_in in COUNT_IN_CHOICES else 2
-            self.count_in = COUNT_IN_CHOICES[min(len(COUNT_IN_CHOICES) - 1, max(0, i + step))]
+            i = (
+                COUNT_IN_CHOICES.index(self.count_in)
+                if self.count_in in COUNT_IN_CHOICES
+                else 2
+            )
+            self.count_in = COUNT_IN_CHOICES[
+                min(len(COUNT_IN_CHOICES) - 1, max(0, i + step))
+            ]
             settings.save_ui(count_in=self.count_in)
         else:
             self.set_fullscreen()
 
     def draw_settings(self, stage, camera, panel) -> None:
         y = text(stage, "Settings", (24, 16), 34, ACCENT)
-        bottom = footer(stage, [("[Up/Down] choose   [Left/Right] change   [Esc] back", 16, DIM)])
+        bottom = footer(
+            stage, [("[Up/Down] choose   [Left/Right] change   [Esc] back", 16, DIM)]
+        )
         for i, (label, value, help_text) in enumerate(self.setting_rows()):
             selected = i == self.setting_index
             box_h = (text_height(stage, label, 22, 36) + text_height(stage, f"<  {value}  >", 24, 36)
@@ -579,7 +692,13 @@ class Game:
                 register_box(stage, rect, "[setting]")
             inner = stage.subsurface(rect.inflate(-8, -8))
             ly = text(inner, label, (20, 0), 22, TEXT)
-            ly = text(inner, f"<  {value}  >" if selected else value, (20, ly), 24, ACCENT if selected else DIM)
+            ly = text(
+                inner,
+                f"<  {value}  >" if selected else value,
+                (20, ly),
+                24,
+                ACCENT if selected else DIM,
+            )
             if selected:
                 text(inner, help_text, (20, ly), 16, DIM)
             y = rect.bottom
@@ -601,9 +720,12 @@ class Game:
         else:
             entries.append(("text", f"< {routine.difficulty.value} >"))
             board = scores.top(song.id, routine.id, 10)
-            entries += [("text", self.board_line(i + 1, e)) for i, e in enumerate(board)] or [
-                ("small", "No plays yet: finish a song to get on the board.")]
-        self.doc_more = draw_document(stage, entries, self.doc_scroll, "[Left/Right] level   [Esc] back")
+            entries += [
+                ("text", self.board_line(i + 1, e)) for i, e in enumerate(board)
+            ] or [("small", "No plays yet: finish a song to get on the board.")]
+        self.doc_more = draw_document(
+            stage, entries, self.doc_scroll, "[Left/Right] level   [Esc] back"
+        )
 
     # -- learn the moves -----------------------------------------------------------
 
@@ -624,7 +746,9 @@ class Game:
         self.learn_grid = BeatGrid(self.learn_bpm, 0.5, 0)
         seconds = 0.5 + self.animator.end_beat * self.learn_grid.beat_s
         silence = np.zeros(int(seconds * self.player.sr), np.float32)
-        self.learn_track = render_click_track(silence, self.player.sr, self.learn_grid, music_gain=0.0, click_gain=0.5)
+        self.learn_track = render_click_track(
+            silence, self.player.sr, self.learn_grid, music_gain=0.0, click_gain=0.5
+        )
         self.player.play(self.learn_track, 0.0)
 
     def handle_learn(self, keys: list[int], samples: list[PoseSample]) -> None:
@@ -632,7 +756,9 @@ class Game:
         faster = (pygame.K_UP in keys) - (pygame.K_DOWN in keys)
         if step or faster:
             self.learn_index = (self.learn_index + step) % len(self.learn_blocks)
-            self.learn_speed = min(len(LEARN_SPEEDS) - 1, max(0, self.learn_speed + faster))
+            self.learn_speed = min(
+                len(LEARN_SPEEDS) - 1, max(0, self.learn_speed + faster)
+            )
             self.start_learn()
         elif self.player.position() >= len(self.learn_track) / self.player.sr:
             self.start_learn()  # loop
@@ -648,16 +774,27 @@ class Game:
     def draw(self) -> None:
         UI.drawn = [] if self.args.check_layout else None
         self.screen.fill(BG)
-        camera = self.screen.subsurface((STAGE_W, 0, self.config.width, self.config.height))
+        camera = self.screen.subsurface(
+            (STAGE_W, 0, self.config.width, self.config.height)
+        )
         self.feed.draw(camera, self.mirrored)
         failure = self.feed.failure(self.capture)
         if failure:
             y = text(camera, "CAMERA PROBLEM", (20, 20), 30, ERROR)
             text(camera, failure, (20, y), 18, ERROR)
         elif self.feed.ready_at is None:
-            text(camera, "starting camera ...", (camera.get_width() // 2, 200), 28, DIM, centre=True)
+            text(
+                camera,
+                "starting camera ...",
+                (camera.get_width() // 2, 200),
+                28,
+                DIM,
+                centre=True,
+            )
         stage = self.screen.subsurface((0, 0, STAGE_W, HEIGHT))
-        panel = self.screen.subsurface((STAGE_W, self.config.height, WIDTH - STAGE_W, HEIGHT - self.config.height))
+        panel = self.screen.subsurface(
+            (STAGE_W, self.config.height, WIDTH - STAGE_W, HEIGHT - self.config.height)
+        )
         panel.fill(PANEL)
         # Low-light hint at the bottom of the camera view (other warnings go above it).
         self.camera_hint_top = camera.get_height()
@@ -674,13 +811,18 @@ class Game:
             for issue in layout_issues(UI.drawn):
                 if issue not in self.layout_reported:
                     self.layout_reported.add(issue)
-                    print(f"LAYOUT ({self.scene.name.lower()}, text size {UI.scale}): {issue}", file=sys.stderr)
+                    print(
+                        f"LAYOUT ({self.scene.name.lower()}, text size {UI.scale}): {issue}",
+                        file=sys.stderr,
+                    )
 
     def draw_menu(self, stage, camera, panel) -> None:
         y = self.draw_title(stage)
         m = self.menu
         if not m.songs:
-            text(stage, "No songs: run parapara-fetch-demo-songs", (30, y + 20), 22, WARN)
+            text(
+                stage, "No songs: run parapara-fetch-demo-songs", (30, y + 20), 22, WARN
+            )
             return
         bottom = footer(stage, [("New? [T] learn the moves", 18, ACCENT),
                                 ("[Up/Down] song   [Left/Right] level   [Enter] play", 16, DIM),
@@ -695,27 +837,39 @@ class Game:
         def selected_lines(song: Song) -> list[tuple[str, float, tuple[int, int, int]]]:
             r = m.routine
             lines = [(song.title, 24, ACCENT)]
-            licence = song_credit(song)[1][1].split(",")[0]  # "CC BY 4.0" / "your own music"
-            if song.artist:  # artist and licence right where the song is chosen, as CC BY asks
+            licence = song_credit(song)[1][1].split(",")[
+                0
+            ]  # "CC BY 4.0" / "your own music"
+            if (
+                song.artist
+            ):  # artist and licence right where the song is chosen, as CC BY asks
                 lines.append((f"by {song.artist}   {licence}", 16, DIM))
             lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM" if r else "no routines",
                           20, TEXT))  # fmt: skip
             top = scores.best(song.id, r.id) if r else None
             if top:
-                lines.append((f"best {top['score']:,}   {top['accuracy_pct']:.0f}%", 16, DIM))
+                lines.append(
+                    (f"best {top['score']:,}   {top['accuracy_pct']:.0f}%", 16, DIM)
+                )
             if not song.beat_map.verified:
                 lines.append(("beat map not checked", 18, WARN))
             return lines
 
         def height(i: int) -> int:
             if i == m.song_index:
-                return 16 + sum(text_height(box_surface, s, size, 12) for s, size, _ in selected_lines(m.songs[i]))
+                return 16 + sum(
+                    text_height(box_surface, s, size, 12)
+                    for s, size, _ in selected_lines(m.songs[i])
+                )
             return text_height(stage, m.songs[i].title, 20) + 2
 
         y += 10
         heights = [height(i) for i in range(len(m.songs))]
         first = 0
-        while first < m.song_index and y + sum(heights[first:m.song_index + 1]) > bottom - 8:
+        while (
+            first < m.song_index
+            and y + sum(heights[first : m.song_index + 1]) > bottom - 8
+        ):
             first += 1
         for i in range(first, len(m.songs)):
             if y + heights[i] > bottom - 8:
@@ -731,7 +885,13 @@ class Game:
                 for s, size, colour in selected_lines(song):
                     ly = text(inner, s, (9, ly), size, colour)
             else:
-                text(stage, song.title, (24, y), 20, TEXT if song.beat_map.verified else DIM)
+                text(
+                    stage,
+                    song.title,
+                    (24, y),
+                    20,
+                    TEXT if song.beat_map.verified else DIM,
+                )
             y += heights[i]
 
         def status(name: str, value: str | None, redo: bool, key: str) -> str:
@@ -740,7 +900,12 @@ class Game:
             return f"{name}: {value}" + ("  -> redo" if redo else f"  ({key} redo)")
 
         footer(panel, [(f"{NAME} {__version__}", 14, DIM)], x=20)
-        y = text(panel, status("body", "OK" if self.calibration else None, m.redo_body, "B"), (20, 16), 22)
+        y = text(
+            panel,
+            status("body", "OK" if self.calibration else None, m.redo_body, "B"),
+            (20, 16),
+            22,
+        )
         lat = f"{self.latency_ms:.0f} ms" if self.latency_ms is not None else None
         text(panel, status("latency", lat, m.redo_latency, "L"), (20, y), 22)
 
@@ -750,14 +915,28 @@ class Game:
         logo = wordmark(round(44 * UI.scale))
         if logo is None:
             return text(stage, NAME, (30, 18), 48, ACCENT)
-        if logo.get_width() > STAGE_W - 48:  # very large text sizes: keep it on the stage
-            logo = pygame.transform.smoothscale(logo, (STAGE_W - 48, round(logo.get_height() * (STAGE_W - 48) / logo.get_width())))
+        if (
+            logo.get_width() > STAGE_W - 48
+        ):  # very large text sizes: keep it on the stage
+            logo = pygame.transform.smoothscale(
+                logo,
+                (
+                    STAGE_W - 48,
+                    round(logo.get_height() * (STAGE_W - 48) / logo.get_width()),
+                ),
+            )
         rect = stage.blit(logo, (20, 10))
         register_box(stage, rect, "[logo]")
         return rect.bottom + 4
 
     def draw_body(self, stage, camera, panel) -> None:
-        titles = {0: "Stand in position", 1: "Neutral pose", 2: "Stand in position", 3: "T-pose", 4: "Calibration"}
+        titles = {
+            0: "Stand in position",
+            1: "Neutral pose",
+            2: "Stand in position",
+            3: "T-pose",
+            4: "Calibration",
+        }
         y = text(stage, titles[self.step], (24, 20), 34, ACCENT)
         latest = self.framing.latest
         if self.step in (0, 2):
@@ -768,11 +947,19 @@ class Game:
                 for issue in (latest.issues if latest else ())[:1]:
                     text(stage, issue.message, (24, y + 20), 28, WARN)
         elif self.step in (1, 3):
-            how = "Arms down, relaxed" if self.step == 1 else "Arms straight out to the sides"
+            how = (
+                "Arms down, relaxed"
+                if self.step == 1
+                else "Arms straight out to the sides"
+            )
             y = text(stage, how, (24, y + 10), 26)
             elapsed = time.monotonic() - self.t0
             countdown = 0.4 if self.args.fast else CALIBRATION_COUNTDOWN_S
-            label = str(int(np.ceil(countdown - elapsed))) if elapsed < countdown else "HOLD"
+            label = (
+                str(int(np.ceil(countdown - elapsed)))
+                if elapsed < countdown
+                else "HOLD"
+            )
             # The pose to hold, shown by a stick figure (fifth test run) between
             # the instructions and the countdown at the bottom; fitted like the
             # Learn screen's dancer (head 0.8 shoulder widths above the
@@ -780,8 +967,16 @@ class Game:
             label_top = HEIGHT - 10 - text_height(stage, "HOLD", 80)
             text(stage, label, (STAGE_W // 2, label_top), 80, ACCENT, centre=True)
             scale = min(DANCER_SCALE, (label_top - y - 20) / 4.1)
-            pose = static_pose(CALIBRATION_POSES["neutral" if self.step == 1 else "t_pose"])
-            draw_dancer(stage, pose, (STAGE_W // 2, round(y + 10 + 0.8 * scale)), scale, self.mirrored)
+            pose = static_pose(
+                CALIBRATION_POSES["neutral" if self.step == 1 else "t_pose"]
+            )
+            draw_dancer(
+                stage,
+                pose,
+                (STAGE_W // 2, round(y + 10 + 0.8 * scale)),
+                scale,
+                self.mirrored,
+            )
         elif self.calibration_issues:
             bottom = footer(stage, [("[R] retry   [Esc] menu", 20, DIM)])
             y = text(stage, "Try again:", (24, y + 10), 28, WARN)
@@ -793,32 +988,69 @@ class Game:
 
     def draw_latency(self, stage, camera, panel) -> None:
         y = text(stage, "Clap to the beat", (24, 20), 34, ACCENT)
-        last = f" (last: {self.saved_latency_ms:.0f} ms)" if self.saved_latency_ms is not None else ""
+        last = (
+            f" (last: {self.saved_latency_ms:.0f} ms)"
+            if self.saved_latency_ms is not None
+            else ""
+        )
         if self.step == 0:
             footer(stage, [("[Space] start", 24, ACCENT), (f"[S] skip{last}", 18, DIM)])
             y = text(stage, f"Listen to {LATENCY_COUNT_IN} clicks, then clap on the next {LATENCY_CLAPS}.",
                      (24, y + 10), 24)  # fmt: skip
             y = text(stage, "Hands in view.", (24, y), 24)
-            text(stage, "Once per game start: the next songs use it too.", (24, y + 16), 18, DIM)
+            text(
+                stage,
+                "Once per game start: the next songs use it too.",
+                (24, y + 16),
+                18,
+                DIM,
+            )
         elif self.step == 1:
             # 4, 3, 2, 1 on the count-in clicks (sixth test run), then CLAP!
             # with the number of claps so far.
             now = time.monotonic_ns()
             done = sum(c <= now for c in self.click_ns)
             heard = sum(c <= now for c in self.count_in_ns)
-            label = "CLAP!" if done else (str(len(self.count_in_ns) - heard + 1) if heard else "ready")
+            label = (
+                "CLAP!"
+                if done
+                else (str(len(self.count_in_ns) - heard + 1) if heard else "ready")
+            )
             beat_ns = self.latency_beat_ns
-            on_click = any(0 <= now - c < 0.3 * beat_ns for c in self.count_in_ns + self.click_ns)
+            on_click = any(
+                0 <= now - c < 0.3 * beat_ns for c in self.count_in_ns + self.click_ns
+            )
             y = text(stage, label, (STAGE_W // 2, max(y + 40, 230)), 64 if done or not heard else 90,
                      ACCENT if on_click or done else TEXT, centre=True)  # fmt: skip
             if done:
-                text(stage, f"{done} / {len(self.click_ns)}", (STAGE_W // 2, y + 20), 40, TEXT, centre=True)
+                text(
+                    stage,
+                    f"{done} / {len(self.click_ns)}",
+                    (STAGE_W // 2, y + 20),
+                    40,
+                    TEXT,
+                    centre=True,
+                )
         else:
             r = self.latency_result
             if r and r.ok:
                 footer(stage, [("[Enter] accept   [R] retry", 22, DIM)])
-                y = text(stage, f"{r.latency_ms:.0f} ms", (STAGE_W // 2, max(y + 40, 220)), 72, OK, centre=True)
-                text(stage, f"{r.claps_found} claps heard", (STAGE_W // 2, y + 10), 22, DIM, centre=True)
+                y = text(
+                    stage,
+                    f"{r.latency_ms:.0f} ms",
+                    (STAGE_W // 2, max(y + 40, 220)),
+                    72,
+                    OK,
+                    centre=True,
+                )
+                text(
+                    stage,
+                    f"{r.claps_found} claps heard",
+                    (STAGE_W // 2, y + 10),
+                    22,
+                    DIM,
+                    centre=True,
+                )
             else:
                 bottom = footer(stage, [(f"[R] retry   [S] skip{last}", 22, DIM)])
                 y = text(stage, "Try again:", (24, y + 10), 28, WARN)
@@ -840,42 +1072,77 @@ class Game:
         # arrived), then the box moves on to the following move.
         current = self.animator.block_at(beat)
         if current is not None and beat - current.start < NEXT_HIT_BEATS:
-            self.draw_next(stage, static_pose(current.block.keyframes[0]), current.start - beat)
+            self.draw_next(
+                stage, static_pose(current.block.keyframes[0]), current.start - beat
+            )
         elif pose.next_block is not None and pose.next_block_beat is not None:
-            self.draw_next(stage, static_pose(pose.next_block.keyframes[0]), pose.next_block_beat - beat)
+            self.draw_next(
+                stage,
+                static_pose(pose.next_block.keyframes[0]),
+                pose.next_block_beat - beat,
+            )
         # Above the dancer's head (players watch the dancer, not their camera
         # view): the count-in, then the grade pop-ups. The area ends at the
         # "next" box, so long words shrink rather than run under it.
         top = stage.subsurface((0, 0, NEXT_BOX.left - 8, DANCER_Y - 40))
         if counting_in:  # 4, 3, 2, 1 into the first move, flashing on each count
             on_beat = beat - np.floor(beat) < 0.25
-            text(top, str(int(np.ceil(-beat))), (DANCER_X, 0), 64, ACCENT if on_beat else TEXT, centre=True)
+            text(
+                top,
+                str(int(np.ceil(-beat))),
+                (DANCER_X, 0),
+                64,
+                ACCENT if on_beat else TEXT,
+                centre=True,
+            )
         now = time.monotonic()
         for t, grade, points in self.popups[-1:]:
-            label = grade.value.upper() + ("!" if grade in (Grade.PERFECT, Grade.GREAT) else "")
+            label = grade.value.upper() + (
+                "!" if grade in (Grade.PERFECT, Grade.GREAT) else ""
+            )
             rise = round(12 * (1 - (now - t) / POPUP_S))
-            text(top, label, (DANCER_X, 18 - rise), 56, GRADE_COLOUR[grade], centre=True)
+            text(
+                top, label, (DANCER_X, 18 - rise), 56, GRADE_COLOUR[grade], centre=True
+            )
         warning = session.framing_warning
         if warning is not None:  # above the low-light hint, if that is shown
             message = warning.issues[0].message
-            y = min(camera.get_height() - 120, self.camera_hint_top - 8 - text_height(camera, message, 28, camera.get_width() // 2))
+            y = min(
+                camera.get_height() - 120,
+                self.camera_hint_top
+                - 8
+                - text_height(camera, message, 28, camera.get_width() // 2),
+            )
             text(camera, message, (camera.get_width() // 2, y), 28, WARN, centre=True)
         k = session.keeper
         y = text(panel, f"{k.score:,}", (20, 6), 56, ACCENT)
         text(panel, f"combo {k.combo}", (20, y), 30)
-        progress = min(1.0, max(0.0, pos) / (self.play_end_s - self.lead_in_s)) if self.play_end_s > self.lead_in_s else 0.0
+        progress = (
+            min(1.0, max(0.0, pos) / (self.play_end_s - self.lead_in_s))
+            if self.play_end_s > self.lead_in_s
+            else 0.0
+        )
         bar = pygame.Rect(20, panel.get_height() - 22, panel.get_width() - 40, 12)
         pygame.draw.rect(panel, DIM, bar, 1)
         pygame.draw.rect(panel, ACCENT, (bar.x, bar.y, round(bar.w * progress), bar.h))
 
-    def draw_count(self, stage, count: int, beat: float, top: int | None = None, idle: str = "ready") -> int:
+    def draw_count(
+        self,
+        stage,
+        count: int,
+        beat: float,
+        top: int | None = None,
+        idle: str = "ready",
+    ) -> int:
         """The count (1-8) below the dancer's feet, flashing on the beat
         (``idle`` before the routine); returns its top y."""
         on_beat = count and beat - np.floor(beat) < 0.12
         label = str(count) if count else (idle if beat < 0 else "")
         size = 56 if count else 34
         y = HEIGHT - 10 - text_height(stage, "8", 56) if top is None else top
-        text(stage, label, (DANCER_X, y), size, ACCENT if on_beat else TEXT, centre=True)
+        text(
+            stage, label, (DANCER_X, y), size, ACCENT if on_beat else TEXT, centre=True
+        )
         return y
 
     def draw_next(self, stage, pose: DancerPose, beats_to_go: float) -> None:
@@ -905,16 +1172,26 @@ class Game:
         scale = 52  # px per shoulder width
         window_h = max(10, min(round(3.6 * scale), label_y - y))
         window = box.subsurface((3, y, box.get_width() - 6, window_h))
-        draw_dancer(window, pose, (window.get_width() // 2, round(1.7 * scale)), scale, self.mirrored)
+        draw_dancer(
+            window,
+            pose,
+            (window.get_width() // 2, round(1.7 * scale)),
+            scale,
+            self.mirrored,
+        )
         ring_x, end_x = 14 + ring_r, box.get_width() - 14 - dot_r
         pygame.draw.line(box, DIM, (ring_x, track_y), (end_x, track_y), 3)
         if beats_to_go <= 0:  # the move starts now
             pygame.draw.circle(box, ACCENT, (ring_x, track_y), ring_r)
             return
         pygame.draw.circle(box, ACCENT, (ring_x, track_y), ring_r, 4)
-        u = min(1.0, beats_to_go / NEXT_LEAD_BEATS)  # 1 = waiting at the right end, 0 = in the ring
+        u = min(
+            1.0, beats_to_go / NEXT_LEAD_BEATS
+        )  # 1 = waiting at the right end, 0 = in the ring
         colour = ACCENT if beats_to_go <= NEXT_LEAD_BEATS else DIM
-        pygame.draw.circle(box, colour, (round(ring_x + (end_x - ring_x) * u), track_y), dot_r)
+        pygame.draw.circle(
+            box, colour, (round(ring_x + (end_x - ring_x) * u), track_y), dot_r
+        )
 
     def draw_learn(self, stage, camera, panel) -> None:
         block = self.learn_blocks[self.learn_index]
@@ -926,8 +1203,12 @@ class Game:
         # Fit the dancer between the title and the count: from raised hands
         # (1.7 shoulder widths above the shoulders) to the feet (3.3 below).
         scale = min(DANCER_SCALE, (count_top - top - 10) / 5.0)
-        draw_dancer(stage, pose, (DANCER_X, round(top + 1.7 * scale)), scale, self.mirrored)
-        bottom = footer(panel, [("[Left/Right] move   [Up/Down] speed   [Esc] menu", 14, DIM)], x=20)
+        draw_dancer(
+            stage, pose, (DANCER_X, round(top + 1.7 * scale)), scale, self.mirrored
+        )
+        bottom = footer(
+            panel, [("[Left/Right] move   [Up/Down] speed   [Esc] menu", 14, DIM)], x=20
+        )
         y = text(panel, f"move {self.learn_index + 1} / {len(self.learn_blocks)}   "
                         f"speed {LEARN_SPEEDS[self.learn_speed]:.0%}", (20, 10), 16, DIM)  # fmt: skip
         description = panel.subsurface((0, y, panel.get_width(), max(1, bottom - y)))
@@ -943,14 +1224,18 @@ class Game:
         g = r.get("grades", {})
         y = text(stage, f"perfect {g.get('perfect', 0)}  great {g.get('great', 0)}  good {g.get('good', 0)}",
                  (24, y + 6), 20, DIM)  # fmt: skip
-        y = text(stage, f"hold {g.get('hold', 0)}  miss {g.get('miss', 0)}", (24, y), 20, DIM)
+        y = text(
+            stage, f"hold {g.get('hold', 0)}  miss {g.get('miss', 0)}", (24, y), 20, DIM
+        )
         p = self.placement
         if r.get("ended_early"):
             text(stage, "ended early: not on the score board", (24, y + 6), 18, DIM)
         elif p is not None and p.new_best:
             text(stage, "New best!", (24, y + 6), 32, OK)
         elif p is not None:
-            text(stage, f"#{p.rank} of {p.entries} on this level", (24, y + 6), 24, TEXT)
+            text(
+                stage, f"#{p.rank} of {p.entries} on this level", (24, y + 6), 24, TEXT
+            )
         # Panel: posture / latency, then this level's board (yours highlighted).
         bottom = footer(panel, [(self.message, 12, DIM)], x=20)
         y = text(panel, f"posture {r.get('posture_pct', 0):.0f}%   latency {r.get('latency_ms', 0):.0f} ms",
@@ -958,7 +1243,9 @@ class Game:
         routine = self.menu.routine
         if routine is None or p is None:
             return
-        y = text(panel, f"Score board ({routine.difficulty.value})", (20, y + 4), 18, ACCENT)
+        y = text(
+            panel, f"Score board ({routine.difficulty.value})", (20, y + 4), 18, ACCENT
+        )
         for i, entry in enumerate(scores.top(self.menu.song.id, routine.id, 5)):
             line = self.board_line(i + 1, entry)
             if y + text_height(panel, line, 16, 20) > bottom:
@@ -968,22 +1255,46 @@ class Game:
 
 def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
     parser = argparse.ArgumentParser(description="Para Para dance game")
-    parser.add_argument("--latency-ms", type=float, help="override the latency calibration")
+    parser.add_argument(
+        "--latency-ms", type=float, help="override the latency calibration"
+    )
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--model", choices=("lite", "full"), default="full")
-    parser.add_argument("--window", action="store_true", help="run in a window instead of fullscreen")
-    parser.add_argument("--text-scale", type=float, help="text size (default: saved, or 2.0; +/- in game)")
-    parser.add_argument("--count-in", type=int, help="counts shown (4, 3, 2, 1) before the first move "
-                        "(default: the saved setting, or 4)")
+    parser.add_argument(
+        "--window", action="store_true", help="run in a window instead of fullscreen"
+    )
+    parser.add_argument(
+        "--text-scale",
+        type=float,
+        help="text size (default: saved, or 2.0; +/- in game)",
+    )
+    parser.add_argument(
+        "--count-in",
+        type=int,
+        help="counts shown (4, 3, 2, 1) before the first move "
+        "(default: the saved setting, or 4)",
+    )
     parser.add_argument("--reuse-calibration", action="store_true",
                         help="use the saved calibrations instead of calibrating at launch")  # fmt: skip
-    parser.add_argument("--check-layout", action="store_true", help=argparse.SUPPRESS)  # tests: report overlapping text
-    parser.add_argument("--auto", action="store_true", help=argparse.SUPPRESS)  # tests: play straight away
-    parser.add_argument("--auto-seconds", type=float, default=3.0, help=argparse.SUPPRESS)
-    parser.add_argument("--screenshot", help=argparse.SUPPRESS)  # save one play frame (reviews)
-    parser.add_argument("--fast", action="store_true", help=argparse.SUPPRESS)  # tests: short calibrations
+    parser.add_argument(
+        "--check-layout", action="store_true", help=argparse.SUPPRESS
+    )  # tests: report overlapping text
+    parser.add_argument(
+        "--auto", action="store_true", help=argparse.SUPPRESS
+    )  # tests: play straight away
+    parser.add_argument(
+        "--auto-seconds", type=float, default=3.0, help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--screenshot", help=argparse.SUPPRESS
+    )  # save one play frame (reviews)
+    parser.add_argument(
+        "--fast", action="store_true", help=argparse.SUPPRESS
+    )  # tests: short calibrations
     parser.add_argument("--shots", help=argparse.SUPPRESS)  # reviews: screenshot folder
-    parser.add_argument("--keys", help=argparse.SUPPRESS)  # tests: "frame:key ..." scripted presses
+    parser.add_argument(
+        "--keys", help=argparse.SUPPRESS
+    )  # tests: "frame:key ..." scripted presses
     parser.add_argument("--results-screenshot", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     # Fullscreen unless --window or the saved setting says window (Settings, F).

@@ -1,0 +1,19 @@
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace" },
+  { id = "end-of-file-fixer" },
+  { id = "check-added-large-files" },
+  { id = "check-yaml" },
+  { id = "check-toml" },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "ruff-check", name = "ruff check", entry = "uv run ruff check", language = "system", pass_filenames = false },
+  { id = "ruff-format", name = "ruff format", entry = "uv run ruff format --check", language = "system", pass_filenames = false },
+  { id = "pyrefly-check", name = "pyrefly check", entry = "uv run pyrefly check", language = "system", pass_filenames = false },
+  { id = "pytest", name = "pytest", entry = "uv run pytest -q", language = "system", pass_filenames = false },
+  { id = "pip-audit", name = "pip-audit", entry = "bash -c 'uv run pip-audit -r <(uv export --format requirements-txt --no-headers --no-annotate --no-hashes) || uv run pip-audit'", language = "system", pass_filenames = false },
+]

@@ -62,10 +62,16 @@ def default_user_library() -> Path:
         return Path(env)
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "parapara" / "songs"
-    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share") / "parapara" / "songs"
+    return (
+        Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+        / "parapara"
+        / "songs"
+    )
 
 
-def load_all_songs(include_user: bool = True, builtin: Path = DEFAULT_LIBRARY) -> dict[str, Song]:
+def load_all_songs(
+    include_user: bool = True, builtin: Path = DEFAULT_LIBRARY
+) -> dict[str, Song]:
     """Playable songs: the built-in library (``assets/songs``: the fetched CC
     BY demo tracks) plus the user library. Songs whose audio is missing are
     skipped; ids must be unique across libraries."""
@@ -74,7 +80,9 @@ def load_all_songs(include_user: bool = True, builtin: Path = DEFAULT_LIBRARY) -
     if include_user and user.exists():
         for song_id, song in load_library(user, skip_missing_audio=True).items():
             if song_id in songs:
-                raise SongError([f"song id {song_id!r} exists in both {builtin} and {user}"])
+                raise SongError(
+                    [f"song id {song_id!r} exists in both {builtin} and {user}"]
+                )
             songs[song_id] = song
     return songs
 
@@ -87,7 +95,9 @@ def slugify(*parts: str) -> str:
 def catalog_entry(catalog_id: str, catalog: Path = CATALOG) -> dict:
     entries = {e["id"]: e for e in json.loads(catalog.read_text())["candidates"]}
     if catalog_id not in entries:
-        raise KeyError(f"{catalog_id!r} is not in {catalog} (known: {', '.join(entries)})")
+        raise KeyError(
+            f"{catalog_id!r} is not in {catalog} (known: {', '.join(entries)})"
+        )
     return entries[catalog_id]
 
 
@@ -116,7 +126,9 @@ def import_song(audio: Path, info: SongInfo, song_id: str | None = None,
         SongError: bad input (unsupported format, missing file, id taken).
     """
     if audio.suffix.lower() not in AUDIO_SUFFIXES:
-        raise SongError([f"unsupported audio format {audio.suffix!r}; use one of {AUDIO_SUFFIXES}"])
+        raise SongError(
+            [f"unsupported audio format {audio.suffix!r}; use one of {AUDIO_SUFFIXES}"]
+        )
     if not audio.exists():
         raise SongError([f"no such file: {audio}"])
     report = check_track(audio, info.license_name)
@@ -126,7 +138,9 @@ def import_song(audio: Path, info: SongInfo, song_id: str | None = None,
     song_id = song_id or slugify(info.artist, info.title)
     directory = (library or default_user_library()) / song_id
     if directory.exists() and not replace:
-        raise SongError([f"song {song_id!r} already exists in {directory.parent} (use --replace)"])
+        raise SongError(
+            [f"song {song_id!r} already exists in {directory.parent} (use --replace)"]
+        )
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / f"{song_id}{audio.suffix.lower()}"
     shutil.copyfile(audio, target)
@@ -145,24 +159,38 @@ def import_song(audio: Path, info: SongInfo, song_id: str | None = None,
     song.save()
     song = Song.load(directory)
     if routines:
-        from parapara.routine.store import ensure_generated  # routine.store imports audio.song
+        from parapara.routine.store import (
+            ensure_generated,  # routine.store imports audio.song
+        )
 
         ensure_generated(song, force=replace)
     return song, report
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Check a track and import it into your song library")
+    parser = argparse.ArgumentParser(
+        description="Check a track and import it into your song library"
+    )
     parser.add_argument("audio", type=Path)
-    parser.add_argument("--catalog", help="fill in the details from assets/songs/catalog.json")
+    parser.add_argument(
+        "--catalog", help="fill in the details from assets/songs/catalog.json"
+    )
     parser.add_argument("--title", help="default: the file name")
     parser.add_argument("--artist", default="")
-    parser.add_argument("--license", dest="license_name", default="", help="optional, e.g. CC-BY-4.0")
+    parser.add_argument(
+        "--license", dest="license_name", default="", help="optional, e.g. CC-BY-4.0"
+    )
     parser.add_argument("--license-url")
-    parser.add_argument("--source", default="", help="optional: where the track came from")
-    parser.add_argument("--attribution", default="", help="credit text to show in the game")
+    parser.add_argument(
+        "--source", default="", help="optional: where the track came from"
+    )
+    parser.add_argument(
+        "--attribution", default="", help="credit text to show in the game"
+    )
     parser.add_argument("--id", dest="song_id")
-    parser.add_argument("--library", type=Path, help=f"default: {default_user_library()}")
+    parser.add_argument(
+        "--library", type=Path, help=f"default: {default_user_library()}"
+    )
     parser.add_argument("--replace", action="store_true")
     args = parser.parse_args(argv)
 
@@ -175,7 +203,9 @@ def main(argv: list[str] | None = None) -> None:
                         args.attribution)  # fmt: skip
         song_id = args.song_id
     try:
-        song, report = import_song(args.audio, info, song_id, args.library, args.replace)
+        song, report = import_song(
+            args.audio, info, song_id, args.library, args.replace
+        )
     except ImportRejected as err:
         print(f"REJECTED: {args.audio.name} is not suitable for Para Para:")
         for reason in err.report.rejections:
@@ -188,7 +218,9 @@ def main(argv: list[str] | None = None) -> None:
           "generated easy/normal/hard routines")  # fmt: skip
     for warning in report.warnings:
         print(f"  warning: {warning}")
-    print(f"next: verify the beat map by ear: uv run parapara-beatcheck {song.directory}")
+    print(
+        f"next: verify the beat map by ear: uv run parapara-beatcheck {song.directory}"
+    )
 
 
 if __name__ == "__main__":

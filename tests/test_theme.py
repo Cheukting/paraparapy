@@ -23,11 +23,14 @@ BRAND = {
 
 def _contrast(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
     """WCAG 2.1 contrast ratio (1 = identical, 21 = black on white)."""
+
     def luminance(colour: tuple[int, int, int]) -> float:
         channels = []
         for value in colour:
             srgb = value / 255
-            channels.append(srgb / 12.92 if srgb <= 0.04045 else ((srgb + 0.055) / 1.055) ** 2.4)
+            channels.append(
+                srgb / 12.92 if srgb <= 0.04045 else ((srgb + 0.055) / 1.055) ** 2.4
+            )
         red, green, blue = channels
         return 0.2126 * red + 0.7152 * green + 0.0722 * blue
 
@@ -36,12 +39,21 @@ def _contrast(a: tuple[int, int, int], b: tuple[int, int, int]) -> float:
 
 
 def test_brand_colours_match_palette_file() -> None:
-    documented = {int(hexcode[1:], 16) for hexcode in re.findall(r"#[0-9A-Fa-f]{6}", PALETTE.read_text())}
+    documented = {
+        int(hexcode[1:], 16)
+        for hexcode in re.findall(r"#[0-9A-Fa-f]{6}", PALETTE.read_text())
+    }
     expected = {int(hexcode[1:], 16) for hexcode in BRAND.values()}
     assert documented == expected
 
     for colour, hexcode in BRAND.items():
-        assert colour in {theme.MAGENTA, theme.GOLD, theme.PLUM, theme.VIOLET, theme.OFFWHITE}, hexcode
+        assert colour in {
+            theme.MAGENTA,
+            theme.GOLD,
+            theme.PLUM,
+            theme.VIOLET,
+            theme.OFFWHITE,
+        }, hexcode
 
 
 def test_mix_blends_and_clamps() -> None:
@@ -55,5 +67,15 @@ def test_mix_blends_and_clamps() -> None:
 def test_text_and_status_shades_are_readable_on_the_plum_ground() -> None:
     # Body text: WCAG AAA for normal text; hints and large status text: AA.
     assert _contrast(theme.TEXT, theme.BG) >= 7.0
-    for name in ("DIM", "WARN", "ERROR", "PERFECT", "GREAT", "GOOD", "HOLD", "MISS", "ACCENT"):
+    for name in (
+        "DIM",
+        "WARN",
+        "ERROR",
+        "PERFECT",
+        "GREAT",
+        "GOOD",
+        "HOLD",
+        "MISS",
+        "ACCENT",
+    ):
         assert _contrast(getattr(theme, name), theme.BG) >= 3.0, name

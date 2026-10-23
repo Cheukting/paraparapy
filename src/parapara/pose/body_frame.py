@@ -57,7 +57,13 @@ MEDIAPIPE_UP: tuple[float, float, float] = (0.0, -1.0, 0.0)
 VISIBILITY_THRESHOLD = 0.5
 
 _SIDES = {
-    "right": (P.RIGHT_SHOULDER, P.RIGHT_ELBOW, P.RIGHT_WRIST, P.RIGHT_INDEX, P.RIGHT_PINKY),
+    "right": (
+        P.RIGHT_SHOULDER,
+        P.RIGHT_ELBOW,
+        P.RIGHT_WRIST,
+        P.RIGHT_INDEX,
+        P.RIGHT_PINKY,
+    ),
     "left": (P.LEFT_SHOULDER, P.LEFT_ELBOW, P.LEFT_WRIST, P.LEFT_INDEX, P.LEFT_PINKY),
 }
 
@@ -79,7 +85,12 @@ class BodyFrames:
     def to_body(self, v: Vectors) -> Vectors:
         """Express MediaPipe-world vectors ``v`` (N, 3) in the body frame."""
         return np.stack(
-            [(v * self.right).sum(-1), (v * self.up).sum(-1), (v * self.forward).sum(-1)], -1
+            [
+                (v * self.right).sum(-1),
+                (v * self.up).sum(-1),
+                (v * self.forward).sum(-1),
+            ],
+            -1,
         )
 
 
@@ -94,7 +105,9 @@ def body_frames(
     module docstring); the default ``"torso"`` is the one used for scoring.
     """
     if method not in FRAME_METHODS:
-        raise ValueError(f"unknown frame method {method!r}, expected one of {FRAME_METHODS}")
+        raise ValueError(
+            f"unknown frame method {method!r}, expected one of {FRAME_METHODS}"
+        )
     w = np.asarray(world, dtype=np.float64)
     n = len(w)
     rs, ls = w[:, P.RIGHT_SHOULDER, :3], w[:, P.LEFT_SHOULDER, :3]
@@ -112,7 +125,10 @@ def body_frames(
              "blend": _unit(shoulder_line + hip_line)}[method]  # fmt: skip
     up = (rs + ls) / 2 - (rh + lh) / 2
     if w.shape[-1] > 3:
-        hips_seen = np.minimum(w[:, P.RIGHT_HIP, 3], w[:, P.LEFT_HIP, 3]) >= VISIBILITY_THRESHOLD
+        hips_seen = (
+            np.minimum(w[:, P.RIGHT_HIP, 3], w[:, P.LEFT_HIP, 3])
+            >= VISIBILITY_THRESHOLD
+        )
         up = np.where(hips_seen[:, None], up, np.asarray(fallback_up, dtype=np.float64))
     up = _unit(up - (up * right).sum(-1, keepdims=True) * right)
     forward = np.cross(up, right)
@@ -152,7 +168,9 @@ class ArmDirections:
     valid: npt.NDArray[np.bool_]
 
 
-def arm_directions(world: npt.ArrayLike, frames: BodyFrames | None = None) -> dict[str, ArmDirections]:
+def arm_directions(
+    world: npt.ArrayLike, frames: BodyFrames | None = None
+) -> dict[str, ArmDirections]:
     """Per-arm segment directions for ``world`` landmarks (N, 33, ≥3).
 
     Returns ``{"right": ArmDirections, "left": ArmDirections}`` for the

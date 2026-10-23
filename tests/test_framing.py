@@ -39,7 +39,9 @@ def test_framing_issues(kwargs, code) -> None:
 
 
 def test_turned_player() -> None:
-    assert "turned" in check_framing(_sample(image_pose(), world_pose(turn_deg=30))).codes
+    assert (
+        "turned" in check_framing(_sample(image_pose(), world_pose(turn_deg=30))).codes
+    )
     assert check_framing(_sample(image_pose(), world_pose(turn_deg=10))).ok
 
 
@@ -56,7 +58,10 @@ def test_messages_use_the_players_own_left_and_right() -> None:
 
 
 def test_monitor_needs_a_stable_run_of_good_samples() -> None:
-    good, bad = _sample(image_pose(), world_pose()), _sample(image_pose(hip_y=1.05), world_pose())
+    good, bad = (
+        _sample(image_pose(), world_pose()),
+        _sample(image_pose(hip_y=1.05), world_pose()),
+    )
     monitor = FramingMonitor(window=3)
     for s in (good, good):
         monitor.update(s)

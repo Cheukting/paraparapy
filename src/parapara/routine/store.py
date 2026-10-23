@@ -81,7 +81,9 @@ def ensure_generated(song: Song, force: bool = False) -> list[Path]:
     return written
 
 
-def check_routine_file(path: Path, song: Song | None = None) -> tuple[Routine | None, list[str]]:
+def check_routine_file(
+    path: Path, song: Song | None = None
+) -> tuple[Routine | None, list[str]]:
     """Parse and validate a routine file (and its fit to ``song``)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))

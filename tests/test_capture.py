@@ -96,7 +96,9 @@ def test_ensure_model_network_error(tmp_path) -> None:
 
 
 def _lm(i: float, visibility=0.9, presence=0.8):
-    return SimpleNamespace(x=i, y=i + 0.5, z=-i, visibility=visibility, presence=presence)
+    return SimpleNamespace(
+        x=i, y=i + 0.5, z=-i, visibility=visibility, presence=presence
+    )
 
 
 def test_pose_landmarks_to_array() -> None:
@@ -145,7 +147,8 @@ def test_detector_on_empty_frame_finds_no_one_and_tolerates_equal_timestamps() -
 class FakeSource:
     def __init__(self, n: int) -> None:
         self.frames = [
-            CameraFrame(i * 2, 1_000_000 * i, np.full((4, 6, 3), i, np.uint8)) for i in range(n)
+            CameraFrame(i * 2, 1_000_000 * i, np.full((4, 6, 3), i, np.uint8))
+            for i in range(n)
         ]  # indices 0, 2, 4: gaps = frames skipped by the grabber
         self.calls = 0
 

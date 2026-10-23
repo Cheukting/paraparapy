@@ -106,15 +106,21 @@ def draw_hud(surface: pygame.Surface, lines: list[str], colour=TEXT_COLOUR) -> N
 
 def _parse_args(argv: list[str] | None) -> tuple[CaptureConfig, bool, Path | None]:
     parser = argparse.ArgumentParser(description="Para Para capture debug view")
-    parser.add_argument("--camera", type=int, default=0, help="camera index (default 0)")
+    parser.add_argument(
+        "--camera", type=int, default=0, help="camera index (default 0)"
+    )
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=30, help="requested camera fps")
-    parser.add_argument("--model", choices=("lite", "full"), default="full", help="pose model")
+    parser.add_argument(
+        "--model", choices=("lite", "full"), default="full", help="pose model"
+    )
     parser.add_argument("--no-mirror", action="store_true", help="start unmirrored")
     parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_DIR,
                         help="where the session summary is written")  # fmt: skip
-    parser.add_argument("--no-log", action="store_true", help="don't write a session summary")
+    parser.add_argument(
+        "--no-log", action="store_true", help="don't write a session summary"
+    )
     args = parser.parse_args(argv)
     config = CaptureConfig(
         camera_index=args.camera,
@@ -206,7 +212,10 @@ class LiveFeed:
             self._frame_surface = pygame.image.frombuffer(
                 snapshot.frame.tobytes(), (self.config.width, self.config.height), "RGB"
             )
-            self._shown_index, self._shown_captured_ns = snapshot.frame_index, snapshot.captured_ns
+            self._shown_index, self._shown_captured_ns = (
+                snapshot.frame_index,
+                snapshot.captured_ns,
+            )
         return samples
 
     def draw(self, screen: pygame.Surface, mirrored: bool) -> None:
@@ -217,9 +226,14 @@ class LiveFeed:
         if self._frame_surface is None:
             return
         frame = self._frame_surface
-        area.blit(pygame.transform.flip(frame, True, False) if mirrored else frame, (0, 0))
+        area.blit(
+            pygame.transform.flip(frame, True, False) if mirrored else frame, (0, 0)
+        )
         # The sample for exactly this frame, if we still have it.
-        sample = next((s for s in reversed(self._recent) if s.frame_index == self._shown_index), None)
+        sample = next(
+            (s for s in reversed(self._recent) if s.frame_index == self._shown_index),
+            None,
+        )
         if sample is not None:
             draw_pose(area, sample, mirrored)
 
@@ -294,7 +308,9 @@ def run_session(
                 else:
                     elapsed = time.monotonic() - feed.ready_at
                     if elapsed < warmup_s:
-                        phase = f"warming up ... keep dancing ({warmup_s - elapsed:.0f} s)"
+                        phase = (
+                            f"warming up ... keep dancing ({warmup_s - elapsed:.0f} s)"
+                        )
                     else:
                         phase = f"recording: keep dancing! {max(0.0, warmup_s + duration_s - elapsed):.0f} s left"
                     if elapsed >= warmup_s + duration_s:
@@ -304,7 +320,14 @@ def run_session(
             if failure:
                 draw_hud(screen, [*banner, "CAPTURE ERROR", failure], ERROR_COLOUR)
             else:
-                draw_hud(screen, [line for line in (*banner, phase, *feed.hud_lines(mirrored)) if line])
+                draw_hud(
+                    screen,
+                    [
+                        line
+                        for line in (*banner, phase, *feed.hud_lines(mirrored))
+                        if line
+                    ],
+                )
             pygame.display.flip()
             feed.after_flip()
             clock.tick(60)
@@ -314,16 +337,25 @@ def run_session(
                 if feed.status.kind is not StatusKind.ERROR:
                     feed.status = CaptureStatus(StatusKind.ERROR, failure)
                 break
-            if max_frames is not None and (ready_frames >= max_frames or drawn >= startup_grace):
+            if max_frames is not None and (
+                ready_frames >= max_frames or drawn >= startup_grace
+            ):
                 break
 
     return SessionResult(
-        feed.recorder.summary(), feed.camera_details, feed.status, quit_requested, mirrored
+        feed.recorder.summary(),
+        feed.camera_details,
+        feed.status,
+        quit_requested,
+        mirrored,
     )
 
 
 def main(
-    argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER, max_frames: int | None = None
+    argv: list[str] | None = None,
+    *,
+    worker: str = DEFAULT_WORKER,
+    max_frames: int | None = None,
 ) -> None:
     """Run the debug window until the user quits.
 
@@ -336,16 +368,26 @@ def main(
     screen = pygame.display.set_mode((config.width, config.height))
     pygame.display.set_caption("ParaParaPy – capture debug")
     result = run_session(
-        screen, pygame.time.Clock(), config, worker=worker, mirrored=mirrored, max_frames=max_frames
+        screen,
+        pygame.time.Clock(),
+        config,
+        worker=worker,
+        mirrored=mirrored,
+        max_frames=max_frames,
     )
     pygame.quit()
     if log_dir is not None:
         path = write_log(
             "capture-debug",
-            {"config": dataclasses.asdict(config), "camera": result.camera,
-             "last_status": {"kind": str(result.last_status.kind),
-                             "message": result.last_status.message},
-             "summary": result.summary},  # fmt: skip
+            {
+                "config": dataclasses.asdict(config),
+                "camera": result.camera,
+                "last_status": {
+                    "kind": str(result.last_status.kind),
+                    "message": result.last_status.message,
+                },
+                "summary": result.summary,
+            },  # fmt: skip
             log_dir,
         )
         print(f"session summary written to {path}")

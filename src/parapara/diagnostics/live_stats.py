@@ -87,7 +87,9 @@ class LowLightMonitor:
         self.min_fps, self._hold_ns = min_fps, int(hold_s * 1e9)
         self.meter = CameraRateMeter()
         self.active = False
-        self._since: int | None = None  # when the rate last crossed the limit (in the other direction)
+        self._since: int | None = (
+            None  # when the rate last crossed the limit (in the other direction)
+        )
         self._first: int | None = None
         self._last: int | None = None
         self._active_ns = 0
@@ -115,7 +117,11 @@ class LowLightMonitor:
 
     @property
     def low_share(self) -> float:
-        span = (self._last - self._first) if self._first is not None and self._last is not None else 0
+        span = (
+            (self._last - self._first)
+            if self._first is not None and self._last is not None
+            else 0
+        )
         return self._active_ns / span if span > 0 else 0.0
 
 

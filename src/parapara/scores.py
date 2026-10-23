@@ -43,7 +43,11 @@ def _path():
 
 def _load() -> list[dict[str, Any]]:
     try:
-        return json.loads(_path().read_text()).get("scores", []) if _path().exists() else []
+        return (
+            json.loads(_path().read_text()).get("scores", [])
+            if _path().exists()
+            else []
+        )
     except (json.JSONDecodeError, AttributeError):
         return []  # a broken file starts a new board
 
@@ -54,7 +58,9 @@ def _save(entries: list[dict[str, Any]]) -> None:
 
 
 def top(song_id: str, routine_id: str, n: int = 10) -> list[dict[str, Any]]:
-    mine = [e for e in _load() if e["song_id"] == song_id and e["routine_id"] == routine_id]
+    mine = [
+        e for e in _load() if e["song_id"] == song_id and e["routine_id"] == routine_id
+    ]
     return sorted(mine, key=lambda e: (-e["score"], e["played"]))[:n]
 
 

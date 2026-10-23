@@ -52,7 +52,9 @@ from parapara.scoring.matching import clap_score, keyframe_error_deg, pose_score
 from parapara.scoring.schedule import ScheduledKeyframe
 
 MIN_POSE_SCORE = 0.3
-TIE_BREAK_DEG = 2.0  # error added at the edge of the window, to prefer hits near the beat
+TIE_BREAK_DEG = (
+    2.0  # error added at the edge of the window, to prefer hits near the beat
+)
 ARRIVAL_DEG = 3.0  # errors within this of the minimum count as "at the pose"
 HOLD_MIN_BEATS = 0.4  # a near-minimum stretch this long is a held pose (snaps hold ~0.6 beat; filtered turnarounds ~0.3)
 MOVING_SPEED = 0.6  # shoulder widths / s
@@ -67,7 +69,13 @@ class Grade(StrEnum):
     MISS = "miss"
 
 
-TIMING_FACTOR = {Grade.PERFECT: 1.0, Grade.GREAT: 0.8, Grade.GOOD: 0.5, Grade.HOLD: 1.0, Grade.MISS: 0.0}
+TIMING_FACTOR = {
+    Grade.PERFECT: 1.0,
+    Grade.GREAT: 0.8,
+    Grade.GOOD: 0.5,
+    Grade.HOLD: 1.0,
+    Grade.MISS: 0.0,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,17 +120,19 @@ def refine_time(ts: np.ndarray, es: np.ndarray, i: int) -> float:
     error), clamped to the neighbours; ``ts[i]`` at the edges."""
     if i == 0 or i == len(ts) - 1:
         return float(ts[i])
-    t0, t1, t2 = ts[i - 1:i + 2]
-    e0, e1, e2 = es[i - 1:i + 2]
+    t0, t1, t2 = ts[i - 1 : i + 2]
+    e0, e1, e2 = es[i - 1 : i + 2]
     denom = (t0 - t1) * (t0 - t2) * (t1 - t2)
     a = (t2 * (e1 - e0) + t1 * (e0 - e2) + t0 * (e2 - e1)) / denom
-    b = (t2 ** 2 * (e0 - e1) + t1 ** 2 * (e2 - e0) + t0 ** 2 * (e1 - e2)) / denom
+    b = (t2**2 * (e0 - e1) + t1**2 * (e2 - e0) + t0**2 * (e1 - e2)) / denom
     if a <= 0:
         return float(t1)
     return float(np.clip(-b / (2 * a), t0, t2))
 
 
-def arrival_time(ts: np.ndarray, es: np.ndarray, i: int, tolerance_deg: float, beat_ns: float) -> float:
+def arrival_time(
+    ts: np.ndarray, es: np.ndarray, i: int, tolerance_deg: float, beat_ns: float
+) -> float:
     """When the pose was hit, around the best sample ``i``.
 
     The near-minimum stretch around ``i`` (errors within :data:`ARRIVAL_DEG`
@@ -157,7 +167,9 @@ def arrival_time(ts: np.ndarray, es: np.ndarray, i: int, tolerance_deg: float, b
 class Judge:
     """Streaming judge for a schedule (see module docstring)."""
 
-    def __init__(self, schedule: list[ScheduledKeyframe], windows: TimingWindows | None = None) -> None:
+    def __init__(
+        self, schedule: list[ScheduledKeyframe], windows: TimingWindows | None = None
+    ) -> None:
         self.schedule = schedule
         self.windows = windows or TimingWindows()
         self._next = 0  # index of the next keyframe to judge
@@ -171,7 +183,9 @@ class Judge:
         """A clap sound detected at ``t_ns`` (from the audio module)."""
         self._onsets.append(t_ns)
 
-    def add(self, features: PoseFeatures | None, now_ns: int | None = None) -> list[Judgment | FlowJudgment]:
+    def add(
+        self, features: PoseFeatures | None, now_ns: int | None = None
+    ) -> list[Judgment | FlowJudgment]:
         """Add one sample (``None`` = no person; only advances time) and
         return the judgments whose windows have closed."""
         if features is not None:
@@ -189,7 +203,11 @@ class Judge:
         """
         if until_ns is not None:
             self.schedule = [s for s in self.schedule if s.t_ns <= until_ns]
-            self._flow_pending = [(k, item) for k, item in self._flow_pending if item.block_end_ns <= until_ns]
+            self._flow_pending = [
+                (k, item)
+                for k, item in self._flow_pending
+                if item.block_end_ns <= until_ns
+            ]
         return self._judge_until(None)
 
     def _judge_until(self, now_ns: int | None) -> list[Judgment | FlowJudgment]:
@@ -214,14 +232,20 @@ class Judge:
         if self._next < len(self.schedule):
             item = self.schedule[self._next]
             starts.append(item.t_ns - self.windows.window_ns(item.beat_ns))
-        starts += [item.block_start_ns for (_, inst), item in self._flow_pending if inst not in self._flow_done]
+        starts += [
+            item.block_start_ns
+            for (_, inst), item in self._flow_pending
+            if inst not in self._flow_done
+        ]
         if not starts:
             return
         horizon = min(starts)
         while self._buffer and self._buffer[0].t_ns < horizon:
             self._buffer.popleft()
 
-    def _window_samples(self, item: ScheduledKeyframe, window: float) -> list[PoseFeatures]:
+    def _window_samples(
+        self, item: ScheduledKeyframe, window: float
+    ) -> list[PoseFeatures]:
         return [f for f in self._buffer if abs(f.t_ns - item.t_ns) <= window]
 
     def _judge(self, item: ScheduledKeyframe, window: float) -> Judgment:
@@ -246,41 +270,64 @@ class Judge:
         score = pose_score(float(es[i]), tol)
         # When: on the unsmoothed timing copy (PoseFeatures.for_timing), whose
         # error settles when the arm does, not 40-130 ms later.
-        et = np.array([keyframe_error_deg(f.for_timing(), item.keyframe) for f in samples])
+        et = np.array(
+            [keyframe_error_deg(f.for_timing(), item.keyframe) for f in samples]
+        )
         it = int(np.argmin(et + TIE_BREAK_DEG * np.abs(ts - item.t_ns) / window))
         hit_ns = arrival_time(ts, et, it, tol, item.beat_ns)
         offset = hit_ns - item.t_ns
-        grade = self.windows.grade(offset, window) if score >= MIN_POSE_SCORE else Grade.MISS
+        grade = (
+            self.windows.grade(offset, window)
+            if score >= MIN_POSE_SCORE
+            else Grade.MISS
+        )
         return Judgment(item, grade, score, score * TIMING_FACTOR[grade], offset / 1e6, float(es[i]),
                         "" if grade is not Grade.MISS else "pose")  # fmt: skip
 
-    def _judge_clap(self, item: ScheduledKeyframe, samples: list[PoseFeatures], window: float) -> Judgment:
+    def _judge_clap(
+        self, item: ScheduledKeyframe, samples: list[PoseFeatures], window: float
+    ) -> Judgment:
         ts = np.array([f.t_ns for f in samples], dtype=np.float64)
         onsets = [t for t in self._onsets if abs(t - item.t_ns) <= window]
         if onsets:
             hit_ns = float(min(onsets, key=lambda t: abs(t - item.t_ns)))
-            score = clap_score(samples[int(np.argmin(np.abs(ts - hit_ns)))])  # vision gate
+            score = clap_score(
+                samples[int(np.argmin(np.abs(ts - hit_ns)))]
+            )  # vision gate
         else:
             dist = np.array([f.for_timing().wrist_distance for f in samples])
             i = int(np.argmin(dist + 0.05 * np.abs(ts - item.t_ns) / window))
             hit_ns = refine_time(ts, dist, i)
             score = clap_score(samples[i])
         offset = hit_ns - item.t_ns
-        grade = self.windows.grade(offset, window) if score >= MIN_POSE_SCORE else Grade.MISS
+        grade = (
+            self.windows.grade(offset, window)
+            if score >= MIN_POSE_SCORE
+            else Grade.MISS
+        )
         return Judgment(item, grade, score, score * TIMING_FACTOR[grade], offset / 1e6,
                         reason="" if grade is not Grade.MISS else "no clap")  # fmt: skip
 
     def _judge_flow(self, item: ScheduledKeyframe) -> FlowJudgment:
-        samples = [f for f in self._buffer if item.block_start_ns <= f.t_ns <= item.block_end_ns]
+        samples = [
+            f
+            for f in self._buffer
+            if item.block_start_ns <= f.t_ns <= item.block_end_ns
+        ]
         if len(samples) < 3:
             return FlowJudgment(item, 0.0, 0.0)
         t = np.array([f.t_ns for f in samples]) / 1e9
         speeds = []
         for side in ("right_wrist", "left_wrist"):
             p = np.stack([getattr(f, side) for f in samples])
-            speeds.append(np.linalg.norm(np.diff(p, axis=0), axis=1) / np.maximum(np.diff(t), 1e-6))
+            speeds.append(
+                np.linalg.norm(np.diff(p, axis=0), axis=1)
+                / np.maximum(np.diff(t), 1e-6)
+            )
         moving = float(np.mean(np.mean(speeds, axis=0) >= MOVING_SPEED))
-        return FlowJudgment(item, moving, float(min(1.0, moving / MOVING_SHARE_FOR_FULL)))
+        return FlowJudgment(
+            item, moving, float(min(1.0, moving / MOVING_SHARE_FOR_FULL))
+        )
 
 
 def judge_all(schedule: list[ScheduledKeyframe], features: Iterable[PoseFeatures | None],

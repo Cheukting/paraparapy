@@ -123,7 +123,9 @@ def _seed(song_id: str, difficulty: Difficulty, salt: int = 0) -> int:
     return zlib.crc32(f"{song_id}:{difficulty.value}:{salt}".encode())
 
 
-def _draw_phrase(rng: random.Random, settings: DifficultySettings) -> tuple[Unit, ...] | None:
+def _draw_phrase(
+    rng: random.Random, settings: DifficultySettings
+) -> tuple[Unit, ...] | None:
     """One candidate phrase: units filling 32 counts, ending with a finisher."""
     finishers = [UNITS[n] for n in settings.weights if UNITS[n].finisher]
     movers = [UNITS[n] for n in settings.weights if not UNITS[n].finisher]
@@ -133,7 +135,12 @@ def _draw_phrase(rng: random.Random, settings: DifficultySettings) -> tuple[Unit
     while used < COUNTS_PER_PHRASE - finisher.counts:
         remaining = COUNTS_PER_PHRASE - finisher.counts - used
         # 8-count units only on a bar start and when they fit.
-        fits = [u for u in movers if u.counts <= remaining and (u.counts < COUNTS_PER_BAR or used % COUNTS_PER_BAR == 0)]
+        fits = [
+            u
+            for u in movers
+            if u.counts <= remaining
+            and (u.counts < COUNTS_PER_BAR or used % COUNTS_PER_BAR == 0)
+        ]
         if not fits:
             return None
         units.append(rng.choices(fits, [settings.weights[u.name] for u in fits])[0])
@@ -147,7 +154,9 @@ def _acceptable(units: tuple[Unit, ...]) -> bool:
     if phrase_issues(blocks):
         return False
     names = [u.name for u in units]
-    return not any(names[i] == names[i + 1] == names[i + 2] for i in range(len(names) - 2))
+    return not any(
+        names[i] == names[i + 1] == names[i + 2] for i in range(len(names) - 2)
+    )
 
 
 def generate_phrases(song_id: str, difficulty: Difficulty, count: int) -> list[Phrase]:
@@ -187,7 +196,9 @@ def generate_routine(song_id: str, n_phrases: int, difficulty: Difficulty = Diff
     if n_phrases < 1:
         raise ValueError("a routine needs at least one phrase")
     settings = SETTINGS[difficulty]
-    distinct = generate_phrases(song_id, difficulty, min(settings.distinct_phrases, n_phrases))
+    distinct = generate_phrases(
+        song_id, difficulty, min(settings.distinct_phrases, n_phrases)
+    )
     return Routine(
         id=routine_id or f"{song_id}-{difficulty.value}",
         song_id=song_id,

@@ -70,7 +70,9 @@ def run_config(
                     end = time.monotonic() + warmup_s + seconds
                 else:
                     print(f"  {message.kind}: {message.message}")
-            if end is None and (not capture.is_alive or time.monotonic() > ready_deadline):
+            if end is None and (
+                not capture.is_alive or time.monotonic() > ready_deadline
+            ):
                 raise BenchError("capture process did not become ready")
             time.sleep(0.005)
     assert ready is not None
@@ -96,18 +98,26 @@ def format_table(results: dict[str, dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-def build_parser(description: str = "Benchmark capture configurations") -> argparse.ArgumentParser:
+def build_parser(
+    description: str = "Benchmark capture configurations",
+) -> argparse.ArgumentParser:
     """Command-line options shared by the headless and the windowed benchmark."""
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--seconds", type=float, default=15.0, help="recorded seconds per config")
-    parser.add_argument("--warmup", type=float, default=2.0, help="ignored seconds at the start")
+    parser.add_argument(
+        "--seconds", type=float, default=15.0, help="recorded seconds per config"
+    )
+    parser.add_argument(
+        "--warmup", type=float, default=2.0, help="ignored seconds at the start"
+    )
     parser.add_argument("--configs", default=",".join(DEFAULT_CONFIGS),
                         help=f"comma-separated, from: {', '.join(CONFIGS)}")  # fmt: skip
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument("--width", type=int, default=640)
     parser.add_argument("--height", type=int, default=480)
     parser.add_argument("--fps", type=int, default=30)
-    parser.add_argument("--pause", type=float, default=3.0, help="seconds between configs")
+    parser.add_argument(
+        "--pause", type=float, default=3.0, help="seconds between configs"
+    )
     parser.add_argument("--log-dir", type=Path, default=DEFAULT_LOG_DIR)
     return parser
 
@@ -120,7 +130,9 @@ def parse_configs(
     unknown = [n for n in names if n not in CONFIGS]
     if unknown:
         parser.error(f"unknown config(s): {unknown}")
-    base = CaptureConfig(camera_index=args.camera, width=args.width, height=args.height, fps=args.fps)
+    base = CaptureConfig(
+        camera_index=args.camera, width=args.width, height=args.height, fps=args.fps
+    )
     return [(n, dataclasses.replace(base, **CONFIGS[n])) for n in names]
 
 
@@ -150,7 +162,9 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> Path:
     for i, (name, config) in enumerate(configs):
         if i:
             time.sleep(args.pause)  # let the camera close before reopening it
-        print(f"[{i + 1}/{len(configs)}] {name}: keep dancing for ~{args.warmup + args.seconds:.0f} s ...")
+        print(
+            f"[{i + 1}/{len(configs)}] {name}: keep dancing for ~{args.warmup + args.seconds:.0f} s ..."
+        )
         try:
             results[name] = {"config": dataclasses.asdict(config),
                              **run_config(config, args.seconds, args.warmup, worker)}  # fmt: skip

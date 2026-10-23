@@ -23,7 +23,9 @@ def run(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lo
     wait for the stop event and emit STOPPED."""
     frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
     try:
-        results.put(CaptureStatus(StatusKind.READY, "fake", {"camera_width": config.width}))
+        results.put(
+            CaptureStatus(StatusKind.READY, "fake", {"camera_width": config.width})
+        )
         for index in range(FRAMES):
             captured = time.monotonic_ns()
             frames.write(np.full(frame_shape, index, dtype=np.uint8), index, captured)
@@ -54,7 +56,16 @@ def hang(**kwargs):
     time.sleep(60)
 
 
-def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock, interval_s=0.02):
+def stream(
+    *,
+    config,
+    results,
+    stop_event,
+    frame_buffer_name,
+    frame_shape,
+    frame_lock,
+    interval_s=0.02,
+):
     """Like a real camera: READY, then a sample (and frame) every ~20 ms with
     a well-framed person in it (passes the framing check), until the stop
     event is set."""
@@ -63,15 +74,25 @@ def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame
     image, world = image_pose(), world_pose()
     frames = SharedFrameBuffer.attach(frame_buffer_name, frame_shape, frame_lock)
     try:
-        results.put(CaptureStatus(StatusKind.READY, "fake stream", {"camera_width": config.width}))
+        results.put(
+            CaptureStatus(
+                StatusKind.READY, "fake stream", {"camera_width": config.width}
+            )
+        )
         index = 0
         while not stop_event.wait(timeout=interval_s):
             captured = time.monotonic_ns()
-            frames.write(np.full(frame_shape, index % 256, dtype=np.uint8), index, captured)
+            frames.write(
+                np.full(frame_shape, index % 256, dtype=np.uint8), index, captured
+            )
             results.put(
                 PoseSample(
-                    frame_index=index, captured_ns=captured, processed_ns=time.monotonic_ns(),
-                    frame_size=(config.width, config.height), pose_image=image, pose_world=world,
+                    frame_index=index,
+                    captured_ns=captured,
+                    processed_ns=time.monotonic_ns(),
+                    frame_size=(config.width, config.height),
+                    pose_image=image,
+                    pose_world=world,
                     pose_ms=1.0,
                 )
             )
@@ -81,7 +102,9 @@ def stream(*, config, results, stop_event, frame_buffer_name, frame_shape, frame
         frames.close()
 
 
-def perfect_player(*, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock):
+def perfect_player(
+    *, config, results, stop_event, frame_buffer_name, frame_shape, frame_lock
+):
     """A camera seeing a player who dances the selected routine perfectly
     (for visual reviews): reads PARAPARA_TEST_SONG_DIR / PARAPARA_TEST_ROUTINE
     and starts the dance when the worker starts (close enough to playback)."""
@@ -99,13 +122,19 @@ def perfect_player(*, config, results, stop_event, frame_buffer_name, frame_shap
     start = time.monotonic_ns()
     script = routine_play_samples(song, routine, start, fps=30)
     try:
-        results.put(CaptureStatus(StatusKind.READY, "perfect player", {"camera_width": config.width}))
+        results.put(
+            CaptureStatus(
+                StatusKind.READY, "perfect player", {"camera_width": config.width}
+            )
+        )
         for s in script:
             if stop_event.is_set():
                 break
             while time.monotonic_ns() < s.captured_ns:
                 time.sleep(0.002)
-            frames.write(np.full(frame_shape, 40, dtype=np.uint8), s.frame_index, s.captured_ns)
+            frames.write(
+                np.full(frame_shape, 40, dtype=np.uint8), s.frame_index, s.captured_ns
+            )
             results.put(s)
         stop_event.wait(timeout=30)
     finally:

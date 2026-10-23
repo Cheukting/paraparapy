@@ -42,6 +42,10 @@ module-name = "parapara"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.17.2",
+    "pyrefly>=1.4.0",
+    "prek>=0.0.28",
+    "pip-audit>=2.9.0",
 ]
 tools = [
     "librosa>=1.0.0",
@@ -52,6 +56,30 @@ tools = [
 # matching *_test.py, which pulled pygame into the test process (where cv2 is
 # loaded too; see tests/conftest.py).
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = [
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pyrefly]
+project-includes = ["src"]
+project-excludes = ["**/tests/**", "**/__pycache__/**"]
 
 [tool.uv]
 # librosa (beat-map tools) is needed for development and tests, not to play the game.

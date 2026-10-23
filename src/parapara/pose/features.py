@@ -155,7 +155,9 @@ class FeatureExtractor:
         w = world[None]
 
         frames = body_frames(w, fallback_up=self._up_reference)
-        axes = self._torso(np.stack([frames.right[0], frames.up[0]]), sample.captured_ns)
+        axes = self._torso(
+            np.stack([frames.right[0], frames.up[0]]), sample.captured_ns
+        )
         right = axes[0] / np.linalg.norm(axes[0])
         up = axes[1] - (axes[1] @ right) * right
         up /= np.linalg.norm(up)
@@ -169,20 +171,31 @@ class FeatureExtractor:
             a = t_arms[side]
             return ArmFeatures(a.upper[0], a.fore[0], a.hand[0], bool(a.valid[0]))
 
-        t_wrists = np.linalg.norm(raw[P.RIGHT_WRIST, :3] - raw[P.LEFT_WRIST, :3]) / self._shoulder_width(world)
-        return replace(features, timing_right=t_arm("right"), timing_left=t_arm("left"),
-                       timing_wrist_distance=float(t_wrists))
+        t_wrists = np.linalg.norm(
+            raw[P.RIGHT_WRIST, :3] - raw[P.LEFT_WRIST, :3]
+        ) / self._shoulder_width(world)
+        return replace(
+            features,
+            timing_right=t_arm("right"),
+            timing_left=t_arm("left"),
+            timing_wrist_distance=float(t_wrists),
+        )
 
     def _shoulder_width(self, world: np.ndarray) -> float:
         if self.calibration:
             return self.calibration.shoulder_width_m
-        return float(np.linalg.norm(world[P.RIGHT_SHOULDER, :3] - world[P.LEFT_SHOULDER, :3]))
+        return float(
+            np.linalg.norm(world[P.RIGHT_SHOULDER, :3] - world[P.LEFT_SHOULDER, :3])
+        )
 
     def _features(self, t_ns: int, world: np.ndarray, frames: BodyFrames,
                   arms: dict[str, ArmDirections]) -> PoseFeatures:  # fmt: skip
         rs, ls = world[P.RIGHT_SHOULDER, :3], world[P.LEFT_SHOULDER, :3]
         shoulder_w = self._shoulder_width(world)
-        wrists = np.linalg.norm(world[P.RIGHT_WRIST, :3] - world[P.LEFT_WRIST, :3]) / shoulder_w
+        wrists = (
+            np.linalg.norm(world[P.RIGHT_WRIST, :3] - world[P.LEFT_WRIST, :3])
+            / shoulder_w
+        )
         mid = (rs + ls) / 2
 
         def wrist_position(index: int) -> Vec:
@@ -199,7 +212,9 @@ class FeatureExtractor:
             lean -= self.calibration.neutral_lean_deg
             head -= self.calibration.neutral_head_height
 
-        hips_visible = bool(min(world[P.RIGHT_HIP, 3], world[P.LEFT_HIP, 3]) >= VISIBILITY_THRESHOLD)
+        hips_visible = bool(
+            min(world[P.RIGHT_HIP, 3], world[P.LEFT_HIP, 3]) >= VISIBILITY_THRESHOLD
+        )
 
         def arm(side: str) -> ArmFeatures:
             a = arms[side]

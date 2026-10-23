@@ -53,7 +53,9 @@ def test_arm_pose_rejects_zero_direction() -> None:
 
 
 def test_arm_pose_mirror_keeps_hand_shape() -> None:
-    pose = ArmPose(upper=(1, 1, 0), fore=(1, 0, 0), hand_shape=HandShape.FIST, hand=(1, 0, 1))
+    pose = ArmPose(
+        upper=(1, 1, 0), fore=(1, 0, 0), hand_shape=HandShape.FIST, hand=(1, 0, 1)
+    )
     m = pose.mirrored()
     assert m.upper[0] == pytest.approx(-pose.upper[0])
     assert m.hand is not None and m.hand[0] == pytest.approx(-pose.hand[0])
@@ -92,7 +94,12 @@ def test_clap_only_keyframe_is_valid() -> None:
 
 def test_block_rejects_wrong_duration() -> None:
     with pytest.raises(RoutineError, match="must last"):
-        Block(id="x", kind=BlockKind.CHOP, duration=4, keyframes=(Keyframe(beat=0, right=POSE),))
+        Block(
+            id="x",
+            kind=BlockKind.CHOP,
+            duration=4,
+            keyframes=(Keyframe(beat=0, right=POSE),),
+        )
 
 
 def test_block_reports_all_issues_together() -> None:
@@ -117,7 +124,9 @@ def test_tolerance_defaults_depend_on_style() -> None:
     sweep, chop = L["sweep_to_right_4"], L["chop_right"]
     assert sweep.is_flowing and not chop.is_flowing
     # chop.keyframes[1] uses the default; keyframes[0] has its own override.
-    assert sweep.tolerance_for(sweep.keyframes[0]) > chop.tolerance_for(chop.keyframes[1])
+    assert sweep.tolerance_for(sweep.keyframes[0]) > chop.tolerance_for(
+        chop.keyframes[1]
+    )
     override = Keyframe(beat=0, right=POSE, tolerance_deg=10)
     assert chop.tolerance_for(override) == 10
 
@@ -137,7 +146,9 @@ def test_empty_phrase() -> None:
 
 
 def test_phrase_missing_kind() -> None:
-    ids = [i if not i.startswith("wrist_roll") else "sweep_to_right_4" for i in VALID_IDS]
+    ids = [
+        i if not i.startswith("wrist_roll") else "sweep_to_right_4" for i in VALID_IDS
+    ]
     assert any("missing block kinds" in i for i in phrase_issues(_blocks(ids)))
 
 
@@ -178,7 +189,9 @@ def test_phrase_constructor_raises_with_issues() -> None:
 
 def _routine(n_phrases: int = 2) -> Routine:
     phrase = Phrase(_blocks(VALID_IDS))
-    return Routine(id="r", song_id="s", difficulty=Difficulty.NORMAL, phrases=(phrase,) * n_phrases)
+    return Routine(
+        id="r", song_id="s", difficulty=Difficulty.NORMAL, phrases=(phrase,) * n_phrases
+    )
 
 
 def test_routine_requires_phrases_and_ids() -> None:
@@ -213,9 +226,9 @@ def test_timeline_off_beat_counts() -> None:
     half = Block(id="half_roll", kind=BlockKind.WRIST_ROLL, duration=4,
                  keyframes=tuple(Keyframe(beat=i / 2, right=POSE) for i in range(8)))  # fmt: skip
     blocks = tuple(half if b.id == "wrist_roll_4" else b for b in _blocks(VALID_IDS))
-    routine = Routine(id="r", song_id="s", difficulty=Difficulty.NORMAL, phrases=(Phrase(blocks),))
+    routine = Routine(
+        id="r", song_id="s", difficulty=Difficulty.NORMAL, phrases=(Phrase(blocks),)
+    )
     rolls = [t for t in routine.timeline() if t.block is half]
     assert [t.count for t in rolls] == [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5]
     assert {t.bar for t in rolls} == {2}
-
-

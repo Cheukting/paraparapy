@@ -12,7 +12,14 @@ from parapara.routine.geometry import DOWN, RIGHT
 from parapara.routine.library import BLOCK_LIBRARY
 from parapara.routine.model import ArmPose, Keyframe
 from parapara.routine.serialization import load_routine
-from parapara.scoring.judge import FlowJudgment, Grade, Judge, Judgment, TimingWindows, judge_all
+from parapara.scoring.judge import (
+    FlowJudgment,
+    Grade,
+    Judge,
+    Judgment,
+    TimingWindows,
+    judge_all,
+)
 from parapara.scoring.matching import (
     clap_score,
     keyframe_error_deg,
@@ -23,7 +30,10 @@ from parapara.scoring.schedule import BeatClock, schedule_block_clip, schedule_r
 from parapara.scoring.scorekeeper import ScoreKeeper
 
 MS = 1_000_000
-ROUTINE = load_routine(__import__("pathlib").Path(__file__).resolve().parent / "fixtures/sample-routine.json")
+ROUTINE = load_routine(
+    __import__("pathlib").Path(__file__).resolve().parent
+    / "fixtures/sample-routine.json"
+)
 
 
 def _score_clip(block_id: str, lag_s: float, latency_ms: float = 0.0):
@@ -46,22 +56,37 @@ def test_block_clip_schedule_and_holds() -> None:
     beats = [i * 500 * MS for i in range(16)]
     knock = schedule_block_clip(BLOCK_LIBRARY["knock_right"], beats)
     assert [s.t_ns for s in knock[:4]] == [0, 500 * MS, 1000 * MS, 1500 * MS]
-    assert [s.hold for s in knock[:4]] == [False, True, False, True]  # second knock = same pose
+    assert [s.hold for s in knock[:4]] == [
+        False,
+        True,
+        False,
+        True,
+    ]  # second knock = same pose
     chop = schedule_block_clip(BLOCK_LIBRARY["chop_right"], beats)
     assert not any(s.hold for s in chop)
     roll = schedule_block_clip(BLOCK_LIBRARY["wrist_roll_4"], beats)
-    assert [s.hold for s in roll[:5]] == [False, True, True, True, False]  # new instance
+    assert [s.hold for s in roll[:5]] == [
+        False,
+        True,
+        True,
+        True,
+        False,
+    ]  # new instance
     assert roll[4].instance == 1 and roll[4].block_start_ns == 2000 * MS
 
 
 def test_routine_schedule_with_latency() -> None:
-    clock = BeatClock(bpm=150, first_beat_ns=10**9, latency_ns=80 * MS)  # 400 ms per beat
+    clock = BeatClock(
+        bpm=150, first_beat_ns=10**9, latency_ns=80 * MS
+    )  # 400 ms per beat
     schedule = schedule_routine(ROUTINE, clock)
     timeline = list(ROUTINE.timeline())
     assert len(schedule) == len(timeline)
     assert schedule[0].t_ns == 10**9 + 80 * MS
     assert schedule[-1].t_ns == clock.time_of(timeline[-1].beat)
-    assert schedule[0].block_end_ns - schedule[0].block_start_ns == 4 * 400 * MS  # 4-count sweep
+    assert (
+        schedule[0].block_end_ns - schedule[0].block_start_ns == 4 * 400 * MS
+    )  # 4-count sweep
     assert [s.instance for s in schedule] == sorted(s.instance for s in schedule)
 
 
@@ -85,7 +110,9 @@ def test_keyframe_error_counts_invisible_arm_as_full_miss() -> None:
     hidden = replace(feats, right=replace(feats.right, valid=False))
     kf = Keyframe(beat=0, right=ArmPose(upper=DOWN, fore=DOWN))
     assert keyframe_error_deg(hidden, kf) == 180.0
-    assert keyframe_error_deg(feats, Keyframe(beat=0, clap=True)) == 0.0  # no arms to compare
+    assert (
+        keyframe_error_deg(feats, Keyframe(beat=0, clap=True)) == 0.0
+    )  # no arms to compare
 
 
 def test_clap_score() -> None:
@@ -114,24 +141,39 @@ def test_on_beat_dancer_scores_perfect(block_id) -> None:
 def test_late_dancer_offset_is_measured() -> None:
     _, _, results = _score_clip("chop_right", lag_s=0.1)
     offsets = [j.offset_ms for j in _keyframes(results) if j.offset_ms is not None]
-    assert np.median(offsets) == pytest.approx(100 + 28, abs=30)  # + landmark filter lag
-    assert {j.grade for j in _keyframes(results)} <= {Grade.GREAT, Grade.GOOD, Grade.PERFECT}
+    assert np.median(offsets) == pytest.approx(
+        100 + 28, abs=30
+    )  # + landmark filter lag
+    assert {j.grade for j in _keyframes(results)} <= {
+        Grade.GREAT,
+        Grade.GOOD,
+        Grade.PERFECT,
+    }
 
 
 def test_latency_compensation_restores_perfect() -> None:
     _, _, late = _score_clip("chop_right", lag_s=0.1)
     _, _, compensated = _score_clip("chop_right", lag_s=0.1, latency_ms=128)
-    assert np.mean([j.points for j in _keyframes(compensated)]) > np.mean([j.points for j in _keyframes(late)])
+    assert np.mean([j.points for j in _keyframes(compensated)]) > np.mean(
+        [j.points for j in _keyframes(late)]
+    )
     assert Grade.PERFECT in {j.grade for j in _keyframes(compensated)}
 
 
 def test_far_too_late_is_a_miss() -> None:
-    _, _, results = _score_clip("chop_right", lag_s=0.5)  # a whole beat late = wrong pose on the beat
-    assert sum(j.grade is Grade.MISS for j in _keyframes(results)) >= len(_keyframes(results)) // 2
+    _, _, results = _score_clip(
+        "chop_right", lag_s=0.5
+    )  # a whole beat late = wrong pose on the beat
+    assert (
+        sum(j.grade is Grade.MISS for j in _keyframes(results))
+        >= len(_keyframes(results)) // 2
+    )
 
 
 def test_nothing_seen_is_a_miss() -> None:
-    schedule = schedule_block_clip(BLOCK_LIBRARY["chop_right"], [i * 500 * MS for i in range(4)])
+    schedule = schedule_block_clip(
+        BLOCK_LIBRARY["chop_right"], [i * 500 * MS for i in range(4)]
+    )
     results = judge_all(schedule, [None, None])
     assert all(j.grade is Grade.MISS and j.reason == "not seen" for j in results)
 
@@ -153,13 +195,17 @@ def test_streaming_judges_after_the_window_closes() -> None:
 def test_window_is_capped_at_part_of_a_beat() -> None:
     w = TimingWindows()
     assert w.window_ns(60e9 / 120) == 190 * MS  # 500 ms beat: full Good window
-    assert w.window_ns(60e9 / 160) == pytest.approx(0.45 * 375 * MS)  # fast songs: capped
+    assert w.window_ns(60e9 / 160) == pytest.approx(
+        0.45 * 375 * MS
+    )  # fast songs: capped
 
 
 def test_clap_timing_from_sound_onset_with_vision_gate() -> None:
     schedule, features, _ = _score_clip("flick_clap_to_right", lag_s=0.0)
     clap = next(s for s in schedule if s.keyframe.clap)
-    near = min((f for f in features if f is not None), key=lambda f: abs(f.t_ns - clap.t_ns))
+    near = min(
+        (f for f in features if f is not None), key=lambda f: abs(f.t_ns - clap.t_ns)
+    )
     together = [replace(f, wrist_distance=0.2) if f is near else f for f in features]
 
     judge = Judge([clap])
@@ -229,7 +275,12 @@ def test_summary_accuracy_posture_and_flow() -> None:
 def test_posture_rules() -> None:
     f = extract_recording(danced_block("chop_right", lag_s=0.0, fps=30))[5]
     keeper = ScoreKeeper(calibrated=True)
-    for posture in ({}, {"lean_deg": 25.0}, {"side_tilt_deg": -20.0}, {"head_height": -0.5}):
+    for posture in (
+        {},
+        {"lean_deg": 25.0},
+        {"side_tilt_deg": -20.0},
+        {"head_height": -0.5},
+    ):
         keeper.add_posture(replace(f, **posture))
     keeper.add_posture(None)  # ignored
     assert keeper.posture_share == pytest.approx(0.25)

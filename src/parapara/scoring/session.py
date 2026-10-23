@@ -64,7 +64,9 @@ class PlaySession:
     ended_early: bool = False
 
     def __post_init__(self) -> None:
-        self.clock: BeatClock = self.song.routine_clock(self.playback_start_ns, self.latency_ns)
+        self.clock: BeatClock = self.song.routine_clock(
+            self.playback_start_ns, self.latency_ns
+        )
         self.schedule = schedule_routine(self.routine, self.clock)
         self.extractor = FeatureExtractor(calibration=self.calibration)
         self.judge = Judge(self.schedule)
@@ -112,7 +114,11 @@ class PlaySession:
     def framing_warning(self) -> FramingResult | None:
         """The latest framing result if the player is (partly) out of the picture."""
         latest = self.framing.latest
-        if latest is not None and latest.codes & {"no_person", "no_shoulders", "no_hips"}:
+        if latest is not None and latest.codes & {
+            "no_person",
+            "no_shoulders",
+            "no_hips",
+        }:
             return latest
         return None
 

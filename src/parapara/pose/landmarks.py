@@ -110,6 +110,7 @@ UPPER_BODY_CONNECTIONS: tuple[tuple[int, int], ...] = (
     (_P.RIGHT_EYE, _P.RIGHT_EAR),
 )
 
+
 @dataclass(frozen=True, slots=True)
 class PoseSample:
     """Everything the capture process knows about one camera frame.
@@ -147,4 +148,3 @@ class PoseSample:
     def processing_ms(self) -> float:
         """Camera read → landmarks ready, in milliseconds."""
         return (self.processed_ns - self.captured_ns) / 1e6
-

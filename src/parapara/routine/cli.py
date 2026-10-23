@@ -50,7 +50,9 @@ def cmd_generate(args: argparse.Namespace, songs: dict[str, Song]) -> None:
     for song_id in args.songs or sorted(songs):
         song = _song(songs, song_id)
         written = ensure_generated(song, force=args.force)
-        status = f"wrote {', '.join(p.stem for p in written)}" if written else "up to date"
+        status = (
+            f"wrote {', '.join(p.stem for p in written)}" if written else "up to date"
+        )
         print(f"{song_id:42s} {max_phrases(song):3d} phrases  {status}")
 
 
@@ -59,14 +61,20 @@ def cmd_list(args: argparse.Namespace, songs: dict[str, Song]) -> None:
         routines = routines_for(song)
         print(f"{song_id} ({song.bpm:.0f} BPM, up to {max_phrases(song)} phrases)")
         for routine in routines.values():
-            print(f"    {routine.id:50s} {routine.difficulty.value:7s} {len(routine.phrases)} phrases")
+            print(
+                f"    {routine.id:50s} {routine.difficulty.value:7s} {len(routine.phrases)} phrases"
+            )
         if not routines:
             print("    (no routines: run `parapara-routines generate`)")
 
 
 def cmd_blocks(args: argparse.Namespace, songs: dict[str, Song]) -> None:
-    for block_id, block in sorted(BLOCK_LIBRARY.items(), key=lambda kv: (kv[1].kind, kv[0])):
-        print(f"{block_id:32s} {block.kind.value:11s} {block.duration} counts  {block.description}")
+    for block_id, block in sorted(
+        BLOCK_LIBRARY.items(), key=lambda kv: (kv[1].kind, kv[0])
+    ):
+        print(
+            f"{block_id:32s} {block.kind.value:11s} {block.duration} counts  {block.description}"
+        )
 
 
 def cmd_template(args: argparse.Namespace, songs: dict[str, Song]) -> None:
@@ -77,7 +85,9 @@ def cmd_template(args: argparse.Namespace, songs: dict[str, Song]) -> None:
     text = json.dumps(data, indent=2) + "\n"
     if args.output:
         args.output.write_text(text)
-        print(f"wrote {args.output}; edit it, then: parapara-routines check {args.output} --song {song.id}")
+        print(
+            f"wrote {args.output}; edit it, then: parapara-routines check {args.output} --song {song.id}"
+        )
     else:
         print(text, end="")
 
@@ -91,7 +101,9 @@ def cmd_check(args: argparse.Namespace, songs: dict[str, Song]) -> None:
             print(f"  - {issue}")
         sys.exit(1)
     assert routine is not None
-    print(f"{args.file}: OK, {len(routine.phrases)} phrases ({routine.total_counts} counts)")
+    print(
+        f"{args.file}: OK, {len(routine.phrases)} phrases ({routine.total_counts} counts)"
+    )
 
 
 def cmd_add(args: argparse.Namespace, songs: dict[str, Song]) -> None:

@@ -64,7 +64,10 @@ class Calibration:
 
     def save(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps({"format_version": FORMAT_VERSION, **asdict(self)}, indent=2) + "\n")
+        path.write_text(
+            json.dumps({"format_version": FORMAT_VERSION, **asdict(self)}, indent=2)
+            + "\n"
+        )
 
     @classmethod
     def load(cls, path: Path) -> Self:
@@ -93,7 +96,9 @@ def front_angle_deg(directions: np.ndarray, target) -> np.ndarray:
 
 def _usable(rec: Recording) -> tuple[np.ndarray, np.ndarray]:
     samples = rec.samples()
-    return np.array([s.has_pose for s in samples]), np.array([check_framing(s).ok for s in samples])
+    return np.array([s.has_pose for s in samples]), np.array(
+        [check_framing(s).ok for s in samples]
+    )
 
 
 def calibrate(neutral: Recording, t_pose: Recording) -> Calibration:
@@ -107,12 +112,16 @@ def calibrate(neutral: Recording, t_pose: Recording) -> Calibration:
             issues.append(f"{name}: no person found in enough samples")
             continue
         if framed[has].mean() < MIN_FRAMED_SHARE:
-            issues.append(f"{name}: poorly framed (hips, arms or head out of the picture)")
+            issues.append(
+                f"{name}: poorly framed (hips, arms or head out of the picture)"
+            )
         arms = arm_directions(rec.pose_world[has])
         for side, target in zip(("right", "left"), expected, strict=True):
             err = float(np.nanmedian(front_angle_deg(arms[side].fore, target)))
             if err > MAX_POSE_ERROR_DEG:
-                issues.append(f"{name}: {side} arm is {err:.0f}° away from the expected pose")
+                issues.append(
+                    f"{name}: {side} arm is {err:.0f}° away from the expected pose"
+                )
     if issues:
         raise CalibrationError(issues)
 
@@ -145,7 +154,9 @@ def calibrate(neutral: Recording, t_pose: Recording) -> Calibration:
         forearm_ratio=round(float(fore / shoulder), 3),
         neutral_up=tuple(round(float(v), 4) for v in up),
         neutral_lean_deg=round(lean, 1),
-        neutral_head_height=round(float(np.nanmedian(head_height(n_world, up, shoulder))), 3),
+        neutral_head_height=round(
+            float(np.nanmedian(head_height(n_world, up, shoulder))), 3
+        ),
         neutral_arm_error_deg=round(arm_error(n_arms, (DOWN, DOWN)), 1),
         t_pose_arm_error_deg=round(arm_error(t_arms, (RIGHT, LEFT)), 1),
         created=datetime.now().isoformat(timespec="seconds"),
@@ -154,4 +165,6 @@ def calibrate(neutral: Recording, t_pose: Recording) -> Calibration:
 
 def calibrate_session(session: Path) -> Calibration:
     """Calibrate from ``neutral.npz`` and ``t_pose.npz`` in a recording session."""
-    return calibrate(Recording.load(session / "neutral.npz"), Recording.load(session / "t_pose.npz"))
+    return calibrate(
+        Recording.load(session / "neutral.npz"), Recording.load(session / "t_pose.npz")
+    )

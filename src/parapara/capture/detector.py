@@ -46,13 +46,18 @@ def pose_landmarks_to_array(landmarks: Sequence[Any]) -> FloatArray:
     Missing ``visibility``/``presence`` values become NaN.
     """
     if len(landmarks) != NUM_POSE_LANDMARKS:
-        raise ValueError(f"expected {NUM_POSE_LANDMARKS} pose landmarks, got {len(landmarks)}")
+        raise ValueError(
+            f"expected {NUM_POSE_LANDMARKS} pose landmarks, got {len(landmarks)}"
+        )
 
     def value(v: float | None) -> float:
         return np.nan if v is None else float(v)
 
     return np.array(
-        [(lm.x, lm.y, lm.z, value(lm.visibility), value(lm.presence)) for lm in landmarks],
+        [
+            (lm.x, lm.y, lm.z, value(lm.visibility), value(lm.presence))
+            for lm in landmarks
+        ],
         dtype=np.float32,
     )
 
@@ -91,7 +96,9 @@ class LandmarkDetector:
         return ts
 
     def detect(self, rgb: npt.NDArray[np.uint8], captured_ns: int) -> Detection:
-        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(rgb))
+        image = mp.Image(
+            image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(rgb)
+        )
         ts = self._timestamp_ms(captured_ns)
         t0 = time.perf_counter()
         result = self._pose.detect_for_video(image, ts)

@@ -69,7 +69,9 @@ def fold_tempo(bpm: float, low: float = 100.0, high: float = 200.0) -> float:
     return bpm
 
 
-def fit_constant_tempo(beat_times_s: npt.ArrayLike, bpm_hint: float | None = None) -> GridFit:
+def fit_constant_tempo(
+    beat_times_s: npt.ArrayLike, bpm_hint: float | None = None
+) -> GridFit:
     """Fit ``t = first + i · period`` to detected beat times (see module docstring)."""
     t = np.sort(np.asarray(beat_times_s, dtype=np.float64))
     if len(t) < 4:
@@ -99,7 +101,9 @@ def fit_constant_tempo(beat_times_s: npt.ArrayLike, bpm_hint: float | None = Non
     return GridFit(60.0 / period, first_used, drift, int(keep.sum()), len(t))
 
 
-def detect_beats(audio: Path, start_bpm: float = START_BPM) -> tuple[float, npt.NDArray[np.float64]]:
+def detect_beats(
+    audio: Path, start_bpm: float = START_BPM
+) -> tuple[float, npt.NDArray[np.float64]]:
     """Run librosa's beat tracker; returns (tempo estimate, beat times in s)."""
     import librosa  # tools dependency: imported only when building beat maps
 
@@ -117,7 +121,9 @@ def estimate_beat_map(audio: Path, start_bpm: float = START_BPM) -> GridFit:
     return fit_constant_tempo(beats, bpm_hint=tempo)
 
 
-def update_song(directory: Path, audio_name: str | None = None, start_bpm: float = START_BPM) -> GridFit:
+def update_song(
+    directory: Path, audio_name: str | None = None, start_bpm: float = START_BPM
+) -> GridFit:
     """Estimate the beat map and write it into ``directory/song.json``.
 
     An existing ``song.json`` keeps all other fields. Without one, a skeleton
@@ -154,15 +160,21 @@ def _beats_in(audio: Path, fit: GridFit) -> int:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Estimate a song's beat map with librosa")
+    parser = argparse.ArgumentParser(
+        description="Estimate a song's beat map with librosa"
+    )
     parser.add_argument("song_dir", type=Path)
-    parser.add_argument("--audio", help="audio file name (needed when there is no song.json yet)")
+    parser.add_argument(
+        "--audio", help="audio file name (needed when there is no song.json yet)"
+    )
     parser.add_argument("--start-bpm", type=float, default=START_BPM)
     args = parser.parse_args(argv)
     fit = update_song(args.song_dir, args.audio, args.start_bpm)
     print(f"bpm {fit.bpm:.3f}, first beat {fit.first_beat_s * 1000:.1f} ms, drift {fit.drift_ms:.1f} ms "
           f"({fit.beats_used}/{fit.beats_detected} beats)")  # fmt: skip
-    print(f"written to {args.song_dir / 'song.json'}; now verify by ear: uv run parapara-beatcheck {args.song_dir}")
+    print(
+        f"written to {args.song_dir / 'song.json'}; now verify by ear: uv run parapara-beatcheck {args.song_dir}"
+    )
     try:
         Song.load(args.song_dir)
     except SongError as err:

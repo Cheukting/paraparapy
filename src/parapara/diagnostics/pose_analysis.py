@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -71,8 +72,6 @@ from parapara.pose.body_frame import (
     body_frames,
     torso_motion,
 )
-from collections import Counter
-
 from parapara.pose.framing import check_framing
 from parapara.pose.landmarks import PoseLandmark as P
 from parapara.pose.recording import Recording
@@ -128,16 +127,25 @@ def analyze_static(rec: Recording) -> StaticReport:
         return float(np.nanmedian(np.linalg.norm(w[:, a] - w[:, b], axis=-1)))
 
     shoulder = length(P.RIGHT_SHOULDER, P.LEFT_SHOULDER)
-    upper = np.mean([length(P.RIGHT_SHOULDER, P.RIGHT_ELBOW), length(P.LEFT_SHOULDER, P.LEFT_ELBOW)])
-    fore = np.mean([length(P.RIGHT_ELBOW, P.RIGHT_WRIST), length(P.LEFT_ELBOW, P.LEFT_WRIST)])
+    upper = np.mean(
+        [length(P.RIGHT_SHOULDER, P.RIGHT_ELBOW), length(P.LEFT_SHOULDER, P.LEFT_ELBOW)]
+    )
+    fore = np.mean(
+        [length(P.RIGHT_ELBOW, P.RIGHT_WRIST), length(P.LEFT_ELBOW, P.LEFT_WRIST)]
+    )
     up = np.nanmedian(body_frames(world).up, axis=0)  # torso up, MediaPipe coords
     # Lean towards the camera: up tilting towards -z (MediaPipe +z = away).
     lean = float(np.degrees(np.arctan2(-up[2], -up[1])))
     return StaticReport(
         clip_id=rec.metadata.get("clip_id", "?"),
         samples=len(world),
-        arms={side: {seg: _r(np.nanmedian(getattr(d, seg), axis=0))
-                     for seg in ("upper", "fore", "hand")} for side, d in arms.items()},  # fmt: skip
+        arms={
+            side: {
+                seg: _r(np.nanmedian(getattr(d, seg), axis=0))
+                for seg in ("upper", "fore", "hand")
+            }
+            for side, d in arms.items()
+        },  # fmt: skip
         wrist_jitter_m={
             "right": _r(np.nanstd(w[:, P.RIGHT_WRIST], axis=0), 3),
             "left": _r(np.nanstd(w[:, P.LEFT_WRIST], axis=0), 3),
@@ -178,7 +186,9 @@ class BlockReport:
     keyframes: list[KeyframeFit] = field(default_factory=list)
 
 
-def _keyframe_events(block: Block, n_counts: int, beat_s: float) -> list[tuple[float, int]]:
+def _keyframe_events(
+    block: Block, n_counts: int, beat_s: float
+) -> list[tuple[float, int]]:
     """``(time_s, keyframe_index)`` for the block repeated over ``n_counts``."""
     return [
         (start * beat_s + kf.beat * beat_s, k)
@@ -211,14 +221,18 @@ def analyze_block(
     m = rec.metadata
     block = block or BLOCK_LIBRARY[m["block_id"]]
     beat_s = 60.0 / m["bpm"]
-    beats = np.asarray(m["beat_times_ns"], dtype=np.int64)[m["count_in_beats"]:]
+    beats = np.asarray(m["beat_times_ns"], dtype=np.int64)[m["count_in_beats"] :]
     t = (rec.captured_ns - beats[0]) / 1e9  # seconds since the first recorded beat
     if arms is None:
-        arms = arm_directions(rec.pose_world, body_frames(rec.pose_world, method=frame_method))
+        arms = arm_directions(
+            rec.pose_world, body_frames(rec.pose_world, method=frame_method)
+        )
     events = _keyframe_events(block, len(beats), beat_s)
     if lags_s is None:
         period = block.duration * beat_s
-        lags_s = np.round(np.arange(LAG_SEARCH_START_S, LAG_SEARCH_START_S + period, LAG_STEP_S), 3)
+        lags_s = np.round(
+            np.arange(LAG_SEARCH_START_S, LAG_SEARCH_START_S + period, LAG_STEP_S), 3
+        )
 
     def sample_at(time_s: float) -> int | None:
         i = int(np.argmin(np.abs(t - time_s)))
@@ -242,12 +256,18 @@ def analyze_block(
 
     scores = np.array([mean_error(lag) for lag in lags_s])
     finite = scores[np.isfinite(scores)]
-    measurable = finite.size > 0 and float(finite.max() - finite.min()) >= FLAT_ERROR_DEG
+    measurable = (
+        finite.size > 0 and float(finite.max() - finite.min()) >= FLAT_ERROR_DEG
+    )
     best = float(lags_s[int(np.argmin(scores))]) if measurable else 0.0
 
     fits = []
     for k, kf in enumerate(block.keyframes):
-        idx = [i for time_s, kk in events if kk == k and (i := sample_at(time_s + best)) is not None]
+        idx = [
+            i
+            for time_s, kk in events
+            if kk == k and (i := sample_at(time_s + best)) is not None
+        ]
         for side in ("right", "left"):
             target = getattr(kf, side)
             d = arms[side]
@@ -283,7 +303,9 @@ def body_movement(rec: Recording) -> dict[str, Any]:
               for k, v in torso_motion(world).items()}  # fmt: skip
     hips_x = rec.pose_image[rec.has_pose][:, [P.RIGHT_HIP, P.LEFT_HIP], 0].mean(1)
     motion["hip_sway_pct_of_width"] = _r(100 * hips_x.std(), 1)
-    comparison = {m: analyze_block(rec, frame_method=m).mean_error_deg for m in FRAME_METHODS}
+    comparison = {
+        m: analyze_block(rec, frame_method=m).mean_error_deg for m in FRAME_METHODS
+    }
     # The real-time pipeline: filtered landmarks + adaptive torso smoothing.
     from parapara.pose.features import as_arm_directions, extract_recording
 
@@ -299,7 +321,9 @@ def framing_summary(rec: Recording) -> dict[str, Any]:
     counts = Counter(code for r in results for code in r.codes)
     return {
         "ok_pct": _r(100 * sum(r.ok for r in results) / len(results), 1),
-        "issues": {code: _r(100 * n / len(results), 1) for code, n in counts.most_common()},
+        "issues": {
+            code: _r(100 * n / len(results), 1) for code, n in counts.most_common()
+        },
     }
 
 
@@ -357,7 +381,11 @@ def format_report(report: dict[str, Any]) -> str:
                      f"lean {s['torso_lean_deg']}°  shoulders {s['shoulder_width_m']} m  "
                      f"upper/fore ratio {s['upper_arm_ratio']}/{s['forearm_ratio']}")  # fmt: skip
     for clip, b in report["blocks"].items():
-        lag = "not measurable" if b["best_lag_ms"] is None else f"{b['best_lag_ms']:+.0f} ms"
+        lag = (
+            "not measurable"
+            if b["best_lag_ms"] is None
+            else f"{b['best_lag_ms']:+.0f} ms"
+        )
         lines += ["", f"== {b['block_id']}: best lag {lag}, mean error "
                       f"{b['mean_error_deg']}° (at lag 0: {b['mean_error_at_zero_lag_deg']}°)"]  # fmt: skip
         if "torso_motion" in b:
@@ -378,7 +406,9 @@ def format_report(report: dict[str, Any]) -> str:
 
 
 def run(argv: list[str] | None = None) -> dict[str, Any]:
-    parser = argparse.ArgumentParser(description="Compare recorded clips with the block library")
+    parser = argparse.ArgumentParser(
+        description="Compare recorded clips with the block library"
+    )
     parser.add_argument("session", nargs="?", type=Path,
                         help="recording session directory (default: latest in recordings/)")  # fmt: skip
     args = parser.parse_args(argv)

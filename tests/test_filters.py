@@ -60,7 +60,9 @@ def test_missing_values_reset_only_those_elements() -> None:
     out = f([np.nan, 1.0], 40 * MS)
     assert np.isnan(out[0]) and 0 < out[1] < 1
     out = f([3.0, 1.0], 80 * MS)
-    assert out[0] == 3.0  # restarted from its new value, no smoothing towards stale data
+    assert (
+        out[0] == 3.0
+    )  # restarted from its new value, no smoothing towards stale data
 
 
 def test_shape_change_restarts() -> None:
@@ -69,7 +71,9 @@ def test_shape_change_restarts() -> None:
     np.testing.assert_array_equal(f(np.ones((2, 2)), 40 * MS), np.ones((2, 2)))
 
 
-@pytest.mark.parametrize("kwargs", [{"min_cutoff": 0}, {"d_cutoff": -1}, {"beta": -0.1}])
+@pytest.mark.parametrize(
+    "kwargs", [{"min_cutoff": 0}, {"d_cutoff": -1}, {"beta": -0.1}]
+)
 def test_rejects_bad_parameters(kwargs) -> None:
     with pytest.raises(ValueError):
         OneEuroFilter(**kwargs)

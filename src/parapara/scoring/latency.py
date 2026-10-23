@@ -63,7 +63,9 @@ class LatencyResult:
     reason: str = ""
 
 
-def estimate_latency(features: list[PoseFeatures | None], click_ns: list[int], beat_ns: float) -> LatencyResult:
+def estimate_latency(
+    features: list[PoseFeatures | None], click_ns: list[int], beat_ns: float
+) -> LatencyResult:
     """Median clap offset relative to ``click_ns`` (see module docstring)."""
     samples = [f.for_timing() for f in features if f is not None]
     samples = [f for f in samples if np.isfinite(f.wrist_distance)]
@@ -71,7 +73,9 @@ def estimate_latency(features: list[PoseFeatures | None], click_ns: list[int], b
     dist = np.array([f.wrist_distance for f in samples], dtype=np.float64)
     offsets = []
     for click in click_ns:
-        in_window = np.flatnonzero((ts >= click - 0.25 * beat_ns) & (ts <= click + 0.5 * beat_ns))
+        in_window = np.flatnonzero(
+            (ts >= click - 0.25 * beat_ns) & (ts <= click + 0.5 * beat_ns)
+        )
         if len(in_window) == 0:
             continue
         i = int(in_window[np.argmin(dist[in_window])])
@@ -82,7 +86,15 @@ def estimate_latency(features: list[PoseFeatures | None], click_ns: list[int], b
         offsets.append((hit - click) / 1e6)
 
     if not offsets:
-        return LatencyResult(0.0, 0.0, 0, len(click_ns), [], False, "no claps seen: clap with your hands in view")
+        return LatencyResult(
+            0.0,
+            0.0,
+            0,
+            len(click_ns),
+            [],
+            False,
+            "no claps seen: clap with your hands in view",
+        )
     arr = np.array(offsets)
     median = float(np.median(arr))
     spread = float(1.4826 * np.median(np.abs(arr - median)))

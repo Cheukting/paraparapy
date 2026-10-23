@@ -96,7 +96,11 @@ def _with_holds(items: list[ScheduledKeyframe]) -> list[ScheduledKeyframe]:
     out = []
     for i, item in enumerate(items):
         prev = items[i - 1] if i else None
-        hold = prev is not None and prev.instance == item.instance and _same_pose(prev.keyframe, item.keyframe)
+        hold = (
+            prev is not None
+            and prev.instance == item.instance
+            and _same_pose(prev.keyframe, item.keyframe)
+        )
         out.append(ScheduledKeyframe(item.index, item.t_ns, item.block, item.keyframe, item.block_start_ns,
                                      item.block_end_ns, item.instance, item.beat_ns, hold))  # fmt: skip
     return out
@@ -118,7 +122,9 @@ def schedule_routine(routine: Routine, clock: BeatClock) -> list[ScheduledKeyfra
     return _with_holds(items)
 
 
-def schedule_block_clip(block: Block, beat_times_ns: list[int], latency_ns: int = 0) -> list[ScheduledKeyframe]:
+def schedule_block_clip(
+    block: Block, beat_times_ns: list[int], latency_ns: int = 0
+) -> list[ScheduledKeyframe]:
     """``block`` repeated over ``beat_times_ns`` (the recorded counts, without
     count-in). Fractional keyframe beats are interpolated between beats."""
     beats = np.asarray(beat_times_ns, dtype=np.float64)
@@ -126,11 +132,15 @@ def schedule_block_clip(block: Block, beat_times_ns: list[int], latency_ns: int 
 
     def at(beat: float) -> int:
         i = int(np.floor(beat))
-        base = beats[i] if i < len(beats) else beats[-1] + (i - len(beats) + 1) * beat_ns
+        base = (
+            beats[i] if i < len(beats) else beats[-1] + (i - len(beats) + 1) * beat_ns
+        )
         return int(base + (beat - i) * beat_ns + latency_ns)
 
     items: list[ScheduledKeyframe] = []
-    for instance, start in enumerate(range(0, len(beats) - block.duration + 1, block.duration)):
+    for instance, start in enumerate(
+        range(0, len(beats) - block.duration + 1, block.duration)
+    ):
         for kf in block.keyframes:
             items.append(ScheduledKeyframe(
                 index=len(items), t_ns=at(start + kf.beat), block=block, keyframe=kf,
