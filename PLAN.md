@@ -494,8 +494,7 @@ Open items (to resolve before the step named):
 - Camera rate: the webcam delivers ~23 fps although 30 is requested
   (typical auto-exposure behaviour in dim light). Retest in brighter light;
   target ~30 fps (≈ 13 frames per beat at 155 BPM).
-- Clap detection (5–6): implement §5.1 and test with speakers *and*
-  headphones on Eurobeat tracks that contain claps/snares.
+- Clap detection by sound: future plan (see the pre-release checklist).
 - Distribution (9): check the MediaPipe model card licences, and tell
   players that the MediaPipe Tasks API sends usage metrics to Google
   (images are processed on-device).
@@ -567,6 +566,11 @@ Future plans (project owner, 2026-10-23: not before the first release):
    refused, no songs (clear messages).
 - **Play recordings optional**: a setting to stop saving each play to
   `recordings/` (or clean old ones up automatically).
+- **Clap detection by sound** (§5.1; project owner, 2026-10-23: not for the
+  first release): claps are judged by vision only (the wrists meeting),
+  which works; sound onsets would make clap timing sharper. Implement
+  §5.1 and test with speakers *and* headphones on Eurobeat tracks that
+  contain claps/snares (`Judge.add_clap_onset` is ready for it).
 
 Should do:
 8. **Consistent latency calibration**: repeat calibrations in one sitting to
@@ -575,7 +579,8 @@ Should do:
    Tool ready (2026-10-23): `uv run parapara-latency-test` (hands-free rounds
    alternating 8 and 16 claps, logged to `logs/latency-test-*.json`); waiting
    for a run by the project owner.
-9. **Clap detection by sound** (§5.1): needed for the first release?
+9. **Clap detection by sound**: moved to the future plans (project owner,
+   2026-10-23).
 10. ~~**Low-light hint**~~ done 2026-10-23: "Camera N fps: more light helps"
     on the camera view while the camera delivers < 25 fps for 3 s
     (`LowLightMonitor`); each play logs its camera fps and how long the hint

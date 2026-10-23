@@ -5,7 +5,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+- `PLAN.md`: clap detection by sound moved to the future plans (not for the
+  first release; claps stay vision-only).
 
 ## [0.1.0] - 2026-10-23
 
