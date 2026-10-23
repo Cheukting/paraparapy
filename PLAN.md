@@ -37,7 +37,7 @@ Reference: EKS-D "How to Dance", <https://kirakira.org/XD/learn/how-to-dance/>
 | **Sweep** | Arms sweep from one point to another: horizontal, vertical, or diagonal across the body; one arm or both; soft wrists | 2 or 4 counts | Flowing |
 | **Knock** | "Banging on an imaginary door": fist, thumb towards the body; upper arm horizontal, forearm up (right angle). Same hand on beats 1 & 2, then mirrored (right 1–2, left 3–4) | 2 counts per hand | Sharp |
 | **Chop** | Arm reaches 45° up and out to the side (beat 1), then folds in front of the chest, flat hand level (not pointing down), like a salute (beat 2). Often right 1–2, 3–4, then left 5–6, 7–8 | 2 counts per chop | Sharp |
-| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other (*not in the reference; unverified*) | 2 or 4 counts | Flowing |
+| **Wrist Roll** | Hands close to chest at shoulder height, wrists rolling over each other (*not in the reference; checked against a real dancer in three recordings*) | 2 or 4 counts | Flowing |
 | **Flick + Clap** | "nami + nami + nami + pon!": one arm crosses the body and does a backhanded wrist flick just above shoulder height (1), again in front (2), again on the opposite side (3), then a clap where the third flick ended (4). **Any clap scores, regardless of side or arm position.** Often paired in opposite directions | 4 counts | Phrase finisher |
 
 Pairing patterns (knock right then left; chops right-right-left-left;
@@ -462,17 +462,32 @@ Decided (2026-10-18):
 - Single player only for now.
 
 Open items (to resolve before the step named):
-- **Step 4b deferred** (project owner, 2026-10-18): continue with Step 5
-  and revisit the real-dancer test run later, together with:
-- **Deferred recording & recalibration** (postponed by the project owner on
-  2026-10-18; do before Step 4b at the latest): re-record the six block
-  clips with the position check passing (hips in the picture), run
-  `parapara-analyze`, and recalibrate `library.py`, especially Flick + Clap,
-  whose second take did not fit (lag alias / different interpretation).
-  Session 2 (`recordings/20261018-151657`) has the hips out of frame and
-  should not be used for calibration.
-- Real-dancer test run (4b): verify the draft poses (wrist roll, one-armed
-  sweeps, chop salute, clap).
+- **Step 4b done** (2026-10-23): two full sessions at 150 BPM with the
+  hands-free recorder (`recordings/20261023-161938`, `-163650`, hips in
+  the picture, all clips passed the quality check) plus the 6 game plays of
+  that day. Results at the game's latency (120 ms):
+  - knock 91-100%, wrist roll 98-100%, sweep down 91% (second session, with
+    the 8-count count-in), chop 83-92%: drafts kept; wrist roll now verified;
+  - **Flick + Clap recalibrated**: front and side flick forearms point
+    forward and slightly up (both sessions agreed): 39% / 26% -> 59% / 52%,
+    arm error 18° -> 9-11°, game plays 41° -> 38°;
+  - sweep to the right: 600 ms "late" in recorder clips but on time
+    (+40 ms) in the game plays; the recorder's guide snaps from keyframe to
+    keyframe, the game's dancer glides. No change; make the recorder guide
+    glide like the game's dancer (open item below);
+  - chop reach: 15-25° up in every recording; a 25° target halves the arm
+    error but the judge then times the reach ~50 ms later (held-pose arrival
+    detected late through the smoothing filter): ~5 points lost, so it is on
+    hold (project owner, 2026-10-23) until the held-pose timing is fixed.
+  Session 2 of 2026-10-18 (`recordings/20261018-151657`) has the hips out of
+  frame and should not be used for calibration.
+- **Held-pose timing**: `judge.arrival_time` takes the start of the
+  near-minimum stretch (within 3°); through the One Euro smoothing a pose
+  reached slowly is detected late (the synthetic perfect player's chop
+  salute is judged 51-100 ms late). Fix (e.g. a tolerance-relative threshold
+  or filter-lag compensation), then re-apply the 25° chop reach.
+- Recorder guide: drive it with the game's animator (gliding sweeps, snaps)
+  instead of holding each keyframe, so recorder clips are timed like play.
 - Camera rate: the webcam delivers ~23 fps although 30 is requested
   (typical auto-exposure behaviour in dim light). Retest in brighter light;
   target ~30 fps (≈ 13 frames per beat at 155 BPM).
@@ -515,10 +530,9 @@ Findings from the first game test run (2026-10-23, `parapara-play`):
 ### Pre-release checklist (agreed with the project owner, 2026-10-23)
 
 Must do before shipping:
-1. **Real-dancer pose check (Step 4b)**: re-record the block clips with the
-   hips in frame and recalibrate `library.py` (see "Deferred recording &
-   recalibration" above); Flick + Clap did not fit, the wrist roll is
-   unverified.
+1. ~~**Real-dancer pose check (Step 4b)**~~ done 2026-10-23 (see "Step 4b
+   done" above). Follow-ups: held-pose timing fix, then the 25° chop reach;
+   recorder guide gliding.
 2. **Beat maps** of the other three demo songs checked by ear
    (`parapara-beatcheck`, `docs/verify-beat-maps.md`), or ship only verified
    songs.

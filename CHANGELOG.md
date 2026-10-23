@@ -46,6 +46,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the moves flow (`test_game_app.py`).
 
 ### Changed
+- **Step 4b, block poses checked against a real dancer** (two hands-free
+  sessions at 150 BPM on 2026-10-23 and the day's 6 game plays):
+  - Flick + Clap recalibrated: the front and side flicks' forearm targets
+    now point forward and slightly up, as danced in both sessions (score at
+    120 ms latency 39% / 26% -> 59% / 52%; arm error 18° -> 9-11°).
+  - Wrist roll marked as checked (13.6-14.6° error in three sessions).
+  - Chop keeps its 45° reach: a 25° target fit the recordings better but the
+    judge then timed the reach later (-5 points); on hold until the
+    held-pose timing fix (PLAN.md §10).
+  - Sweeps unchanged: on time in the game plays; the recorder's lag comes
+    from its snapping guide figure (follow-up in PLAN.md).
+  - Test: the flick's recalibrated forearm directions.
 - `parapara-play` sixth test-run feedback:
   - Latency calibration: the 4 count-in clicks are counted down on screen
     (4, 3, 2, 1, flashing on each click), then CLAP!.

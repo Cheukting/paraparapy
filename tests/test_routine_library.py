@@ -142,10 +142,16 @@ def test_flick_clap_travels_across_the_body_then_claps() -> None:
     # The hand travels from crossed (left of the right shoulder) to the right.
     xs = [wrist_x(kf.right) for kf in kfs[:3]]
     assert xs == sorted(xs) and xs[0] < 0.25 < xs[-1]
-    # From the recording: forearm roughly level, across the chest, in front.
+    # From the recordings: forearm roughly level, pointing inwards, in front.
     for kf in kfs[:3]:
         assert abs(kf.right.fore[1]) < 0.3 and kf.right.fore[0] < 0 < kf.right.fore[2]
         assert kf.right.hand is not None  # the flick direction
+    # Recalibrated 2026-10-23 (two sessions at 150 BPM): on the front and side
+    # flicks the forearm turns from across the chest to forward and slightly
+    # up, most of all on the side flick.
+    crossed, front, side = (kf.right.fore for kf in kfs[:3])
+    assert front[1] > 0 and side[1] > 0
+    assert side[2] > front[2] > crossed[2] - 0.1 and abs(side[0]) < abs(front[0]) < abs(crossed[0]) + 0.1
 
 
 def test_clap_is_scored_only_as_a_clap() -> None:

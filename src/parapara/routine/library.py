@@ -19,8 +19,8 @@ Reference
 ---------
 Checked against EKS-D "How to Dance" (https://kirakira.org/XD/learn/how-to-dance/),
 retrieved 2026-10-18. Quotes below come from that page. It describes sweeps,
-knocks, chops and flick+clap, but **not the wrist roll**, which therefore
-remains an unverified draft.
+knocks, chops and flick+clap, but **not the wrist roll**, which was instead
+checked against recordings of a real dancer (2026-10-18, 2026-10-23).
 
 Conventions
 -----------
@@ -38,11 +38,13 @@ Interpretation choices (reviewed with the project owner 2026-10-18):
 - **Knock**: upper arm out to the side and forward (~45°, from the recording);
   the forearm points up and tilts forward towards the "door".
 - **Chop** beat 1 keeps the reference's 45° up-and-out target, with a wider
-  tolerance (the dancer reached ~20-25°). Beat 2: the elbow stays at shoulder
+  tolerance (the dancer reached 15-25°; a 25° target waits for the held-pose
+  timing fix, see the note at ``_CHOP_OUT``). Beat 2: the elbow stays at shoulder
   height, out and forward, and the forearm folds across **in front of the
   chest** with the flat hand continuing the forearm line (salute shape).
 - **Flick + Clap**: the right arm travels left → right; the mirrored block
-  travels right → left. **The clap is scored only as a clap** (heard by the
+  travels right → left. Forearm targets of the front and side flicks
+  recalibrated from two 2026-10-23 recordings (forward and slightly up). **The clap is scored only as a clap** (heard by the
   microphone, confirmed by the wrists meeting), wherever it happens -- arm
   positions and side are ignored. During the flicks the forearm stays
   roughly **level across the chest** and the elbow carries it from side to
@@ -152,8 +154,12 @@ KNOCK_RIGHT = Block(
 # ---------------------------------------------------------------------------
 
 _CHOP_OUT = ArmPose(upper=(1, 1, 0), fore=(1, 1, 0), hand_shape=HandShape.OPEN)
-# The 45° target is kept, but dancers often reach lower (~20-25° in the
-# recording), so this keyframe is judged more leniently than other sharp ones.
+# The 45° target is kept, but dancers often reach lower (15-25° in every
+# recording so far), so this keyframe is judged more leniently than other
+# sharp ones. A 25° target fits the recordings better (error 18° -> 9°) but
+# was put on hold on 2026-10-23: the judge then times the reach ~50 ms later
+# (a held pose's arrival is detected late through the smoothing filter), which
+# cost ~5 points. Re-apply it after the held-pose timing fix (PLAN.md §10).
 CHOP_OUT_TOLERANCE_DEG = 40.0
 # Salute fold (from the recording): elbow at shoulder height, out and forward;
 # forearm across the front of the chest, flat hand continuing its line.
@@ -177,7 +183,9 @@ CHOP_RIGHT = Block(
 )
 
 # ---------------------------------------------------------------------------
-# Wrist Roll (flowing, 2 or 4 counts) -- NOT in the reference page.
+# Wrist Roll (flowing, 2 or 4 counts) -- NOT in the reference page, but
+#   checked against a real dancer: 13.8°, 14.6° and 13.6° mean error in the
+#   2026-10-18 and two 2026-10-23 recordings (98-100% accuracy).
 #   Hands close to the chest at shoulder height, wrists rolling over each
 #   other. From the recording: elbows forward, forearms level and pointing
 #   inwards. The over/under rolling is invisible to body landmarks, so the
@@ -213,11 +221,16 @@ def _wrist_roll(block_id: str, duration: int) -> Block:
 
 _TRAVEL_RIGHT = (0.7, 0.7, 0)  # backhanded flick: hand up and towards travel
 
-# From the recording: the forearm stays roughly level across the chest while
-# the elbow carries the hand from the left (crossed) to the right side.
+# From the recordings: the elbow carries the hand from the left (crossed) to
+# the right side. On the crossed flick the forearm lies across the chest; on
+# the front and side flicks it turns to point forward and slightly up (two
+# 2026-10-23 sessions at 150 BPM agreed within ~10°; the 2026-10-18 draft had
+# it level across the chest, which scored 26-39%). Targets follow the
+# recordings in x/y and only partly in z (depth reads biased towards the
+# camera).
 _FLICK_CROSSED = ArmPose(upper=(0.0, -0.55, 0.85), fore=(-0.6, 0.25, 0.75), hand=_TRAVEL_RIGHT)
-_FLICK_FRONT = ArmPose(upper=(0.23, -0.45, 0.86), fore=(-0.63, -0.1, 0.76), hand=_TRAVEL_RIGHT)
-_FLICK_SIDE = ArmPose(upper=(0.7, -0.55, 0.45), fore=(-0.65, -0.15, 0.72), hand=_TRAVEL_RIGHT)
+_FLICK_FRONT = ArmPose(upper=(0.23, -0.45, 0.86), fore=(-0.49, 0.2, 0.81), hand=_TRAVEL_RIGHT)
+_FLICK_SIDE = ArmPose(upper=(0.7, -0.55, 0.45), fore=(-0.22, 0.25, 0.85), hand=_TRAVEL_RIGHT)
 
 FLICK_CLAP_TO_RIGHT = Block(
     id="flick_clap_to_right",
