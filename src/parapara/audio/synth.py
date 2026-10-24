@@ -224,4 +224,4 @@ def read_wav(path: Path) -> tuple[npt.NDArray[np.float32], int]:
             np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32)
             / 32767
         )
-    return data.reshape(-1, channels).mean(axis=1), sr
+    return data.reshape(-1, channels).mean(axis=1).astype(np.float32), sr

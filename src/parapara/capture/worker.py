@@ -52,9 +52,11 @@ class FrameSink(Protocol):
 
 def to_rgb(image_bgr: npt.NDArray[np.uint8], width: int, height: int) -> RGBFrame:
     """OpenCV BGR camera image → RGB of the configured size."""
-    if image_bgr.shape[1] != width or image_bgr.shape[0] != height:
-        image_bgr = cv2.resize(image_bgr, (width, height), interpolation=cv2.INTER_AREA)
-    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    img = image_bgr
+    if img.shape[1] != width or img.shape[0] != height:
+        img = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return np.asarray(rgb, dtype=np.uint8)
 
 
 class QueueEmitter:

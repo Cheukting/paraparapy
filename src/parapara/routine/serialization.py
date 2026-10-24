@@ -68,9 +68,10 @@ def routine_from_dict(
         raise RoutineError([f"missing field(s): {', '.join(missing)}"])
 
     issues: list[str] = []
+    difficulty_obj = None
     try:
-        difficulty = Difficulty(data["difficulty"])
-    except ValueError:
+        difficulty_obj = Difficulty(data["difficulty"])
+    except Exception:
         issues.append(
             f"unknown difficulty {data['difficulty']!r}, expected one of {[d.value for d in Difficulty]}"
         )
@@ -97,10 +98,12 @@ def routine_from_dict(
 
     if issues:
         raise RoutineError(issues)
+    if difficulty_obj is None or not isinstance(difficulty_obj, Difficulty):
+        raise RoutineError(["missing or invalid difficulty"])
     return Routine(
         id=data["id"],
         song_id=data["song_id"],
-        difficulty=difficulty,
+        difficulty=difficulty_obj,
         phrases=tuple(phrases),
     )
 

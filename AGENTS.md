@@ -14,4 +14,5 @@
 - commit using the user's git credential.
 - run test and checks when the task finished and commit with proper commit messages.
 - work on a new branch, only merge into main after reviewed by human author.
+- provide reasoning and inform the user your plan while you work
 

@@ -88,13 +88,18 @@ def find(client_id: str, download_dir: Path, tags: tuple[str, ...] = DEFAULT_TAG
          fetch: Callable[[str], dict] = _fetch_json,
          download: Callable[[str, Path], None] | None = None) -> list[dict[str, Any]]:  # fmt: skip
     """Search, download and check; returns the entries with a ``check`` field."""
-    download = download or (lambda url, path: urllib.request.urlretrieve(url, path))  # noqa: S310
+    if download is None:
+        def _download(url: str, path: Path) -> None:
+            urllib.request.urlretrieve(url, path)
+        download_fn = _download
+    else:
+        download_fn = download
     found = candidates(fetch(search_url(client_id, tags, limit)).get("results", []))
     download_dir.mkdir(parents=True, exist_ok=True)
     for entry in found:
         path = download_dir / f"{entry['id']}.mp3"
         if not path.exists():
-            download(entry["audio_url"], path)
+            download_fn(entry["audio_url"], path)
         report = check_track(path, entry["license"]["name"])
         entry["check"] = {"ok": report.ok, "rejections": list(report.rejections),
                           "warnings": list(report.warnings), "measured": report.metrics}  # fmt: skip

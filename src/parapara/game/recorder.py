@@ -109,7 +109,10 @@ class Metronome:
         self._sounds: dict[bool, Any] = {}
         try:
             pygame.mixer.init(frequency=44100, size=-16, channels=1, buffer=256)
-            freq, _, channels = pygame.mixer.get_init()
+            got = pygame.mixer.get_init()
+            if got is None:
+                raise pygame.error("mixer not initialized")
+            freq, _, channels = got
             for accent in (False, True):
                 self._sounds[accent] = pygame.sndarray.make_sound(
                     self._click(freq, channels, 1760.0 if accent else 1175.0)

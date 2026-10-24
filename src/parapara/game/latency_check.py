@@ -95,11 +95,11 @@ class Round:
     smoothed: LatencyResult | None = None  # on the smoothed wrist distance
 
     def evaluate(self, beat_ns: float) -> None:
-        self.result = estimate_latency(self.features, self.click_ns, beat_ns)
+        self.result = estimate_latency(list(self.features), self.click_ns, beat_ns)  # type: ignore[arg-type]
         # Without the timing copy, for_timing() falls back to the smoothed values.
         plain = [dataclasses.replace(f, timing_right=None, timing_left=None, timing_wrist_distance=None)
                  for f in self.features]  # fmt: skip
-        self.smoothed = estimate_latency(plain, self.click_ns, beat_ns)
+        self.smoothed = estimate_latency(plain, self.click_ns, beat_ns)  # type: ignore[arg-type]
 
     def to_log(self) -> dict[str, Any]:
         rel = lambda t: round((t - self.start_ns) / 1e6, 1)  # noqa: E731  (ms since the round's audio start)
@@ -232,7 +232,7 @@ def run(
                 framing.update(sample)
                 features = extractor.update(sample)
                 if step is Step.CLICKS and current is not None and features is not None:
-                    current.features.append(features)
+                    current.features.append(features)  # type: ignore[arg-type]
             now, now_ns = time.monotonic(), time.monotonic_ns()
 
             # --- steps (all advance by themselves) ---
