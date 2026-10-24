@@ -174,11 +174,6 @@ uv run parapara-beatcheck assets/songs/<id>                   # verify it by ear
 
 Every song folder has a `song.json` with its licence, source and beat map.
 
-## License
-
-- Code: [MIT](LICENSE)
-- Assets: see [LICENSES.md](LICENSES.md) and [CREDITS.md](CREDITS.md)
-
 Verify each song's beat map by ear once before playing it seriously: see
 [docs/verify-beat-maps.md](docs/verify-beat-maps.md).
 
@@ -197,3 +192,8 @@ or `$PARAPARA_SONGS_DIR`), never into git. Verify the beat map with
 `parapara-beatcheck` afterwards. To search Jamendo for CC BY candidates, get a
 free developer id at https://devportal.jamendo.com and run
 `JAMENDO_CLIENT_ID=... uv run parapara-find-songs`.
+
+## License
+
+- Code: [MIT](LICENSE)
+- Assets: see [LICENSES.md](LICENSES.md) and [CREDITS.md](CREDITS.md)
