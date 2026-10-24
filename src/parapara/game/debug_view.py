@@ -337,9 +337,11 @@ def run_session(
                 if feed.status.kind is not StatusKind.ERROR:
                     feed.status = CaptureStatus(StatusKind.ERROR, failure)
                 break
-            if max_frames is not None and (
+            if max_frames is not None and startup_grace is not None and (
                 ready_frames >= max_frames or drawn >= startup_grace
             ):
+                break
+            elif max_frames is not None and startup_grace is None and ready_frames >= max_frames:
                 break
 
     return SessionResult(

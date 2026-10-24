@@ -75,7 +75,10 @@ class Player:
 
     def __init__(self, sr: int) -> None:
         pygame.mixer.init(frequency=sr, size=-16, channels=1, buffer=512)
-        self.sr, _, self.channels = pygame.mixer.get_init()
+        got = pygame.mixer.get_init()
+        if got is None:
+            raise RuntimeError("mixer not initialized")
+        self.sr, _, self.channels = got
         self._sound: pygame.mixer.Sound | None = None
         self._start_pos = 0.0
         self._started_at: float | None = None  # None = paused

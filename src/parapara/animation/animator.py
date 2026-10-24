@@ -217,9 +217,13 @@ class Animator:
             # After the previous hit the hand cocks back gradually, then whips
             # out to the target in the last FLICK_WINDOW_BEATS: exact on both
             # beats, no jumps in between.
-            cocked = normalize(
-                tuple(2 * f - h for f, h in zip(state.fore, nxt.pose.hand, strict=True))
-            )
+            hand_target = nxt.pose.hand
+            if hand_target is None:
+                hand_target = state.hand
+            vx = 2.0 * state.fore[0] - hand_target[0]
+            vy = 2.0 * state.fore[1] - hand_target[1]
+            vz = 2.0 * state.fore[2] - hand_target[2]
+            cocked = normalize((vx, vy, vz))
             whip_start = nxt.beat - min(FLICK_WINDOW_BEATS, gap)
             start = beats[k] if k >= 0 else nxt.beat - 1.0
             if beat < whip_start:
@@ -228,7 +232,7 @@ class Animator:
             else:
                 hand = turn(
                     cocked,
-                    nxt.pose.hand,
+                    hand_target,
                     smoothstep((beat - whip_start) / (nxt.beat - whip_start)),
                 )
             state = ArmState(state.upper, state.fore, hand)

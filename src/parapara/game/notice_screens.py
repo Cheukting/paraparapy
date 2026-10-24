@@ -70,7 +70,7 @@ def draw_document(surface: pygame.Surface, entries: list[Entry], scroll: int,
     lines = [(keys, 16, DIM)]
     if more or scroll:
         lines.insert(0, ("[Down] more" if more else "[Up] back to the top", 16, ACCENT))
-    footer(surface, lines, x=x)
+    footer(surface, lines, x=x)  # type: ignore[arg-type]
     return more
 
 

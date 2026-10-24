@@ -78,9 +78,13 @@ class OneEuroFilter:
             return self._x.copy()
 
         # Elements that were missing restart from their new value.
-        fresh = np.isnan(self._x) & ~np.isnan(x)
-        prev = np.where(fresh, x, self._x)
-        prev_dx = np.where(fresh | np.isnan(self._dx), 0.0, self._dx)
+        prev_arr = self._x
+        prev_dx_arr = self._dx
+        if prev_arr is None or prev_dx_arr is None:
+            return self._restart(x, t_ns)
+        fresh = np.isnan(prev_arr) & ~np.isnan(x)
+        prev = np.where(fresh, x, prev_arr)
+        prev_dx = np.where(fresh | np.isnan(prev_dx_arr), 0.0, prev_dx_arr)
 
         dx = (x - prev) / dt
         edx = prev_dx + _alpha(self.d_cutoff, dt) * (dx - prev_dx)

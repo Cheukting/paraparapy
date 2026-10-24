@@ -99,7 +99,7 @@ class LatestFrameGrabber:
         while self._running.is_set():
             ok, image = self._capture.read()
             captured_ns = time.monotonic_ns()
-            if not ok:
+            if not ok or image is None:
                 failures += 1
                 if failures >= self._MAX_CONSECUTIVE_FAILURES:
                     self._fail("camera stopped delivering frames")
@@ -108,7 +108,7 @@ class LatestFrameGrabber:
                 continue
             failures = 0
             with self._new_frame:
-                self._latest = CameraFrame(index, captured_ns, image)
+                self._latest = CameraFrame(index, captured_ns, np.asarray(image, dtype=np.uint8))
                 self._new_frame.notify_all()
             index += 1
 

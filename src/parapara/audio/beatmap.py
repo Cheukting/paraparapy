@@ -141,13 +141,21 @@ def update_song(
         data = {"format_version": FORMAT_VERSION, "id": directory.name, "title": directory.name,
                 "artist": "", "audio": audio_name, "license": {"name": "", "url": None},
                 "source": "", "attribution": "", "routine_start_beat": 8}  # fmt: skip
-    data |= {
-        "bpm": round(fit.bpm, 3),
-        "first_beat_s": round(fit.first_beat_s, 4),
-        "duration_beats": int(data.get("duration_beats") or _beats_in(directory / audio_name, fit)),
-        "beat_map": {"method": "librosa", "verified": False, "drift_ms": round(fit.drift_ms, 2),
-                     "notes": f"{fit.beats_used}/{fit.beats_detected} detected beats on the grid"},
-    }  # fmt: skip
+    duration_beats_val = data.get("duration_beats")
+    if duration_beats_val is None:
+        duration_beats_val = _beats_in(directory / audio_name, fit)
+    if duration_beats_val is None:
+        db_val = 0
+    else:
+        try:
+            db_val = int(round(float(duration_beats_val)))  # type: ignore[arg-type]
+        except Exception:
+            db_val = 0
+    data["duration_beats"] = db_val
+    data["bpm"] = round(float(fit.bpm), 3)
+    data["first_beat_s"] = round(float(fit.first_beat_s), 4)
+    data["beat_map"] = {"method": "librosa", "verified": False, "drift_ms": round(float(fit.drift_ms), 2),
+                        "notes": f"{fit.beats_used}/{fit.beats_detected} detected beats on the grid"}  # fmt: skip
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return fit
 

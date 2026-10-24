@@ -110,7 +110,7 @@ from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
 from parapara.notices import credits_entries, privacy_entries, song_credit  # noqa: E402
 from parapara.pose.calibration import CalibrationError, calibrate  # noqa: E402
-from parapara.pose.features import FeatureExtractor  # noqa: E402
+from parapara.pose.features import FeatureExtractor, PoseFeatures  # noqa: E402
 from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
@@ -267,7 +267,8 @@ class Game:
     def _reset_scene_state(self) -> None:
         self.t0 = time.monotonic()
         self.step = 0  # sub-step inside a scene
-        self.collected: list[PoseSample] = []
+        self.collected = []
+        self.latency_collected = []
         self.session: PlaySession | None = None
         self.animator: Animator | None = None
         self.popups: list[tuple[float, Grade, int]] = []
@@ -286,6 +287,7 @@ class Game:
         self._reset_scene_state()
         if scene is Scene.LATENCY:
             self.latency_extractor = FeatureExtractor(calibration=self.calibration)
+            self.latency_collected = []
         if scene is Scene.LEARN:
             self.start_learn()
 
@@ -471,7 +473,7 @@ class Game:
         for sample in samples:
             features = self.latency_extractor.update(sample)
             if self.step == 1 and features is not None:
-                self.collected.append(features)
+                self.latency_collected.append(features)
         if (
             self.step == 0 and pygame.K_s in keys
         ):  # skip: reuse the last saved value (or none)
@@ -506,10 +508,11 @@ class Game:
                 start + int(grid.time_of(b) * 1e9) for b in range(count_in)
             ]
             self.latency_beat_ns = grid.beat_s * 1e9
-            self.collected, self.step = [], 1
+            self.latency_collected = []
+            self.step = 1
         elif self.step == 1 and time.monotonic_ns() > self.click_ns[-1] + 1e9:
             self.latency_result = estimate_latency(
-                self.collected, self.click_ns, self.latency_beat_ns
+                self.latency_collected, self.click_ns, self.latency_beat_ns
             )
             self.step = 2
         elif self.step == 2:
@@ -836,7 +839,7 @@ class Game:
 
         def selected_lines(song: Song) -> list[tuple[str, float, tuple[int, int, int]]]:
             r = m.routine
-            lines = [(song.title, 24, ACCENT)]
+            lines: list[tuple[str, float, tuple[int, int, int]]] = [(song.title, 24, ACCENT)]
             licence = song_credit(song)[1][1].split(",")[
                 0
             ]  # "CC BY 4.0" / "your own music"
@@ -844,13 +847,15 @@ class Game:
                 song.artist
             ):  # artist and licence right where the song is chosen, as CC BY asks
                 lines.append((f"by {song.artist}   {licence}", 16, DIM))
-            lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM" if r else "no routines",
-                          20, TEXT))  # fmt: skip
-            top = scores.best(song.id, r.id) if r else None
-            if top:
-                lines.append(
-                    (f"best {top['score']:,}   {top['accuracy_pct']:.0f}%", 16, DIM)
-                )
+            if r is not None:
+                lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM", 20, TEXT))
+                top = scores.best(song.id, r.id)
+                if top:
+                    lines.append(
+                        (f"best {top['score']:,}   {top['accuracy_pct']:.0f}%", 16, DIM)
+                    )
+            else:
+                lines.append(("no routines", 20, TEXT))
             if not song.beat_map.verified:
                 lines.append(("beat map not checked", 18, WARN))
             return lines

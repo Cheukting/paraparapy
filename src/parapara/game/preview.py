@@ -153,7 +153,7 @@ def run(argv: list[str] | None = None) -> None:
         nonlocal clicked
         if clicks and clicked is None:
             clicked = render_click_track(samples, sr, grid)
-        return clicked if clicks else plain
+        return clicked if clicks else plain  # type: ignore[return-value]
 
     animator = Animator(routines[index])
     player.play(mix(), 0.0)
