@@ -110,7 +110,7 @@ from parapara.ipc.client import DEFAULT_WORKER, CaptureClient  # noqa: E402
 from parapara.ipc.messages import CaptureConfig  # noqa: E402
 from parapara.notices import credits_entries, privacy_entries, song_credit  # noqa: E402
 from parapara.pose.calibration import CalibrationError, calibrate  # noqa: E402
-from parapara.pose.features import FeatureExtractor, PoseFeatures  # noqa: E402
+from parapara.pose.features import FeatureExtractor  # noqa: E402
 from parapara.pose.framing import FramingMonitor  # noqa: E402
 from parapara.pose.landmarks import PoseSample  # noqa: E402
 from parapara.pose.recording import Recording  # noqa: E402
