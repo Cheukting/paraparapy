@@ -173,6 +173,12 @@ uv run parapara-beatcheck assets/songs/<id>                   # verify it by ear
 ```
 
 Every song folder has a `song.json` with its licence, source and beat map.
+
+## License
+
+- Code: [MIT](LICENSE)
+- Assets: see [LICENSES.md](LICENSES.md) and [CREDITS.md](CREDITS.md)
+
 Verify each song's beat map by ear once before playing it seriously: see
 [docs/verify-beat-maps.md](docs/verify-beat-maps.md).
 

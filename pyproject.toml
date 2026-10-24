@@ -3,6 +3,7 @@ name = "paraparapy"
 version = "0.1.0"
 description = "ParaParaPy: desktop Para Para dance game with webcam pose tracking and rhythm scoring"
 readme = "README.md"
+license = { file = "LICENSE" }
 authors = [
     { name = "Cheukting", email = "cheukting.ho@gmail.com" }
 ]
