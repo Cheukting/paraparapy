@@ -15,7 +15,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   only the tests affected by the staged changes instead of the full suite.
   The first run (or a run after `.testmondata` is removed) still collects
   coverage for every test; later runs are much faster. The cache is ignored
-  by git (`.testmondata`).
+  by git (`.testmondata*`, including SQLite's `-wal`/`-shm` sidecars).
 - **Key hints in the UI**: player keys are now shown in brackets (e.g.
   `[Esc]`, `[Space]`, `[Up/Down]`) across the game, recorder, latency test,
   preview, beat check and document screens.
