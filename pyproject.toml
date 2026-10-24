@@ -43,6 +43,7 @@ module-name = "parapara"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "pytest-testmon>=2.2.0",
     "ruff>=0.17.2",
     "pyrefly>=1.4.0",
     "prek>=0.0.28",

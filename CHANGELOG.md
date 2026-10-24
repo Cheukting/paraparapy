@@ -11,6 +11,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.
 
 ### Changed
+- **Git hooks**: the `pytest` prek hook now uses `pytest-testmon`, so it runs
+  only the tests affected by the staged changes instead of the full suite.
+  The first run (or a run after `.testmondata` is removed) still collects
+  coverage for every test; later runs are much faster. The cache is ignored
+  by git (`.testmondata`).
 - **Key hints in the UI**: player keys are now shown in brackets (e.g.
   `[Esc]`, `[Space]`, `[Up/Down]`) across the game, recorder, latency test,
   preview, beat check and document screens.
@@ -32,6 +37,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   first release; claps stay vision-only).
 
 ### Fixed
+- **Dependency audit hook**: the `pip-audit` prek hook used the nonexistent
+  `uv export --no-headers` flag, so the export always failed and the hook fell
+  back to auditing the venv. It now uses `--no-header`, and `certifi` was
+  upgraded to 2026.10.23 to clear PYSEC-2026-4320.
 - `tests/test_game_overlay.py::test_debug_view_main_loop_runs_headless_with_fake_worker`
   was flaky: it stopped the debug loop after 40 display frames, but the
   spawned fake worker sometimes needed longer than 40 frames at 60 fps

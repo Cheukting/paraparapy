@@ -108,7 +108,9 @@ class LatestFrameGrabber:
                 continue
             failures = 0
             with self._new_frame:
-                self._latest = CameraFrame(index, captured_ns, np.asarray(image, dtype=np.uint8))
+                self._latest = CameraFrame(
+                    index, captured_ns, np.asarray(image, dtype=np.uint8)
+                )
                 self._new_frame.notify_all()
             index += 1
 

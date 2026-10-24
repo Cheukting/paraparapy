@@ -839,7 +839,9 @@ class Game:
 
         def selected_lines(song: Song) -> list[tuple[str, float, tuple[int, int, int]]]:
             r = m.routine
-            lines: list[tuple[str, float, tuple[int, int, int]]] = [(song.title, 24, ACCENT)]
+            lines: list[tuple[str, float, tuple[int, int, int]]] = [
+                (song.title, 24, ACCENT)
+            ]
             licence = song_credit(song)[1][1].split(",")[
                 0
             ]  # "CC BY 4.0" / "your own music"
@@ -848,7 +850,13 @@ class Game:
             ):  # artist and licence right where the song is chosen, as CC BY asks
                 lines.append((f"by {song.artist}   {licence}", 16, DIM))
             if r is not None:
-                lines.append((f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM", 20, TEXT))
+                lines.append(
+                    (
+                        f"< {r.difficulty.value} >   {len(r.phrases)} phrases   {song.bpm:.0f} BPM",
+                        20,
+                        TEXT,
+                    )
+                )
                 top = scores.best(song.id, r.id)
                 if top:
                     lines.append(

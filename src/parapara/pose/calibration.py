@@ -148,7 +148,11 @@ def calibrate(neutral: Recording, t_pose: Recording) -> Calibration:
         return float(np.mean([np.nanmedian(front_angle_deg(arms[s].fore, t))
                               for s, t in zip(("right", "left"), targets, strict=True)]))  # fmt: skip
 
-    neutral_up_t = (float(round(float(up[0]), 4)), float(round(float(up[1]), 4)), float(round(float(up[2]), 4)))
+    neutral_up_t = (
+        float(round(float(up[0]), 4)),
+        float(round(float(up[1]), 4)),
+        float(round(float(up[2]), 4)),
+    )
     return Calibration(
         shoulder_width_m=round(shoulder, 4),
         upper_arm_ratio=round(float(upper / shoulder), 3),

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.testmondata
 
 # Virtual environment (recreate with `uv sync`)
 .venv/

@@ -274,9 +274,15 @@ Hidden options used by tests and reviews (not for players): `--auto`,
 
 ```sh
 uv run pytest                          # everything
+uv run pytest --testmon                # only tests affected by changes
 uv run pytest tests/test_scoring.py    # one file
 uv run pytest -k layout                # by name
 ```
+
+The `pytest` prek hook uses `--testmon` (pytest-testmon), so a commit only
+runs the tests affected by the staged changes. The first run builds
+`.testmondata` by running the whole suite; it is cached locally and ignored
+by git. Delete it to force a full re-run.
 
 How the suite is built:
 

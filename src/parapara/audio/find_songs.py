@@ -89,8 +89,10 @@ def find(client_id: str, download_dir: Path, tags: tuple[str, ...] = DEFAULT_TAG
          download: Callable[[str, Path], None] | None = None) -> list[dict[str, Any]]:  # fmt: skip
     """Search, download and check; returns the entries with a ``check`` field."""
     if download is None:
+
         def _download(url: str, path: Path) -> None:
             urllib.request.urlretrieve(url, path)
+
         download_fn = _download
     else:
         download_fn = download
