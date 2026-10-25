@@ -233,7 +233,7 @@ def _env(**extra):
 
 
 def test_dancer_is_mirrored_like_the_guide_figure() -> None:
-    """Mirrored (default): the dancer's right (orange) is on the screen's right."""
+    """Mirrored (default): the dancer's right is on the screen's right."""
     out = subprocess.run([sys.executable, "-c", RENDER, str(FIXTURE)], capture_output=True, text=True,
                          env=_env(), check=True).stdout.split()  # fmt: skip
     assert out == ["True", "True", "False", "False", "ok"]

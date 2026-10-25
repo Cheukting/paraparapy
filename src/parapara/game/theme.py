@@ -34,8 +34,8 @@ Semantic names used by the screens
   wording of the messages still carry the meaning (colour is never the only
   cue).
 * ``LEFT`` / ``RIGHT`` / ``BODY`` / ``FLASH``: the dancer and guide figure.
-  The dancer's left is violet and right is magenta, matching the two brand
-  purples; the body is off-white and flashes are gold.
+  The dancer's left is gold and right is magenta, matching the two brand
+  highlights; the body is off-white and flashes are gold.
 * ``PERFECT`` / ``GREAT`` / ``GOOD`` / ``HOLD`` / ``MISS``: grade colours,
   from gold through the two purples to magenta.
 
@@ -85,7 +85,7 @@ ERROR = MAGENTA
 RECORD = MAGENTA
 
 # --- dancer / guide figure ---------------------------------------------------
-LEFT_COLOUR = VIOLET
+LEFT_COLOUR = GOLD
 RIGHT_COLOUR = MAGENTA
 BODY_COLOUR = OFFWHITE
 FLASH_COLOUR = GOLD
