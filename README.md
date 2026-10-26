@@ -3,7 +3,11 @@
 # ParaParaPy
 
 A desktop Para Para dance game: a webcam tracks the player's upper body and
-scores each move against a choreographed routine. See [PLAN.md](PLAN.md) for
+scores each move against a choreographed routine.
+
+![mini demo.gif](assets/branding/mini%20demo.gif)
+
+See [PLAN.md](PLAN.md) for
 the design and roadmap, [CHANGELOG.md](CHANGELOG.md) for progress, and
 [CONTRIBUTING.md](CONTRIBUTING.md) for a guide to the code base.
 

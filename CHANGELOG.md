@@ -11,6 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.
 
 ### Changed
+- **Git hooks**: removed the `check-added-large-files` hook from `prek.toml`.
 - **Git hooks**: the `pytest` prek hook now uses `pytest-testmon`, so it runs
   only the tests affected by the staged changes instead of the full suite.
   The first run (or a run after `.testmondata` is removed) still collects
