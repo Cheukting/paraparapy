@@ -37,7 +37,7 @@ uv run parapara-capture-debug            # --help for options (--model lite, ...
 
 On first run it downloads ~15 MB of MediaPipe pose models to
 `~/Library/Caches/parapara/models`. macOS will ask for camera access for your
-terminal or IDE. Cyan = dancer's left, orange = dancer's right; `M` toggles
+terminal or IDE. Yellow = dancer's left, pink = dancer's right; `M` toggles
 the mirrored view, `Esc` quits.
 
 ## Capture benchmark

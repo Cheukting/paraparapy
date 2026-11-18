@@ -16,6 +16,7 @@ changed when, see [CHANGELOG.md](CHANGELOG.md).
 5. [Data on disk](#5-data-on-disk)
 6. [Tools and commands](#6-tools-and-commands)
 7. [Testing](#7-testing)
+   - [7.1. Linting and static analysis](#71-linting-and-static-analysis)
 8. [Common tasks](#8-common-tasks)
 9. [Glossary](#9-glossary)
 
@@ -310,6 +311,22 @@ Tests never touch the real data folder or the camera. Real-world checks are
 done by the project owner with the guided tools (`parapara-record`,
 `parapara-latency-test`), which write logs for analysis instead of asking for
 numbers.
+
+## 7.1. Linting and static analysis
+
+The project uses `uv` to run all dev tools. They are listed in the `dev`
+dependency group in `pyproject.toml`.
+
+| Tool | What it does | Configuration | Command |
+|---|---|---|---|
+| **Ruff** | Linter and formatter (Python 3.13+, line length 88). Enabled rules: `E4`, `E7`, `E9`, `F`, `I`. | `pyproject.toml` (`[tool.ruff]`, `[tool.ruff.lint]`, `[tool.ruff.format]`) | `uv run ruff check` (lint), `uv run ruff format --check` (format check), `uv run ruff format` (auto-fix) |
+| **Pyrefly** | Static type checker. | `pyproject.toml` (`[tool.pyrefly]`); scans `src/`, excludes `tests/` and `__pycache__/`. | `uv run pyrefly check` |
+| **Prek** | Pre-commit-style hooks runner. Runs trailing-whitespace, end-of-file-fixer, check-yaml, check-toml, Ruff check, Ruff format check, Pyrefly check, affected tests, and pip-audit. | `prek.toml` | `uv run prek run` |
+| **pip-audit** | Scans dependencies for known vulnerabilities. | (none) | `uv run pip-audit` |
+
+Before committing, run `uv run prek run` to execute all hooks. This is the
+quickest way to catch formatting issues, linting errors, type problems,
+affected test failures, and dependency vulnerabilities in one pass.
 
 ## 8. Common tasks
 
