@@ -1,18 +1,20 @@
 [[repos]]
 repo = "builtin"
 hooks = [
-  { id = "trailing-whitespace" },
-  { id = "end-of-file-fixer" },
-  { id = "check-yaml" },
-  { id = "check-toml" },
+  { id = "trailing-whitespace", stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "end-of-file-fixer", stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "check-yaml", stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "check-toml", stages = ["pre-commit", "pre-merge-commit"] },
 ]
 
 [[repos]]
 repo = "local"
 hooks = [
-  { id = "ruff-check", name = "ruff check", entry = "uv run ruff check", language = "system", pass_filenames = false },
-  { id = "ruff-format", name = "ruff format", entry = "uv run ruff format --check", language = "system", pass_filenames = false },
-  { id = "pyrefly-check", name = "pyrefly check", entry = "uv run pyrefly check", language = "system", pass_filenames = false },
-  { id = "pytest", name = "pytest (affected tests)", entry = "uv run pytest -q --testmon", language = "system", pass_filenames = false },
-  { id = "pip-audit", name = "pip-audit", entry = "bash -c 'uv run pip-audit -r <(uv export --format requirements-txt --no-header --no-annotate --no-hashes) || uv run pip-audit'", language = "system", pass_filenames = false },
+  # Linting and static analysis: run on every commit and on merge
+  { id = "ruff-check", name = "ruff check", entry = "uv run ruff check", language = "system", pass_filenames = false, stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "ruff-format", name = "ruff format", entry = "uv run ruff format --check", language = "system", pass_filenames = false, stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "pyrefly-check", name = "pyrefly check", entry = "uv run pyrefly check", language = "system", pass_filenames = false, stages = ["pre-commit", "pre-merge-commit"] },
+  { id = "pip-audit", name = "pip-audit", entry = "bash -c 'uv run pip-audit -r <(uv export --format requirements-txt --no-header --no-annotate --no-hashes) || uv run pip-audit'", language = "system", pass_filenames = false, stages = ["pre-commit", "pre-merge-commit"] },
+  # Tests: run only on merge (pre-merge-commit), not on regular commits
+  { id = "pytest", name = "pytest (affected tests)", entry = "uv run pytest -q --testmon", language = "system", pass_filenames = false, stages = ["pre-merge-commit"] },
 ]

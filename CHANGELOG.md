@@ -11,6 +11,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.
 
 ### Changed
+- **Git hooks**: separated hook stages in `prek.toml`. Linting and static
+  analysis tools (trailing-whitespace, end-of-file-fixer, check-yaml,
+  check-toml, ruff check, ruff format, pyrefly check, pip-audit) now run on
+  both `pre-commit` and `pre-merge-commit`. Tests (`pytest`) run only on
+  `pre-merge-commit`, so they execute when merging branches but not on
+  regular commits. A `pre-merge-commit` git hook shim is installed alongside
+  the existing `pre-commit` hook.
 - **Git hooks**: removed the `check-added-large-files` hook from `prek.toml`.
 - **Git hooks**: the `pytest` prek hook now uses `pytest-testmon`, so it runs
   only the tests affected by the staged changes instead of the full suite.

@@ -12,6 +12,6 @@
 - document changes in CHANGELOG.md
 - update CONTRIBUTING.md, README.md and PLAN.md if necessary.
 - commit using the user's git credential.
-- run test and checks when the task finished and then commit with proper commit messages.
-- work on a new branch, only merge into main after reviewed by human author.
+- run relevant test and checks when the task finished and then commit with proper commit messages. If not indicated, ask the user which branch to commit to.
+- only merge into main after reviewed by human author.
 - provide reasoning and inform the user your plan while you work
