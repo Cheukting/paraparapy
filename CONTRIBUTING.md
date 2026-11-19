@@ -376,3 +376,62 @@ changes (everyone sees it once more).
 | timing copy | the unsmoothed arm directions used to time hits |
 | perfect player | the demo dancer's motion as synthetic camera input; the timing ground truth |
 | framing | the player's position in the camera picture |
+
+## 10. Building a distributable package
+
+The project uses [PyInstaller](https://pyinstaller.org/) to create standalone
+app bundles. The build configuration is in `paraparapy.spec`.
+
+### Prerequisites
+
+```sh
+uv pip install pyinstaller
+```
+
+### Building
+
+```sh
+# Clean previous builds
+rm -rf build dist
+
+# Build the app bundle
+uv run pyinstaller paraparapy.spec
+```
+
+On macOS, this produces `dist/ParaParaPy.app` (~140 MB). On Windows, it
+produces `dist/ParaParaPy/` with `ParaParaPy.exe`.
+
+### What's bundled
+
+- All Python code and dependencies (pygame-ce, MediaPipe, NumPy, …)
+- MediaPipe Python modules (877 submodules)
+- Branding assets (logo, wordmark, palette) and song catalog metadata
+- Platform-specific app icon (`.icns` on macOS, `.ico` on Windows)
+
+### What's NOT bundled
+
+- **MediaPipe pose models** (~14.5 MB) — downloaded on first run to
+  `~/Library/Caches/parapara/models/` (macOS) or
+  `$XDG_CACHE_HOME/parapara/models/` (Linux). The app verifies SHA-256
+  hashes after download.
+- **User songs** — stored in the user data directory, not bundled.
+- **Demo songs** — fetched via `parapara-fetch-demo-songs` or imported
+  by the user.
+
+### Key configuration
+
+- **Bundle identifier**: `io.paraparapy.app` (macOS)
+- **Camera permission**: "ParaParaPy uses your camera to track your dance
+  movements in real time." (macOS `NSCameraUsageDescription`)
+- **Multiprocessing**: `spawn` start method with `freeze_support()` in the
+  game entry point; runtime hook pre-imports the capture worker module.
+
+### Testing the frozen app
+
+```sh
+# Launch the bundled app (will exit if no display is available)
+./dist/ParaParaPy.app/Contents/MacOS/ParaParaPy
+```
+
+The app will download the pose models on first run if they are not already
+cached. Subsequent launches use the cached models.

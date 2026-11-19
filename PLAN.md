@@ -554,12 +554,18 @@ Must do before shipping:
    the future plans below.
 
 Future plans (project owner, 2026-10-23: not before the first release):
-5. **Packaging**: choose a tool (PyInstaller / Briefcase), bundle the pose
-   models and the logo, handle the spawned capture process in a frozen app,
-   move `logs/`, `recordings/` and the song library from the working
-   directory to the user data folder, app icon, macOS camera usage
-   description, target platforms, test on a clean machine; decide whether
-   demo songs are bundled or downloaded (and carry verified beat maps).
+5. **Packaging**: PyInstaller chosen and configured (`paraparapy.spec`),
+   platform icons created, multiprocessing support added, MediaPipe models
+   download on first run. macOS build verified locally.
+   - **Multi-platform builds**: add Windows and Linux build jobs to the
+     GitHub Actions workflow (`build.yml`) so that every push to `main`
+     produces distributable packages for all three platforms. Consider
+     code signing and notarization for macOS, and Inno Setup or NSIS for
+     Windows installers.
+   - **Clean machine testing**: test the packaged app on a machine without
+     the development environment to catch missing dependencies or path issues.
+   - **Demo songs distribution**: decide whether demo songs are bundled or
+     downloaded (and carry verified beat maps from `catalog.json`).
 6. **In-game screens** for what is CLI-only today: fetch demo songs, import
    own songs, generate routines.
 7. **First-run errors** on the packaged app: no camera, camera permission

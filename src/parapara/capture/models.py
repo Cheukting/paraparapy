@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import socket
 import sys
 import tempfile
 import urllib.request
@@ -56,7 +57,12 @@ MODELS: dict[str, ModelSpec] = {
 
 
 class ModelDownloadError(RuntimeError):
-    pass
+    """Raised when a model cannot be downloaded or verified.
+
+    The error message is shown directly to the user in the game UI, so it
+    should be actionable. When the network is unavailable and no cached model
+    exists, the message explains the situation and what to do next.
+    """
 
 
 def default_model_dir() -> Path:
@@ -82,6 +88,21 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _is_network_available(timeout: float = 5.0) -> bool:
+    """Check whether the network is reachable by probing a well-known host.
+
+    This is a best-effort check used only to improve the error message when
+    a model download fails. A ``True`` result does not guarantee that the
+    model URL is reachable, and a ``False`` result does not guarantee that
+    no network path exists (e.g. behind a proxy).
+    """
+    try:
+        socket.create_connection(("storage.googleapis.com", 443), timeout=timeout)
+        return True
+    except OSError:
+        return False
+
+
 def ensure_model(
     spec: ModelSpec,
     model_dir: Path | None = None,
@@ -101,6 +122,7 @@ def ensure_model(
 
     Raises:
         ModelDownloadError: on network failure or hash/size mismatch.
+        The error message is user-facing and actionable.
     """
     directory = model_dir or default_model_dir()
     directory.mkdir(parents=True, exist_ok=True)
@@ -133,8 +155,28 @@ def ensure_model(
                 "The upstream 'latest' model may have changed; see parapara/capture/models.py."
             )
         os.replace(tmp, target)
-    except OSError as err:  # includes urllib.error.URLError
-        raise ModelDownloadError(f"could not download {spec.url}: {err}") from err
+    except ModelDownloadError:
+        # Re-raise unchanged (e.g. hash mismatch)
+        raise
+    except OSError as err:
+        # Build a user-friendly message that explains the situation and what
+        # to do next. The message is displayed in the game UI as a camera
+        # problem, so it must be actionable without technical jargon.
+        original_err = err
+        if not _is_network_available():
+            raise ModelDownloadError(
+                f"Cannot download pose model '{spec.filename}' — no internet connection.\n\n"
+                "ParaParaPy needs an internet connection on the first run to download "
+                "the pose detection models (~15 MB). Once downloaded, they are cached "
+                "and the game works offline.\n\n"
+                "Please connect to the internet and try again."
+            ) from original_err
+        else:
+            raise ModelDownloadError(
+                f"Cannot download pose model '{spec.filename}': {err}\n\n"
+                "Check your internet connection and try again. If the problem persists, "
+                f"you can download the model manually from:\n{spec.url}"
+            ) from original_err
     finally:
         tmp.unlink(missing_ok=True)
     return target

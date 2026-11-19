@@ -88,7 +88,7 @@ def test_ensure_model_rejects_hash_mismatch_and_leaves_nothing(tmp_path) -> None
 
 def test_ensure_model_network_error(tmp_path) -> None:
     spec = ModelSpec("m.task", (tmp_path / "missing.task").as_uri(), "0" * 64, 1)
-    with pytest.raises(ModelDownloadError, match="could not download"):
+    with pytest.raises(ModelDownloadError, match="Cannot download pose model"):
         ensure_model(spec, tmp_path / "cache")
 
 

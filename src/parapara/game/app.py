@@ -1327,7 +1327,16 @@ def run(argv: list[str] | None = None, *, worker: str = DEFAULT_WORKER) -> None:
 
 
 def main(argv: list[str] | None = None) -> None:
-    """Console entry point (returns ``None``)."""
+    """Console entry point (returns ``None``).
+
+    Requires ``multiprocessing.freeze_support()`` for PyInstaller frozen apps
+    on Windows (and as a safety measure on all platforms). Without it, the
+    spawned capture worker would re-execute the entire script instead of
+    importing the worker module.
+    """
+    import multiprocessing
+
+    multiprocessing.freeze_support()
     run(argv)
 
 

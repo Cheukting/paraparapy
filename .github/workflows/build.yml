@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-macos:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Install PyInstaller
+        run: uv pip install pyinstaller
+      - name: Build macOS app
+        run: uv run pyinstaller paraparapy.spec
+      - name: Verify bundle structure
+        run: |
+          test -d dist/ParaParaPy.app
+          test -f dist/ParaParaPy.app/Contents/Info.plist
+          test -f dist/ParaParaPy.app/Contents/MacOS/ParaParaPy
+      - name: Upload artifact
+        uses: actions/upload-artifact@4
+        with:
+          name: ParaParaPy-macos.app
+          path: dist/ParaParaPy.app
+          retention-days: 30

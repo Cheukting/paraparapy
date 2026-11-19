@@ -6,6 +6,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **First-run internet notice**: README documents that the first run requires
+  an internet connection to download MediaPipe pose models (~15 MB). After
+  the initial download, the game works completely offline.
+- **Offline error handling**: When pose models cannot be downloaded and no
+  internet is available, the game displays a clear error message explaining
+  the situation and what to do next. A network connectivity check distinguishes
+  between "no internet" and other download failures.
+- **Packaging**: PyInstaller build configuration (`paraparapy.spec`) for creating
+  distributable app bundles. Supports macOS (.app with bundle identifier
+  `io.paraparapy.app` and camera permission), Windows (.exe), and Linux.
+  MediaPipe pose models download on first run (~14.5 MB) rather than being
+  bundled, keeping the initial app download smaller.
+- **Platform icons**: macOS `.icns` and Windows `.ico` derived from the
+  square icon in `assets/branding/`.
+- **Multiprocessing support**: Added `freeze_support()` to the game entry
+  point so the spawned capture worker imports correctly in frozen PyInstaller
+  apps. Runtime hook (`pyinstaller_hooks/rthook_parapara.py`) ensures the
+  worker module is available and sets `spawn` as the start method.
+- **Build automation**: GitHub Actions workflow (`.github/workflows/build.yml`)
+  that builds the macOS `.app` on every push to `main`, verifies the bundle
+  structure, and uploads it as an artifact. Multi-platform builds (Windows,
+  Linux) are planned for a future release.
 - **CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) with jobs for running all tests, ruff lint and format checks, pyrefly type checking, and dependency audit with `pip-audit`.
 - **Git hooks**: Added `prek.toml` for [prek](https://github.com/j178/prek) to run the same checks locally before commits (tests, ruff, pyrefly, pip-audit).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.

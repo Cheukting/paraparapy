@@ -20,6 +20,18 @@ uv sync
 uv run pytest
 ```
 
+### First run — internet required
+
+The first time you run the game (or any tool that uses the camera), ParaParaPy
+downloads the MediaPipe pose detection models (~15 MB) to a local cache. An
+internet connection is required for this one-time download. After that, the
+game works completely offline.
+
+If you see a **"Cannot download pose model"** error, check your internet
+connection and try again. The models are cached in
+`~/Library/Caches/parapara/models` (macOS) or `$XDG_CACHE_HOME/parapara/models`
+(Linux).
+
 ### Development checks
 
 CI runs tests, ruff (lint/format), pyrefly, and `pip-audit`. Locally, use [prek](https://github.com/j178/prek) to run the same checks before committing:
