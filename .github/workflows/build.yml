@@ -30,7 +30,7 @@ jobs:
           test -f dist/ParaParaPy.app/Contents/Info.plist
           test -f dist/ParaParaPy.app/Contents/MacOS/ParaParaPy
       - name: Upload artifact
-        uses: actions/upload-artifact@4
+        uses: actions/upload-artifact@v4
         with:
           name: ParaParaPy-macos.app
           path: dist/ParaParaPy.app
