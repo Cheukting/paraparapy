@@ -25,9 +25,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   apps. The runtime hook sets `spawn` as the start method; the worker is
   included as a hidden import and loaded by the capture process.
 - **Build automation**: GitHub Actions workflow (`.github/workflows/build.yml`)
-  that builds the macOS `.app` on every push to `main`, verifies the bundle
-  structure, and uploads it as an artifact. Multi-platform builds (Windows,
-  Linux) are planned for a future release.
+  that builds the macOS `.app` on every push to `main` and the
+  `startup-performance` staging branch, verifies the bundle structure, and
+  uploads it as an artifact. Multi-platform builds (Windows, Linux) are
+  planned for a future release.
 - **CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) with jobs for running all tests, ruff lint and format checks, pyrefly type checking, and dependency audit with `pip-audit`.
 - **Git hooks**: Added `prek.toml` for [prek](https://github.com/j178/prek) to run the same checks locally before commits (tests, ruff, pyrefly, pip-audit).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.

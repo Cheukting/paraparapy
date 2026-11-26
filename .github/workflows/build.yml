@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, startup-performance]
 
 permissions:
   contents: read
