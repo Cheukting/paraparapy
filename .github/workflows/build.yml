@@ -29,6 +29,7 @@ jobs:
           test -d dist/ParaParaPy.app
           test -f dist/ParaParaPy.app/Contents/Info.plist
           test -f dist/ParaParaPy.app/Contents/MacOS/ParaParaPy
+          test "$(du -sk dist/ParaParaPy.app/Contents/Frameworks | cut -f1)" -gt 0
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

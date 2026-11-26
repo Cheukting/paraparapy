@@ -398,7 +398,9 @@ rm -rf build dist
 uv run pyinstaller paraparapy.spec
 ```
 
-On macOS, this produces `dist/ParaParaPy.app` (~140 MB). On Windows, it
+On macOS, this produces `dist/ParaParaPy.app` with its dependencies stored
+alongside the executable in the app bundle. This avoids unpacking the full
+application into a temporary directory on every launch. On Windows, it
 produces `dist/ParaParaPy/` with `ParaParaPy.exe`.
 
 ### What's bundled
@@ -424,7 +426,8 @@ produces `dist/ParaParaPy/` with `ParaParaPy.exe`.
 - **Camera permission**: "ParaParaPy uses your camera to track your dance
   movements in real time." (macOS `NSCameraUsageDescription`)
 - **Multiprocessing**: `spawn` start method with `freeze_support()` in the
-  game entry point; runtime hook pre-imports the capture worker module.
+  game entry point; the worker is bundled as a hidden import and loaded only
+  in the capture process so OpenCV and MediaPipe do not delay the game UI.
 
 ### Testing the frozen app
 

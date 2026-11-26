@@ -22,8 +22,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   square icon in `assets/branding/`.
 - **Multiprocessing support**: Added `freeze_support()` to the game entry
   point so the spawned capture worker imports correctly in frozen PyInstaller
-  apps. Runtime hook (`pyinstaller_hooks/rthook_parapara.py`) ensures the
-  worker module is available and sets `spawn` as the start method.
+  apps. The runtime hook sets `spawn` as the start method; the worker is
+  included as a hidden import and loaded by the capture process.
 - **Build automation**: GitHub Actions workflow (`.github/workflows/build.yml`)
   that builds the macOS `.app` on every push to `main`, verifies the bundle
   structure, and uploads it as an artifact. Multi-platform builds (Windows,
@@ -33,6 +33,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Tooling config**: Added ruff and pyrefly configuration in `pyproject.toml` and dev dependencies for ruff, pyrefly, prek, and pip-audit.
 
 ### Changed
+- **macOS startup**: PyInstaller now creates a one-folder `.app` bundle
+  instead of embedding the full application in one executable, avoiding
+  repeated extraction at launch. The runtime hook no longer pre-imports the
+  capture worker, so OpenCV and MediaPipe load in the capture process rather
+  than delaying the game UI.
 - **Git hooks**: separated hook stages in `prek.toml`. Linting and static
   analysis tools (trailing-whitespace, end-of-file-fixer, check-yaml,
   check-toml, ruff check, ruff format, pyrefly check, pip-audit) now run on

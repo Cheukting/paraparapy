@@ -6,9 +6,9 @@ Build commands:
     macOS:  pyinstaller paraparapy.spec
     Windows: pyinstaller paraparapy.spec
 
-This produces a directory-based app (not single-file) for better performance
-with MediaPipe models. The app uses multiprocessing with spawn mode for the
-capture worker process.
+The macOS build produces a directory-based app (not single-file) for faster
+startup. The app uses multiprocessing with spawn mode for the capture worker
+process.
 
 Key configuration:
 - Bundle identifier: io.paraparapy.app
@@ -104,14 +104,14 @@ pyz = PYZ(a.pure)
 # Platform-specific configuration
 # ---------------------------------------------------------------------------
 if sys.platform == "darwin":
-    # macOS .app bundle
-    # For macOS, we use EXE -> BUNDLE pattern. The BUNDLE creates the .app
-    # and COLLECT gathers the supporting binaries and data files.
+    # Keep dependencies as files inside the app bundle instead of embedding
+    # them in one executable. A one-file macOS app would unpack its full
+    # payload on every launch, delaying startup and triggering repeated scans.
     exe = EXE(
         pyz,
         a.scripts,
-        a.binaries,
-        a.datas,
+        [],
+        exclude_binaries=True,
         name="ParaParaPy",
         debug=False,
         bootloader_ignore_signals=False,
@@ -121,8 +121,18 @@ if sys.platform == "darwin":
         console=False,  # No terminal window
         icon="assets/branding/paraparapy.icns",
     )
-    app = BUNDLE(
+    coll = COLLECT(
         exe,
+        a.binaries,
+        a.datas,
+        name="ParaParaPy",
+        debug=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+    )
+    app = BUNDLE(
+        coll,
         name="ParaParaPy.app",
         icon="assets/branding/paraparapy.icns",
         bundle_identifier="io.paraparapy.app",
